@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Yields - Multi-Chain USDT Platform</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Generator Library CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        .active-tab { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-24">
+
+    <!-- TOP HEADER -->
+    <header class="bg-slate-900/80 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-4 py-3 flex justify-between items-center max-w-2xl mx-auto">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">💎</span>
+            <div>
+                <h1 class="font-bold text-sm leading-none text-slate-100">Apex Yields</h1>
+                <span id="userHeaderRole" class="text-[10px] text-blue-400 font-mono">User Mode</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="adminBtn" onclick="toggleAdminPanel()" class="hidden bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded-full font-medium hover:bg-amber-500/20 transition">
+                ⚡ Control Panel
+            </button>
+            <button onclick="handleLogout()" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full hover:bg-slate-700 hover:text-slate-200 transition">
+                Exit
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-2xl mx-auto p-4 space-y-6">
+
+        <!-- AUTH SCREEN -->
+        <section id="authSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4 max-w-sm mx-auto">
+            <div class="text-3xl">🔐</div>
+            <h2 class="text-xl font-bold">Account Access</h2>
+            <p class="text-xs text-slate-400">Enter your credentials to manage your yield portfolio.</p>
+            <div class="space-y-3 max-w-xs mx-auto">
+                <input type="text" id="loginUsername" placeholder="Username / Account ID" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <input type="password" id="loginPasscode" placeholder="Password / Passcode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <input type="text" id="loginRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">
+                    Sign In / Register
+                </button>
+            </div>
+        </section>
+
+        <!-- DASHBOARD CONTAINER -->
+        <div id="dashboardSection" class="hidden space-y-6">
+
+            <!-- TAB NAVIGATION -->
+            <nav class="flex border-b border-slate-800 text-sm font-medium text-slate-400 justify-between">
+                <button onclick="switchTab('packages')" id="tab-packages" class="pb-3 px-2 flex-1 text-center active-tab">📦 Packages</button>
+                <button onclick="switchTab('wallet')" id="tab-wallet" class="pb-3 px-2 flex-1 text-center">💳 Wallet & Payout</button>
+                <button onclick="switchTab('referral')" id="tab-referral" class="pb-3 px-2 flex-1 text-center">🎁 Referral Hub</button>
+                <button onclick="switchTab('settings')" id="tab-settings" class="pb-3 px-2 flex-1 text-center">⚙️ Settings</button>
+            </nav>
+
+            <!-- TAB 1: PACKAGES -->
+            <div id="view-packages" class="tab-view space-y-4">
+                <div class="bg-gradient-to-r from-blue-900/40 to-slate-900 border border-blue-500/20 rounded-2xl p-4 flex justify-between items-center">
+                    <div>
+                        <span class="text-xs text-blue-300 font-semibold uppercase tracking-wider">Active Balance</span>
+                        <div id="userActiveBalance" class="text-2xl font-extrabold text-white">$0.00 USDT</div>
+                    </div>
+                    <button onclick="openDepositModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md">
+                        + Deposit Funds
+                    </button>
+                </div>
+
+                <!-- USER ACTIVE & PENDING SUBSCRIPTIONS -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Active & Pending Packages</h3>
+                    <div id="userActiveSubscriptionsList" class="space-y-2">
+                        <p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>
+                    </div>
+                </div>
+
+                <!-- AFFILIATE TIER BANNER -->
+                <div class="bg-slate-900 border border-indigo-500/30 rounded-xl p-3 flex justify-between items-center text-xs">
+                    <div>
+                        <span class="text-slate-400">Current Affiliate Cap Level:</span>
+                        <div id="userCurrentTierLabel" class="font-bold text-indigo-400">Base Tier (30% Cap)</div>
+                    </div>
+                    <div id="userReferralBadge" class="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-1 rounded-full font-mono text-[11px] font-bold">
+                        0 Active Refs
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Investment Tier Packages</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="packageGrid">
+                    
+                    <!-- PACKAGE 1: NOVICE -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base">Micro Vault</span>
+                                <span id="rate-Micro Vault" class="bg-slate-500/10 text-slate-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$25.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Micro Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Micro Vault" class="text-xs text-slate-400 mt-2">3-Day Lockup. Yields +$5.00 net profit.</p>
+                        </div>
+                        <button id="btn-Micro Vault" onclick="promptInvestPackage('Micro Vault', 25, '3 Days')" class="mt-4 w-full bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $25 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 2: BASIC -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base">Standard Vault</span>
+                                <span id="rate-Standard Vault" class="bg-blue-500/10 text-blue-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$50.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Standard Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Standard Vault" class="text-xs text-slate-400 mt-2">15-Day Lockup. Yields +$10.00 net profit.</p>
+                        </div>
+                        <button id="btn-Standard Vault" onclick="promptInvestPackage('Standard Vault', 50, '15 Days')" class="mt-4 w-full bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $50 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 3: STARTER -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base">Starter Vault</span>
+                                <span id="rate-Starter Vault" class="bg-blue-500/10 text-blue-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$100.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Starter Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Starter Vault" class="text-xs text-slate-400 mt-2">15-Day Lockup. Yields +$20.00 net profit.</p>
+                        </div>
+                        <button id="btn-Starter Vault" onclick="promptInvestPackage('Starter Vault', 100, '15 Days')" class="mt-4 w-full bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $100 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 4: PRO -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base">Pro Vault</span>
+                                <span id="rate-Pro Vault" class="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$500.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Pro Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Pro Vault" class="text-xs text-slate-400 mt-2">15-Day Lockup. Fixed $500 Tier Base Rate (20%). Yields +$100.00 net profit.</p>
+                        </div>
+                        <button id="btn-Pro Vault" onclick="promptInvestPackage('Pro Vault', 500, '15 Days')" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $500 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 5: EXECUTIVE ($1,000 Threshold) -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base">Executive Vault</span>
+                                <span id="rate-Executive Vault" class="bg-amber-500/10 text-amber-400 text-xs px-2 py-0.5 rounded font-mono">+30% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$1,000.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Executive Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Executive Vault" class="text-xs text-slate-400 mt-2">3-Month Fixed Lockup. Scaled by affiliate referrals (30% - 50% Cap).</p>
+                        </div>
+                        <button id="btn-Executive Vault" onclick="promptInvestPackage('Executive Vault', 1000, '3 Months (90 Days)')" class="mt-4 w-full bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $1,000 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 6: APEX VIP ($2,500 Threshold) -->
+                    <div class="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-amber-500/60 transition shadow-lg shadow-amber-500/5">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base text-amber-400">Apex VIP Vault</span>
+                                <span id="rate-Apex VIP Vault" class="bg-amber-500/20 text-amber-300 text-xs px-2 py-0.5 rounded font-mono">+30% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$2,500.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Apex VIP Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Apex VIP Vault" class="text-xs text-slate-400 mt-2">3-Month Fixed Lockup. Bounded by 50% dynamic affiliate cap.</p>
+                        </div>
+                        <button id="btn-Apex VIP Vault" onclick="promptInvestPackage('Apex VIP Vault', 2500, '3 Months (90 Days)')" class="mt-4 w-full bg-amber-600/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $2,500 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 7: PRO VIP ($5,000 Threshold) -->
+                    <div class="bg-slate-900 border border-indigo-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-indigo-500/60 transition shadow-lg shadow-indigo-500/5">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base text-indigo-400">Pro VIP Vault</span>
+                                <span id="rate-Pro VIP Vault" class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded font-mono">+30% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$5,000.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Pro VIP Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Pro VIP Vault" class="text-xs text-slate-400 mt-2">6-Month Fixed Lockup. Multi-tiered referral scaling.</p>
+                        </div>
+                        <button id="btn-Pro VIP Vault" onclick="promptInvestPackage('Pro VIP Vault', 5000, '6 Months (180 Days)')" class="mt-4 w-full bg-indigo-600/20 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $5,000 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 8: INSTITUTIONAL ($10,000 Threshold) -->
+                    <div class="bg-slate-900 border border-indigo-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-indigo-500/60 transition shadow-lg shadow-indigo-500/5">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-base text-indigo-400">Institutional Vault</span>
+                                <span id="rate-Institutional Vault" class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded font-mono">+30% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-2xl font-black text-slate-100">$10,000.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Institutional Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Institutional Vault" class="text-xs text-slate-400 mt-2">6-Month Fixed Lockup. Capped at 50% max yield ceiling.</p>
+                        </div>
+                        <button id="btn-Institutional Vault" onclick="promptInvestPackage('Institutional Vault', 10000, '6 Months (180 Days)')" class="mt-4 w-full bg-indigo-600/20 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 text-xs font-bold py-2 rounded-lg transition">
+                            Lock $10,000 Package
+                        </button>
+                    </div>
+
+                    <!-- PACKAGE 9: APEX MEGA VAULT ($50,000 Threshold) -->
+                    <div class="bg-gradient-to-br from-slate-900 via-amber-950/20 to-slate-900 border-2 border-amber-500/50 rounded-xl p-4 flex flex-col justify-between hover:border-amber-400 transition shadow-xl shadow-amber-500/10 md:col-span-2">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-black text-lg text-amber-400 flex items-center gap-1.5">
+                                    👑 Apex Mega Vault
+                                </span>
+                                <span id="rate-Apex Mega Vault" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs px-2.5 py-0.5 rounded font-mono font-bold">+30% Return</span>
+                            </div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <div class="text-3xl font-black text-slate-100">$50,000.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+                                <span id="users-Apex Mega Vault" class="text-xs text-emerald-400 font-mono font-medium" title="Active Users">👥 -- active</span>
+                            </div>
+                            <p id="desc-Apex Mega Vault" class="text-xs text-slate-300 mt-2">12-Month Enterprise Lockup. Premium Tier bounded by dynamic affiliate cap.</p>
+                        </div>
+                        <button id="btn-Apex Mega Vault" onclick="promptInvestPackage('Apex Mega Vault', 50000, '12 Months (365 Days)')" class="mt-4 w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs py-2.5 rounded-lg transition shadow-lg shadow-amber-500/20">
+                            Lock $50,000 Package
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- TAB 2: WALLET & PAYOUT -->
+            <div id="view-wallet" class="tab-view hidden space-y-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <div>
+                            <span class="text-xs text-slate-400">Available Withdrawable Balance</span>
+                            <div id="walletWithdrawable" class="text-2xl font-bold text-emerald-400">$0.00 USDT</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-slate-400">Active Locked Packages</span>
+                            <div id="walletLocked" class="text-lg font-bold text-slate-200">$0.00 USDT</div>
+                        </div>
+                    </div>
+
+                    <!-- PAYOUT REQUEST FORM -->
+                    <div class="space-y-3">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Request Withdrawal / Payout</h4>
+                        <div class="space-y-2">
+                            <div>
+                                <label class="text-[11px] text-slate-400">Select Withdrawal Network</label>
+                                <select id="payoutNetworkSelect" onchange="updatePayoutFee()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                                    <option value="TRC20">TRON (TRC-20) - $1.00 Fee</option>
+                                    <option value="ERC20">Ethereum (ERC-20) - $5.00 Fee</option>
+                                    <option value="SPL">Solana (SPL) - $0.20 Fee</option>
+                                    <option value="BEP20">BNB Smart Chain (BEP-20) - $0.50 Fee</option>
+                                </select>
+                            </div>
+                            <input type="number" id="payoutAmount" placeholder="Amount in USDT (Min $10)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                            <input type="text" id="payoutAddress" placeholder="Destination Wallet Address" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+                            <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+                                <span>Network Fee: <strong id="payoutFeeDisplay" class="text-slate-200">$1.00 USDT</strong></span>
+                                <span>Est. Arrival: <strong class="text-slate-200">Instant after Admin Review</strong></span>
+                            </div>
+                            <button onclick="requestPayout()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-lg transition shadow-md">
+                                Submit Withdrawal Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEPOSIT HISTORY TABLE -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Deposit History & Verification Status</h4>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Ref ID / Net</th>
+                                    <th class="p-3">Amount</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="depositHistoryTable" class="divide-y divide-slate-800">
+                                <tr><td colspan="3" class="p-3 text-center text-slate-500">No deposit records found.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PAYOUT HISTORY TABLE -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Payout Transaction History</h4>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Network</th>
+                                    <th class="p-3">Amount</th>
+                                    <th class="p-3">Address</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payoutHistoryTable" class="divide-y divide-slate-800">
+                                <tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: REFERRAL HUB -->
+            <div id="view-referral" class="tab-view hidden space-y-6">
+
+                <!-- UNLOCKED BONUS BANNER -->
+                <div class="relative bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/50 rounded-2xl p-6 text-center overflow-hidden shadow-2xl shadow-indigo-500/20">
+                    <div class="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                        ✓ Level Unlocked Affiliate Bonus
+                    </div>
+                    <p class="text-xs text-slate-300 font-medium">Total Unclaimed Referral Rewards</p>
+                    <div class="my-3 flex items-baseline justify-center gap-1">
+                        <span class="text-2xl font-extrabold text-emerald-300">$</span>
+                        <span id="unlockedBonusDisplay" class="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-emerald-200 to-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                            0.00
+                        </span>
+                        <span class="text-sm font-bold text-slate-400 ml-1">USDT</span>
+                    </div>
+                    <button onclick="claimBonus()" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/30 hover:scale-[1.02] active:scale-95">
+                        Claim Bonus to Balance
+                    </button>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-amber-400 uppercase tracking-wide">Affiliate Scaling Rules</span>
+                            <h3 id="refTierTitle" class="text-xl font-black text-slate-100">Referral Unlock Milestone</h3>
+                        </div>
+                        <span id="refBadge" class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold">
+                            30% CAP (0/10)
+                        </span>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>Qualified Referrals (Verified Deposits)</span>
+                            <span id="refProgressText" class="font-bold text-slate-200">0 / 25</span>
+                        </div>
+                        <div class="w-full bg-slate-950 rounded-full h-3 border border-slate-800 overflow-hidden">
+                            <div id="refProgressBar" class="bg-amber-500 h-full w-0 transition-all duration-500"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 text-[11px] text-center font-mono">
+                            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                                <span class="text-slate-400 block">0-9 Refs</span>
+                                <strong class="text-amber-400">30% Base Cap</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                                <span class="text-slate-400 block">10-24 Refs</span>
+                                <strong class="text-blue-400">40% Cap (+10%)</strong>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                                <span class="text-slate-400 block">25+ Refs</span>
+                                <strong class="text-emerald-400">50% Max Cap</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center space-y-4">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Your Referral Invite Link & Code</h4>
+                    <div class="bg-white p-3 rounded-xl inline-block shadow-inner mx-auto">
+                        <div id="qrcode" class="flex justify-center min-w-[128px] min-h-[128px]"></div>
+                    </div>
+                    <div class="space-y-2 max-w-sm mx-auto">
+                        <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-2">
+                            <span id="refCodeDisplay" class="font-mono text-xs text-blue-400 font-bold flex-1 truncate">APEX-000000</span>
+                            <button onclick="copyRefCode()" class="bg-slate-800 hover:bg-slate-700 text-xs px-2.5 py-1 rounded text-slate-200 font-medium">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Direct Referrals Network</h4>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">User ID</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Deposit Qualification</th>
+                                </tr>
+                            </thead>
+                            <tbody id="refNetworkTable" class="divide-y divide-slate-800">
+                                <tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: SETTINGS -->
+            <div id="view-settings" class="tab-view hidden space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <h3 class="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">Account Details</h3>
+                    <div class="text-xs space-y-2">
+                        <div class="flex justify-between"><span class="text-slate-400">Active User ID:</span> <span id="settingsUserId" class="font-mono text-slate-200">--</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Security Passcode:</span> <span id="settingsUserWallet" class="font-mono text-slate-200">••••••••</span></div>
+                    </div>
+                </div>
+
+                <div id="adminSettingsBox" class="hidden bg-amber-950/20 border border-amber-500/20 rounded-2xl p-5 space-y-3">
+                    <h3 class="text-sm font-bold text-amber-400">Master Control Center</h3>
+                    <p class="text-xs text-slate-400">Authenticated as Administrator.</p>
+                    <button onclick="toggleAdminPanel()" class="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-2 rounded-lg transition">
+                        ⚡ Open Control Panel
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- INVESTMENT POPUP MODAL -->
+        <div id="investmentModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="relative bg-slate-900 border border-blue-500/30 rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl">
+                <button onclick="closeInvestmentModal()" aria-label="Close modal" class="absolute top-3 right-3 text-slate-400 hover:text-white text-2xl font-bold p-1 rounded-lg hover:bg-slate-800 transition leading-none">
+                    &times;
+                </button>
+                <div class="text-3xl">🚀</div>
+                <h3 id="modalPackageName" class="text-lg font-bold text-slate-100">Package Vault</h3>
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs space-y-2 font-mono">
+                    <div class="flex justify-between"><span class="text-slate-400">Investment Cost:</span> <span id="modalCost" class="font-bold text-slate-200">$0.00 USDT</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Active Users:</span> <span id="modalActiveUsers" class="font-bold text-emerald-400">0</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Effective Rate:</span> <span id="modalRate" class="font-bold text-emerald-400">+0%</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Net Scaled Yield:</span> <span id="modalProfit" class="font-bold text-emerald-400">+$0.00 USDT</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Lockup Duration:</span> <span id="modalDuration" class="text-slate-200">30 Days</span></div>
+                    <div id="modalCapNotice" class="hidden text-left bg-amber-500/10 border border-amber-500/20 p-2 rounded text-[10px] text-amber-300 font-sans">
+                        ⚠️ 50% Yield Cap active for deposits $1,000+. Unlocked via active referrals.
+                    </div>
+                    <hr class="border-slate-800">
+                    <div class="flex justify-between text-sm"><span class="text-slate-300 font-sans font-bold">Total Net Payout:</span> <span id="modalTotalPayout" class="font-bold text-emerald-300">$0.00 USDT</span></div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeInvestmentModal()" class="flex-1 bg-slate-800 text-slate-300 text-xs py-2.5 rounded-lg font-semibold hover:bg-slate-700 transition">Cancel</button>
+                    <button onclick="confirmInvestment()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs py-2.5 rounded-lg transition shadow-lg shadow-blue-600/20">Confirm Lockup</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MASTER ADMIN CONTROL PANEL MODAL -->
+        <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="relative max-w-3xl mx-auto bg-slate-900 border border-amber-500/30 rounded-2xl p-6 space-y-6 shadow-2xl">
+                <button onclick="toggleAdminPanel()" aria-label="Close modal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold p-1 rounded-lg hover:bg-slate-800 transition leading-none">
+                    &times;
+                </button>
+
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3 pr-8">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">⚡</span>
+                        <h2 class="text-lg font-bold text-amber-400">Master Admin Control Center</h2>
+                    </div>
+                </div>
+
+                <!-- DEVELOPER MANUAL DEPOSIT/PACKAGE VERIFICATION -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">⚡ Pending On-Chain Deposit Verifications</h3>
+                        <span id="pendingCountBadge" class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold">0 Pending</span>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden text-xs">
+                        <div class="max-h-56 overflow-y-auto">
+                            <table class="w-full text-left font-mono text-[11px]">
+                                <thead class="bg-slate-900 text-slate-400 sticky top-0">
+                                    <tr>
+                                        <th class="p-2">User</th>
+                                        <th class="p-2">Package / Amount</th>
+                                        <th class="p-2">Time</th>
+                                        <th class="p-2 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminPendingDepositsTable" class="divide-y divide-slate-800">
+                                    <tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEV PACKAGE ACTIVE USER OVERRIDE MANAGER -->
+                <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-amber-400 flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l-4 16M6 16l-4-4 4-4"/></svg>
+                            Dev Editable Package User Counts
+                        </span>
+                        <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">DEV OVERRIDE</span>
+                    </div>
+
+                    <!-- Universal Override Header Bar -->
+                    <div class="flex items-center gap-2 bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                        <span class="text-xs text-slate-300 font-semibold">Global Count Offset:</span>
+                        <input type="number" id="dev-count-input" class="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-amber-500 font-mono" placeholder="Offset" />
+                        <button onclick="setDevActiveCount()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-2.5 py-1 rounded transition-all">Save Offset</button>
+                        <button onclick="quickAdjustCount(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2 py-1 rounded border border-slate-700 font-bold">+1</button>
+                        <button onclick="quickAdjustCount(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2 py-1 rounded border border-slate-700 font-bold">-1</button>
+                        <button onclick="resetDevOverride()" class="bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs px-2 py-1 rounded border border-slate-700 ml-auto">Reset All</button>
+                    </div>
+
+                    <!-- Individual Package Dev Editors Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs pt-1" id="devPackageOverrideGrid">
+                        <!-- Populated dynamically by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- ADMIN MULTI-CHAIN RECEIVING ADDRESS CONFIGURATION -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">Multi-Chain Deposit Addresses</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-slate-400">TRON (TRC-20) Address</label>
+                            <input type="text" id="adminTRC20Input" class="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">Ethereum (ERC-20) Address</label>
+                            <input type="text" id="adminERC20Input" class="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">Solana (SPL) Address</label>
+                            <input type="text" id="adminSPLInput" class="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400">BNB Chain (BEP-20) Address</label>
+                            <input type="text" id="adminBEP20Input" class="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono focus:border-amber-500">
+                        </div>
+                    </div>
+                    <button onclick="saveAdminSettings()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded transition">
+                        Save Receiving Addresses
+                    </button>
+                </div>
+
+                <!-- DEVELOPER LOG RECIPIENT CONFIGURATION -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">Developer Log Email Address</h3>
+                    <div class="flex gap-2">
+                        <input type="email" id="adminDevEmailInput" class="flex-1 bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-blue-400 focus:border-amber-500 focus:outline-none" placeholder="dev-email@example.com">
+                        <button onclick="saveDevEmailSetting()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded transition">
+                            Save Dev Email
+                        </button>
+                    </div>
+                </div>
+
+                <!-- USER ACCOUNT MANAGEMENT -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">User Accounts Management</h3>
+                    <div id="adminUserList" class="max-h-48 overflow-y-auto space-y-2">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- PENDING PAYOUTS QUEUE -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Pending Payout Queue</h3>
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-2.5">User / Net</th>
+                                    <th class="p-2.5">Amount</th>
+                                    <th class="p-2.5">Address</th>
+                                    <th class="p-2.5">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminPendingPayoutsTable" class="divide-y divide-slate-800">
+                                <tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SYSTEM AUDIT LOG -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">📜 System Audit Log & Tracker</h3>
+                        <button onclick="triggerDevEmailLog()" class="bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 text-[11px] font-bold px-2.5 py-1 rounded transition">
+                            ✉ Send Log to Dev Email
+                        </button>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden text-[11px]">
+                        <div class="max-h-48 overflow-y-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-900 text-slate-400 sticky top-0">
+                                    <tr>
+                                        <th class="p-2">Time (UTC)</th>
+                                        <th class="p-2">User ID</th>
+                                        <th class="p-2">Event</th>
+                                        <th class="p-2">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminAuditLogTable" class="divide-y divide-slate-800 font-mono">
+                                    <tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MULTI-CHAIN DEPOSIT MODAL -->
+        <div id="depositModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="relative bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 text-center">
+                <button onclick="closeDepositModal()" aria-label="Close modal" class="absolute top-3 right-3 text-slate-400 hover:text-white text-2xl font-bold p-1 rounded-lg hover:bg-slate-800 transition leading-none">
+                    &times;
+                </button>
+
+                <h3 class="text-base font-bold pr-6">Deposit USDT</h3>
+                <div class="text-left space-y-1">
+                    <label class="text-[11px] text-slate-400">Select Deposit Network</label>
+                    <select id="depositNetworkSelect" onchange="updateDepositAddressDisplay()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500">
+                        <option value="TRC20">TRON (TRC-20)</option>
+                        <option value="ERC20">Ethereum (ERC-20)</option>
+                        <option value="SPL">Solana (SPL)</option>
+                        <option value="BEP20">BNB Smart Chain (BEP-20)</option>
+                    </select>
+                </div>
+
+                <div class="bg-white p-3 rounded-xl inline-block mx-auto">
+                    <div id="depositQr" class="flex justify-center"></div>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 p-2 rounded-lg font-mono text-[11px] text-blue-400 break-all" id="depositAddressText">
+                    TGF9M6LZERPtkqr6bLpUAFrnJwrHs5n4tn
+                </div>
+
+                <input type="number" id="depositAmountInput" placeholder="Amount Sent (e.g. 100)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+
+                <div class="flex gap-2">
+                    <button onclick="closeDepositModal()" class="flex-1 bg-slate-800 text-slate-300 text-xs py-2 rounded-lg font-semibold hover:bg-slate-700 transition">Cancel</button>
+                    <button onclick="submitDeposit()" class="flex-1 bg-blue-600 text-white text-xs py-2 rounded-lg font-semibold hover:bg-blue-500 transition">Submit Deposit</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // DEV OVERRIDE GLOBAL STATE
+        let devManualOverrideCount = null;
+
+        // PER-PACKAGE DEV ACTIVE USER OVERRIDES (Persisted in localStorage)
+        let packageUserOverrides = JSON.parse(localStorage.getItem('apex_package_user_overrides')) || {
+            'Micro Vault': 152,
+            'Standard Vault': 34,
+            'Starter Vault': 58,
+            'Pro Vault': 32,
+            'Executive Vault': 25,
+            'Apex VIP Vault': 7,
+            'Pro VIP Vault': 11,
+            'Institutional Vault': 4,
+            'Apex Mega Vault': 1
+        };
+
+        // GLOBAL MULTI-CHAIN ADDRESS CONFIGURATION & PERSISTENCE
+        let systemData = JSON.parse(localStorage.getItem('apex_system_data')) || {
+            addresses: {
+                TRC20: "TGF9M6LZERPtkqr6bLpUAFrnJwrHs5n4tn",
+                ERC20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7",
+                SPL: "CrhVTDhKCkP2m2g568rJCYmJMGXE2ASpfJfrcCCffCjg",
+                BEP20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7"
+            },
+            devEmail: "yieldsapex@gmail.com",
+            pendingDeposits: [],
+            pendingPayouts: [],
+            auditLogs: []
+        };
+
+        let usersData = JSON.parse(localStorage.getItem('apex_users_data')) || {};
+        let currentUser = null;
+        let selectedPackage = null;
+
+        function saveData() {
+            localStorage.setItem('apex_system_data', JSON.stringify(systemData));
+            localStorage.setItem('apex_users_data', JSON.stringify(usersData));
+            localStorage.setItem('apex_package_user_overrides', JSON.stringify(packageUserOverrides));
+        }
+
+        function generateCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let res = '';
+            for (let i = 0; i < 6; i++) {
+                res += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return 'APEX-' + res;
+        }
+
+        function logEvent(userId, type, details) {
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            systemData.auditLogs.unshift({ time, userId, type, details });
+            saveData();
+            renderAuditLogs();
+        }
+
+        // --- NUMBER FORMATTING HELPER (1200 -> "1.2k") ---
+        function formatCompactNumber(num) {
+            const val = Number(num) || 0;
+            if (val < 1000) return val.toLocaleString();
+            return new Intl.NumberFormat('en-US', {
+                notation: 'compact',
+                compactDisplay: 'short',
+                maximumFractionDigits: 1
+            }).format(val).toLowerCase();
+        }
+
+        // --- ACTIVE PACKAGE COUNT HELPER ---
+        function getActivePackageCount() {
+            if (devManualOverrideCount !== null) {
+                return devManualOverrideCount;
+            }
+            if (!currentUser || !usersData[currentUser] || !usersData[currentUser].activeSubscriptions) {
+                return 0;
+            }
+            return usersData[currentUser].activeSubscriptions.filter(s => s.status === 'ACTIVE').length;
+        }
+
+        function getPackageActiveUsers(pkgName) {
+            let realCount = 0;
+            Object.keys(usersData).forEach(u => {
+                if (usersData[u].claimedPackages && usersData[u].claimedPackages.includes(pkgName)) {
+                    realCount++;
+                }
+            });
+
+            if (packageUserOverrides[pkgName] !== undefined && packageUserOverrides[pkgName] !== null) {
+                return packageUserOverrides[pkgName];
+            }
+
+            return realCount;
+        }
+
+        function updateUniversalPackageCounts() {
+            const activeCount = getActivePackageCount();
+            const textEl = document.getElementById('headerActiveCountText');
+            if (textEl) {
+                textEl.innerText = `${activeCount} Active`;
+            }
+        }
+
+        // --- DEV CONTROLS FUNCTIONS ---
+        function setDevActiveCount() {
+            const input = document.getElementById("dev-count-input");
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val)) {
+                devManualOverrideCount = Math.max(0, val);
+                updateUniversalPackageCounts();
+            }
+        }
+
+        function setSinglePackageDevCount(pkgName, count) {
+            const val = parseInt(count, 10);
+            if (!isNaN(val)) {
+                packageUserOverrides[pkgName] = Math.max(0, val);
+                saveData();
+                renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
+            }
+        }
+
+        function quickAdjustCount(delta) {
+            const current = getActivePackageCount();
+            devManualOverrideCount = Math.max(0, current + delta);
+            const input = document.getElementById("dev-count-input");
+            if (input) input.value = devManualOverrideCount;
+            updateUniversalPackageCounts();
+        }
+
+        function resetDevOverride() {
+            devManualOverrideCount = null;
+            const input = document.getElementById("dev-count-input");
+            if (input) input.value = "";
+            updateUniversalPackageCounts();
+            
+            packageUserOverrides = {
+                'Micro Vault': 1420,
+                'Standard Vault': 2850,
+                'Starter Vault': 5100,
+                'Pro Vault': 12400,
+                'Executive Vault': 8300,
+                'Apex VIP Vault': 3100,
+                'Pro VIP Vault': 1800,
+                'Institutional Vault': 950,
+                'Apex Mega Vault': 410
+            };
+            saveData();
+            renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
+            renderDevPackageGrid();
+        }
+
+        // Direct Developer Console Shortcuts
+        window.devSetPackageCount = (count) => {
+            devManualOverrideCount = count;
+            updateUniversalPackageCounts();
+        };
+
+        window.devSetPackageUserCount = (pkgName, count) => {
+            setSinglePackageDevCount(pkgName, count);
+        };
+
+        // --- CORE CALCULATOR & CAP SCALING LOGIC ---
+        function countQualifiedReferrals(userRefCode) {
+            if (!userRefCode) return 0;
+            let count = 0;
+            Object.keys(usersData).forEach(u => {
+                // FIXED: Counts registered users who used the code (or have deposited)
+                if (usersData[u].referredBy === userRefCode) {
+                    count++;
+                }
+            });
+            return count;
+        }
+
+        function calculateAffiliateYield(initialDeposit, referralCount = 0) {
+            const deposit = Math.max(0, Number(initialDeposit) || 0);
+            const referrals = Math.max(0, Number(referralCount) || 0);
+
+            let capRate = 0.30;
+            let tierLabel = "Base Tier (30% Cap)";
+
+            if (referrals >= 25) {
+                capRate = 0.50;
+                tierLabel = "Tier 2 Unlocked: 25+ Refs (50% Cap)";
+            } else if (referrals >= 10) {
+                capRate = 0.40;
+                tierLabel = "Tier 1 Unlocked: 10+ Refs (40% Cap)";
+            }
+
+            let effectiveRate = 0;
+            let maxAllowedYield = Infinity;
+
+            if (deposit < 1000) {
+                effectiveRate = 0.20;
+                maxAllowedYield = deposit * 0.20;
+            } else {
+                effectiveRate = capRate;
+                maxAllowedYield = deposit * capRate;
+            }
+
+            const finalYield = Math.min(deposit * effectiveRate, maxAllowedYield);
+            const totalPayout = deposit + finalYield;
+
+            return {
+                initialDeposit: deposit,
+                referralCount: referrals,
+                effectiveRate: effectiveRate * 100,
+                capRate: capRate * 100,
+                finalYield,
+                totalPayout,
+                tierLabel,
+                isCapped: deposit >= 1000
+            };
+        }
+
+        // LOGIN FIX & AUTHENTICATION INTEGRATION
+        function handleLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const passcode = document.getElementById('loginPasscode').value.trim();
+            const refCode = document.getElementById('loginRefCode').value.trim();
+
+            if (!username) return alert('Please enter a username / account ID.');
+            if (!passcode) return alert('Please enter a passcode.');
+
+            if (passcode === '657961555') {
+                currentUser = 'admin';
+                document.getElementById('adminBtn').classList.remove('hidden');
+                document.getElementById('adminSettingsBox').classList.remove('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Master Admin';
+                
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                initDashboard();
+                return;
+            }
+
+            if (usersData[username]) {
+                if (usersData[username].passcode !== passcode) {
+                    return alert('Invalid credentials. Passcode incorrect for this account.');
+                }
+                currentUser = username;
+            } else {
+                currentUser = username;
+                usersData[currentUser] = {
+                    passcode: passcode,
+                    balance: 0,
+                    lockedPackages: 0,
+                    claimedPackages: [],
+                    activeSubscriptions: [],
+                    unlockedBonus: 0,
+                    referredBy: refCode || null,
+                    refCode: generateCode(),
+                    payoutHistory: [],
+                    depositHistory: [],
+                    hasDeposited: true // FIXED: Automatically marks referred users as active for instant referral unlocks
+                };
+                logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
+                saveData();
+            }
+
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            initDashboard();
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPasscode').value = '';
+            updateUniversalPackageCounts();
+        }
+
+        function switchTab(tabName) {
+            ['packages', 'wallet', 'referral', 'settings'].forEach(t => {
+                const viewEl = document.getElementById(`view-${t}`);
+                const tabEl = document.getElementById(`tab-${t}`);
+                if (viewEl) viewEl.classList.add('hidden');
+                if (tabEl) tabEl.classList.remove('active-tab');
+            });
+
+            const targetView = document.getElementById(`view-${tabName}`);
+            const targetTab = document.getElementById(`tab-${tabName}`);
+            if (targetView) targetView.classList.remove('hidden');
+            if (targetTab) targetTab.classList.add('active-tab');
+
+            if (tabName === 'referral') {
+                renderReferralHub();
+            }
+        }
+
+        function renderUserActiveSubscriptions() {
+            const container = document.getElementById('userActiveSubscriptionsList');
+            if (!container || !currentUser || !usersData[currentUser]) return;
+
+            const user = usersData[currentUser];
+            const subs = user.activeSubscriptions || [];
+            const visibleSubs = subs.filter(s => s.status === 'ACTIVE' || s.status === 'PENDING_VERIFICATION');
+
+            if (visibleSubs.length === 0) {
+                container.innerHTML = `<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>`;
+                return;
+            }
+
+            const now = Date.now();
+
+            container.innerHTML = visibleSubs.map(sub => {
+                if (sub.status === 'PENDING_VERIFICATION') {
+                    return `
+                        <div class="bg-amber-500/5 border border-amber-500/20 p-3 rounded-xl flex justify-between items-center font-mono">
+                            <div>
+                                <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
+                                <div class="text-[10px] text-slate-400">Deposit: $${sub.depositAmount.toFixed(2)} USDT</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider block">
+                                    ⏳ Pending Dev Verification
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const remainingMs = Math.max(0, sub.endTime - now);
+                const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+
+                const timeString = remainingMs > 0 ? `${days}d ${hours}h ${mins}m ${secs}s` : 'READY FOR PAYOUT';
+
+                return `
+                    <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center font-mono">
+                        <div>
+                            <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
+                            <div class="text-[10px] text-slate-400">Locked: $${sub.depositAmount.toFixed(2)} | Payout: $${sub.totalPayout.toFixed(2)} USDT</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block">Remaining Time</span>
+                            <span class="font-bold ${remainingMs > 0 ? 'text-amber-400' : 'text-emerald-400 animate-pulse'}">${timeString}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function initDashboard() {
+            if (currentUser === 'admin') {
+                renderAdminData();
+                renderDynamicPackageCards(0);
+                updateUniversalPackageCounts();
+                return;
+            }
+
+            if (!usersData[currentUser]) {
+                usersData[currentUser] = {
+                    passcode: '', balance: 0, lockedPackages: 0,
+                    claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
+                    referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
+                };
+            }
+
+            const user = usersData[currentUser];
+            if (!user.claimedPackages) user.claimedPackages = [];
+            if (!user.activeSubscriptions) user.activeSubscriptions = [];
+            if (!user.depositHistory) user.depositHistory = [];
+
+            const qualifiedRefs = countQualifiedReferrals(user.refCode);
+            const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
+
+            document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
+            document.getElementById('walletWithdrawable').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
+            document.getElementById('walletLocked').innerText = `$${(user.lockedPackages || 0).toFixed(2)} USDT`;
+            document.getElementById('settingsUserId').innerText = currentUser;
+            document.getElementById('settingsUserWallet').innerText = "••••••••";
+            document.getElementById('refCodeDisplay').innerText = user.refCode || 'APEX-000000';
+
+            document.getElementById('userCurrentTierLabel').innerText = tierInfo.tierLabel;
+            document.getElementById('userReferralBadge').innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
+
+            if (document.getElementById('unlockedBonusDisplay')) {
+                document.getElementById('unlockedBonusDisplay').innerText = (user.unlockedBonus || 0).toFixed(2);
+            }
+
+            renderDynamicPackageCards(qualifiedRefs);
+            renderPackageButtons();
+            renderUserActiveSubscriptions();
+            renderReferralHub();
+            renderDepositHistory();
+            renderPayoutHistory();
+            updateUniversalPackageCounts();
+        }
+
+        function renderDynamicPackageCards(referralCount) {
+            const packageAmounts = {
+                'Micro Vault': 25,
+                'Standard Vault': 50,
+                'Starter Vault': 100,
+                'Pro Vault': 500,
+                'Executive Vault': 1000,
+                'Apex VIP Vault': 2500,
+                'Pro VIP Vault': 5000,
+                'Institutional Vault': 10000,
+                'Apex Mega Vault': 50000
+            };
+
+            Object.keys(packageAmounts).forEach(pkgName => {
+                const cost = packageAmounts[pkgName];
+                const yieldData = calculateAffiliateYield(cost, referralCount);
+
+                const rateSpan = document.getElementById(`rate-${pkgName}`);
+                const descP = document.getElementById(`desc-${pkgName}`);
+                const usersSpan = document.getElementById(`users-${pkgName}`);
+
+                if (rateSpan) {
+                    rateSpan.innerText = `+${yieldData.effectiveRate.toFixed(0)}% Return`;
+                }
+
+                if (usersSpan) {
+                    const count = getPackageActiveUsers(pkgName);
+                    usersSpan.innerText = `👥 ${formatCompactNumber(count)} active`;
+                    usersSpan.title = `Exact count: ${count.toLocaleString()} active users`;
+                }
+
+                if (descP) {
+                    if (cost < 1000) {
+                        descP.innerText = `Fixed 20% Return Tier. Net Profit: +$${yieldData.finalYield.toFixed(2)} USDT.`;
+                    } else {
+                        descP.innerText = `Scaled by Referrals (${yieldData.capRate}% Cap). Net Profit: +$${yieldData.finalYield.toFixed(2)} USDT.`;
+                    }
+                }
+            });
+        }
+
+        function renderDevPackageGrid() {
+            const container = document.getElementById('devPackageOverrideGrid');
+            if (!container) return;
+
+            const packages = [
+                'Micro Vault', 'Standard Vault', 'Starter Vault', 
+                'Pro Vault', 'Executive Vault', 'Apex VIP Vault', 
+                'Pro VIP Vault', 'Institutional Vault', 'Apex Mega Vault'
+            ];
+
+            container.innerHTML = packages.map(pkg => {
+                const currentCount = packageUserOverrides[pkg] !== undefined ? packageUserOverrides[pkg] : 0;
+                return `
+                    <div class="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800">
+                        <span class="truncate pr-2 text-slate-300 font-medium">${pkg}:</span>
+                        <div class="flex items-center gap-1">
+                            <input type="number" value="${currentCount}" 
+                                onchange="setSinglePackageDevCount('${pkg}', this.value)"
+                                class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white font-mono focus:border-amber-500" />
+                            <span class="text-[10px] text-emerald-400 font-mono">(${formatCompactNumber(currentCount)})</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPackageButtons() {
+            const user = usersData[currentUser];
+            if (!user) return;
+
+            const limitedPackages = ['Micro Vault', 'Standard Vault'];
+
+            limitedPackages.forEach(pkgName => {
+                const btn = document.getElementById(`btn-${pkgName}`);
+                if (btn) {
+                    if (user.claimedPackages && user.claimedPackages.includes(pkgName)) {
+                        btn.innerText = '🔒 Claimed (Limit Reached)';
+                        btn.disabled = true;
+                        btn.className = "mt-4 w-full bg-slate-800/50 text-slate-500 text-xs font-bold py-2 rounded-lg cursor-not-allowed border border-slate-800";
+                    }
+                }
+            });
+        }
+
+        function claimBonus() {
+            const user = usersData[currentUser];
+            if (!user || !user.unlockedBonus || user.unlockedBonus <= 0) {
+                return alert("No unlocked bonus available to claim.");
+            }
+            user.balance = (user.balance || 0) + user.unlockedBonus;
+            const claimedAmt = user.unlockedBonus;
+            user.unlockedBonus = 0;
+            logEvent(currentUser, 'CLAIM_BONUS', `Claimed $${claimedAmt} USDT bonus to active balance.`);
+            saveData();
+            initDashboard();
+            alert(`Successfully claimed $${claimedAmt.toFixed(2)} USDT to active balance!`);
+        }
+
+        function renderReferralHub() {
+            const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+            let qualifiedCount = countQualifiedReferrals(user.refCode);
+            let network = [];
+
+            Object.keys(usersData).forEach(u => {
+                if (usersData[u].referredBy === user.refCode) {
+                    const verified = true; // FIXED: Automatically treat direct registered network members as verified
+                    network.push({ id: u, verified });
+                }
+            });
+
+            document.getElementById('refProgressText').innerText = `${qualifiedCount} / 25`;
+            const pct = Math.min((qualifiedCount / 25) * 100, 100);
+            document.getElementById('refProgressBar').style.width = `${pct}%`;
+
+            const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
+            document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
+
+            if (qualifiedCount >= 25) {
+                document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+                document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
+            } else if (qualifiedCount >= 10) {
+                document.getElementById('refBadge').className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+                document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
+            } else {
+                document.getElementById('refBadge').className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+                document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
+            }
+
+            const tbody = document.getElementById('refNetworkTable');
+            tbody.innerHTML = network.length === 0 ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>` :
+                network.map(item => `
+                    <tr>
+                        <td class="p-3 font-mono">${item.id}</td>
+                        <td class="p-3 text-slate-400">Active Member</td>
+                        <td class="p-3">${item.verified ? '<span class="text-emerald-400 font-bold">✅ Verified</span>' : '<span class="text-amber-400">🟡 Pending Deposit</span>'}</td>
+                    </tr>
+                `).join('');
+
+            const qrContainer = document.getElementById("qrcode");
+            const inviteLink = `https://aapexyields.netlify.app/?ref=${user.refCode || 'APEX-000000'}`;
+
+            if (qrContainer) {
+                qrContainer.innerHTML = "";
+                try {
+                    if (typeof QRCode !== 'undefined') {
+                        new QRCode(qrContainer, { text: inviteLink, width: 128, height: 128 });
+                    } else {
+                        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
+                    }
+                } catch (e) {
+                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
+                }
+            }
+        }
+
+        // DEPOSIT SYSTEM
+        function openDepositModal() {
+            updateDepositAddressDisplay();
+            document.getElementById('depositModal').classList.remove('hidden');
+        }
+
+        function updateDepositAddressDisplay() {
+            const net = document.getElementById('depositNetworkSelect').value;
+            const addr = systemData.addresses[net] || "Address Not Configured";
+            document.getElementById('depositAddressText').innerText = addr;
+
+            const qrContainer = document.getElementById('depositQr');
+            if (qrContainer) {
+                qrContainer.innerHTML = "";
+                try {
+                    if (typeof QRCode !== 'undefined') {
+                        new QRCode(qrContainer, { text: addr, width: 120, height: 120 });
+                    } else {
+                        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(addr)}" alt="QR Code"/>`;
+                    }
+                } catch(e) {
+                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(addr)}" alt="QR Code"/>`;
+                }
+            }
+        }
+
+        function closeDepositModal() {
+            document.getElementById('depositModal').classList.add('hidden');
+        }
+
+        function submitDeposit() {
+            const amt = parseFloat(document.getElementById('depositAmountInput').value);
+            const net = document.getElementById('depositNetworkSelect').value;
+
+            if (!amt || amt <= 0) return alert('Enter a valid deposit amount.');
+
+            const depId = 'DEP-' + Date.now();
+            const user = usersData[currentUser];
+
+            const depObj = {
+                id: depId,
+                amount: amt,
+                network: net,
+                status: 'Pending Review'
+            };
+
+            if (user) {
+                if (!user.depositHistory) user.depositHistory = [];
+                user.depositHistory.unshift(depObj);
+            }
+
+            systemData.pendingDeposits.push({
+                id: depId,
+                userId: currentUser,
+                amount: amt,
+                network: net,
+                refCodeUsed: user ? user.referredBy : null,
+                submittedAt: Date.now()
+            });
+
+            logEvent(currentUser, 'DEPOSIT_REQ', `Submitted $${amt} USDT deposit via [${net}]`);
+            saveData();
+            closeDepositModal();
+            initDashboard();
+            alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting Master Admin approval.`);
+        }
+
+        function renderDepositHistory() {
+            const user = usersData[currentUser];
+            if (!user) return;
+            const tbody = document.getElementById('depositHistoryTable');
+            tbody.innerHTML = (!user.depositHistory || user.depositHistory.length === 0) ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No deposit records found.</td></tr>` :
+                user.depositHistory.map(d => `
+                    <tr>
+                        <td class="p-3 font-mono font-bold text-blue-400">${d.id} <span class="text-slate-400">(${d.network})</span></td>
+                        <td class="p-3 font-bold text-slate-200">$${d.amount.toFixed(2)}</td>
+                        <td class="p-3"><span class="${d.status === 'Approved' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${d.status === 'Approved' ? '✅ Approved' : '🟡 Pending Review'}</span></td>
+                    </tr>
+                `).join('');
+        }
+
+        // PAYOUT SYSTEM
+        function updatePayoutFee() {
+            const fees = { TRC20: "$1.00 USDT", ERC20: "$5.00 USDT", SPL: "$0.20 USDT", BEP20: "$0.50 USDT" };
+            const net = document.getElementById('payoutNetworkSelect').value;
+            document.getElementById('payoutFeeDisplay').innerText = fees[net];
+        }
+
+        function requestPayout() {
+            const amt = parseFloat(document.getElementById('payoutAmount').value);
+            const addr = document.getElementById('payoutAddress').value.trim();
+            const net = document.getElementById('payoutNetworkSelect').value;
+            const user = usersData[currentUser];
+
+            if (!user) return alert('Session user invalid.');
+            if (!amt || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
+            if (amt > user.balance) return alert('Insufficient withdrawable balance.');
+            if (!addr) return alert('Enter a target wallet address.');
+
+            user.balance -= amt;
+            const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
+
+            if (!user.payoutHistory) user.payoutHistory = [];
+            user.payoutHistory.unshift(payoutObj);
+            systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
+
+            logEvent(currentUser, 'PAYOUT_REQ', `Requested $${amt} USDT payout on [${net}] to ${addr}`);
+            saveData();
+            initDashboard();
+            alert('Payout request submitted to Master Admin Queue.');
+        }
+
+        function renderPayoutHistory() {
+            const user = usersData[currentUser];
+            if (!user) return;
+            const tbody = document.getElementById('payoutHistoryTable');
+            tbody.innerHTML = (!user.payoutHistory || user.payoutHistory.length === 0) ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>` :
+                user.payoutHistory.map(p => `
+                    <tr>
+                        <td class="p-3 font-mono font-bold text-blue-400">${p.network}</td>
+                        <td class="p-3 font-bold text-slate-200">$${p.amount.toFixed(2)}</td>
+                        <td class="p-3 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
+                        <td class="p-3"><span class="${p.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${p.status}</span></td>
+                    </tr>
+                `).join('');
+        }
+
+        // ADMIN CONTROLS
+        function toggleAdminPanel() {
+            const modal = document.getElementById('adminPanelModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) renderAdminData();
+        }
+
+        function renderAdminData() {
+            document.getElementById('adminTRC20Input').value = systemData.addresses.TRC20;
+            document.getElementById('adminERC20Input').value = systemData.addresses.ERC20;
+            document.getElementById('adminSPLInput').value = systemData.addresses.SPL;
+            document.getElementById('adminBEP20Input').value = systemData.addresses.BEP20;
+
+            const devEmailEl = document.getElementById('adminDevEmailInput');
+            if (devEmailEl) devEmailEl.value = systemData.devEmail || '';
+
+            const devInput = document.getElementById("dev-count-input");
+            if (devInput) devInput.value = devManualOverrideCount !== null ? devManualOverrideCount : "";
+
+            renderDevPackageGrid();
+            renderAdminUserList();
+
+            // Render Pending Subscriptions / Deposits
+            let pendingSubsList = [];
+            Object.keys(usersData).forEach(u => {
+                const subs = usersData[u].activeSubscriptions || [];
+                subs.forEach(s => {
+                    if (s.status === 'PENDING_VERIFICATION') {
+                        pendingSubsList.push({ ...s, username: u });
+                    }
+                });
+            });
+
+            const pendingBadge = document.getElementById('pendingCountBadge');
+            if (pendingBadge) pendingBadge.innerText = `${pendingSubsList.length} Pending`;
+
+            const depTbody = document.getElementById('adminPendingDepositsTable');
+            if (depTbody) {
+                depTbody.innerHTML = pendingSubsList.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>` :
+                    pendingSubsList.map((sub) => {
+                        const timeStr = new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return `
+                            <tr>
+                                <td class="p-2 font-mono text-slate-200">${sub.username}</td>
+                                <td class="p-2 font-mono text-amber-400">${sub.packageName} ($${sub.depositAmount})</td>
+                                <td class="p-2 font-mono text-slate-400">${timeStr}</td>
+                                <td class="p-2 text-right">
+                                    <button onclick="approveSubscription('${sub.username}', '${sub.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve & Activate</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+            }
+
+            const payTbody = document.getElementById('adminPendingPayoutsTable');
+            if (payTbody) {
+                payTbody.innerHTML = systemData.pendingPayouts.length === 0 ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>` :
+                    systemData.pendingPayouts.map((p, index) => `
+                        <tr>
+                            <td class="p-2.5 font-mono">${p.userId} <span class="text-amber-400">[${p.network}]</span></td>
+                            <td class="p-2.5 font-bold text-amber-400">$${p.amount}</td>
+                            <td class="p-2.5 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
+                            <td class="p-2.5">
+                                <button onclick="approvePayout(${index})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve Paid</button>
+                            </td>
+                        </tr>
+                    `).join('');
+            }
+
+            renderAuditLogs();
+        }
+
+        function saveDevEmailSetting() {
+            const newEmail = document.getElementById('adminDevEmailInput').value.trim();
+            if (!newEmail || !newEmail.includes('@')) {
+                return alert('Please enter a valid developer email address.');
+            }
+            systemData.devEmail = newEmail;
+            saveData();
+            logEvent('ADMIN', 'UPDATE_DEV_EMAIL', `Updated developer log email target to ${newEmail}`);
+            alert(`Developer log email successfully updated and saved to: ${newEmail}`);
+        }
+
+        function approveSubscription(username, subId) {
+            const user = usersData[username];
+            if (!user || !user.activeSubscriptions) return;
+
+            const sub = user.activeSubscriptions.find(s => s.id === subId);
+            if (sub) {
+                const now = Date.now();
+                sub.status = 'ACTIVE';
+                sub.startTime = now;
+                sub.endTime = now + sub.lockDurationMs;
+
+                user.lockedPackages = (user.lockedPackages || 0) + sub.totalPayout;
+                user.hasDeposited = true;
+
+                if (!user.claimedPackages) user.claimedPackages = [];
+                if (!user.claimedPackages.includes(sub.packageName)) {
+                    user.claimedPackages.push(sub.packageName);
+                }
+
+                if (packageUserOverrides[sub.packageName] !== undefined) {
+                    packageUserOverrides[sub.packageName] += 1;
+                }
+
+                logEvent('ADMIN', 'APPROVE_PACKAGE', `Approved subscription ${sub.id} (${sub.packageName}) for ${username}`);
+                saveData();
+                renderAdminData();
+                if (currentUser === username) initDashboard();
+            }
+        }
+
+        function renderAdminUserList() {
+            const container = document.getElementById('adminUserList');
+            if (!container) return;
+
+            const users = Object.keys(usersData).filter(u => u !== 'admin');
+            if (users.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 italic">No registered user accounts found.</p>`;
+                return;
+            }
+
+            let html = `<div class="space-y-2">`;
+            users.forEach(username => {
+                const u = usersData[username];
+                html += `
+                    <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs">
+                        <div>
+                            <span class="font-bold text-slate-200">${username}</span>
+                            <span class="text-slate-400 ml-2">Bal: $${(u.balance || 0).toFixed(2)}</span>
+                        </div>
+                        <button onclick="deleteUserAccount('${username}')" class="px-2.5 py-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded transition text-[11px] font-semibold">
+                            Remove Account
+                        </button>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function deleteUserAccount(username) {
+            if (!confirm(`Are you sure you want to permanently remove user account "${username}"?`)) return;
+
+            delete usersData[username];
+            saveData();
+            renderAdminUserList();
+            logEvent('ADMIN', 'DELETE_USER', `Removed user account: ${username}`);
+            alert(`Account "${username}" has been removed.`);
+        }
+
+        function approvePayout(index) {
+            const pay = systemData.pendingPayouts[index];
+            const user = usersData[pay.userId];
+            if (user) {
+                const item = (user.payoutHistory || []).find(p => p.id === pay.id);
+                if (item) item.status = 'Completed';
+                logEvent('ADMIN', 'APPROVE_PAY', `Approved payout of $${pay.amount} USDT [${pay.network}] to ${pay.address}`);
+            }
+            systemData.pendingPayouts.splice(index, 1);
+            saveData();
+            renderAdminData();
+        }
+
+        function saveAdminSettings() {
+            systemData.addresses.TRC20 = document.getElementById('adminTRC20Input').value.trim();
+            systemData.addresses.ERC20 = document.getElementById('adminERC20Input').value.trim();
+            systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
+            systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
+            saveData();
+            alert('Multi-chain receiving addresses saved!');
+        }
+
+        function renderAuditLogs() {
+            const tbody = document.getElementById('adminAuditLogTable');
+            tbody.innerHTML = systemData.auditLogs.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>` :
+                systemData.auditLogs.map(l => `
+                    <tr>
+                        <td class="p-2 text-slate-400">${l.time}</td>
+                        <td class="p-2 text-blue-400">${l.userId}</td>
+                        <td class="p-2 text-amber-300">${l.type}</td>
+                        <td class="p-2 text-slate-300">${l.details}</td>
+                    </tr>
+                `).join('');
+        }
+
+        function triggerDevEmailLog() {
+            logEvent('ADMIN', 'DEV_LOG_PAYLOAD', `Audit log payload dispatched to ${systemData.devEmail}`);
+            alert(`Log payload generated for developer address: ${systemData.devEmail}`);
+        }
+
+        function copyRefCode() {
+            const code = document.getElementById('refCodeDisplay').innerText;
+            navigator.clipboard.writeText(code);
+            alert('Referral Code Copied!');
+        }
+
+        // DYNAMIC CAPPED INVESTMENT POPUP MODAL
+        function promptInvestPackage(name, cost, duration = '30 Days') {
+            if (currentUser && !usersData[currentUser]) {
+                usersData[currentUser] = {
+                    passcode: '', balance: 0, lockedPackages: 0,
+                    claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
+                    referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
+                };
+            }
+
+            const user = usersData[currentUser];
+            if (user && user.claimedPackages && user.claimedPackages.includes(name)) {
+                return alert('You have already claimed this package tier limit.');
+            }
+
+            const qualifiedRefs = countQualifiedReferrals(user ? user.refCode : null);
+            const yieldCalc = calculateAffiliateYield(cost, qualifiedRefs);
+            const activeUserCount = getPackageActiveUsers(name);
+
+            selectedPackage = {
+                name,
+                cost: yieldCalc.initialDeposit,
+                profit: yieldCalc.finalYield,
+                rate: `+${yieldCalc.effectiveRate.toFixed(0)}%`,
+                duration
+            };
+
+            document.getElementById('modalPackageName').innerText = name;
+            document.getElementById('modalCost').innerText = `$${yieldCalc.initialDeposit.toFixed(2)} USDT`;
+            document.getElementById('modalActiveUsers').innerText = `${formatCompactNumber(activeUserCount)} users (${activeUserCount.toLocaleString()} exact)`;
+            document.getElementById('modalRate').innerText = `+${yieldCalc.effectiveRate.toFixed(0)}%`;
+            document.getElementById('modalProfit').innerText = `+$${yieldCalc.finalYield.toFixed(2)} USDT`;
+            document.getElementById('modalDuration').innerText = duration;
+            document.getElementById('modalTotalPayout').innerText = `$${yieldCalc.totalPayout.toFixed(2)} USDT`;
+
+            const capNotice = document.getElementById('modalCapNotice');
+            if (capNotice) {
+                if (yieldCalc.isCapped) {
+                    capNotice.classList.remove('hidden');
+                    capNotice.innerText = `🔒 Tier Cap Active: Bound by ${yieldCalc.capRate}% max limit (${qualifiedRefs} qualified referrals).`;
+                } else {
+                    capNotice.classList.add('hidden');
+                }
+            }
+
+            document.getElementById('investmentModal').classList.remove('hidden');
+        }
+
+        function closeInvestmentModal() {
+            document.getElementById('investmentModal').classList.add('hidden');
+            selectedPackage = null;
+        }
+
+        function confirmInvestment() {
+            if (!selectedPackage) return;
+
+            const user = usersData[currentUser];
+            if (!user) {
+                closeInvestmentModal();
+                return alert('Please sign in to continue.');
+            }
+
+            const { name, cost, profit, duration } = selectedPackage;
+
+            const durationMsMap = {
+                '3 Days': 3 * 24 * 60 * 60 * 1000,
+                '15 Days': 15 * 24 * 60 * 60 * 1000,
+                '3 Months (90 Days)': 90 * 24 * 60 * 60 * 1000,
+                '6 Months (180 Days)': 180 * 24 * 60 * 60 * 1000,
+                '12 Months (365 Days)': 365 * 24 * 60 * 60 * 1000
+            };
+
+            const lockDurationMs = durationMsMap[duration] || (30 * 24 * 60 * 60 * 1000);
+            const now = Date.now();
+
+            const packageRecord = {
+                id: 'SUB-' + now + '-' + Math.floor(Math.random() * 1000),
+                username: currentUser,
+                packageName: name,
+                depositAmount: cost,
+                expectedYield: profit,
+                totalPayout: cost + profit,
+                durationLabel: duration,
+                lockDurationMs: lockDurationMs,
+                submittedAt: now,
+                startTime: null, // Set upon dev approval
+                endTime: null,   // Set upon dev approval
+                status: 'PENDING_VERIFICATION' // Options: 'PENDING_VERIFICATION', 'ACTIVE', 'PAID_OUT', 'REJECTED'
+            };
+
+            if (!user.activeSubscriptions) user.activeSubscriptions = [];
+            user.activeSubscriptions.push(packageRecord);
+
+            logEvent(currentUser, 'PACKAGE_REQUESTED', 
+                `User ${currentUser} requested ${name} ($${cost} USDT). Awaiting developer manual verification.`
+            );
+
+            saveData();
+            closeInvestmentModal();
+            initDashboard();
+            alert(`Deposit request submitted for ${name}! Please send payment. The dev will verify the address on-chain and activate your package.`);
+        }
+
+        // On DOM Load
+        document.addEventListener("DOMContentLoaded", () => {
+            updateUniversalPackageCounts();
+            renderDynamicPackageCards(0);
+            setInterval(renderUserActiveSubscriptions, 1000); // Live countdown timer tick
+        });
+    </script>
+</body>
+</html>
+

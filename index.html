@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apex Yields - Multi-Chain USDT Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- QR Code Generator Library CDN -->
@@ -14,12 +16,47 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-24">
 
+    <!-- SYSTEM ANNOUNCEMENT POP-UP MODAL -->
+    <div id="announcementModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="relative bg-slate-900 border border-amber-500/40 rounded-2xl p-6 max-w-md w-full space-y-4 text-center shadow-2xl shadow-amber-500/10">
+            <button onclick="closeAnnouncementModal()" aria-label="Close modal" class="absolute top-3 right-3 text-slate-400 hover:text-white text-2xl font-bold p-1 rounded-lg hover:bg-slate-800 transition leading-none">
+                &times;
+            </button>
+            
+            <div class="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                📢
+            </div>
+
+            <div class="space-y-1">
+                <span id="announcementBadge" class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">
+                    Official Announcement
+                </span>
+                <h3 id="announcementTitle" class="text-lg font-bold text-slate-100 pt-2">Welcome to Apex Yields</h3>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 space-y-2 leading-relaxed text-left max-h-60 overflow-y-auto">
+                <p id="announcementMessage">
+                    Welcome to the upgraded multi-chain yield platform! Please review all tier deposit terms and ensure you use the correct network address for TRC-20, ERC-20, SPL, or BEP-20 transfers.
+                </p>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeAnnouncementModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20">
+                    Acknowledge & Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOP HEADER -->
     <header class="bg-slate-900/80 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-4 py-3 flex justify-between items-center max-w-2xl mx-auto">
         <div class="flex items-center gap-2">
             <span class="text-xl">💎</span>
             <div>
-                <h1 class="font-bold text-sm leading-none text-slate-100">Apex Yields</h1>
+                <h1 class="font-bold text-sm leading-none text-slate-100 flex items-center gap-1.5">
+                    Apex Yields
+                    <span id="username-display" class="text-xs font-normal text-slate-400"></span>
+                </h1>
                 <div class="flex items-center gap-2">
                     <span id="userHeaderRole" class="text-[10px] text-blue-400 font-mono">User Mode</span>
                     <span id="headerActiveCountText" class="text-[10px] text-emerald-400 font-mono">0 Active</span>
@@ -721,1068 +758,1169 @@
     </main>
 
     <script>
-        // DEV OVERRIDE GLOBAL STATE
-        let devManualOverrideCount = null;
+    // Initialize Supabase Client
+    const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
 
-        const extendedMarketCoins = [
-            { name: "Bitcoin", symbol: "BTC" },
-            { name: "Ethereum", symbol: "ETH" },
-            { name: "Solana", symbol: "SOL" },
-            { name: "BNB", symbol: "BNB" },
-            { name: "Ripple", symbol: "XRP" },
-            { name: "Cardano", symbol: "ADA" },
-            { name: "Dogecoin", symbol: "DOGE" },
-            { name: "Avalanche", symbol: "AVAX" },
-            { name: "Chainlink", symbol: "LINK" },
-            { name: "Polkadot", symbol: "DOT" }
-        ];
+    // ==========================================
+    // 1. AUTHENTICATION (Sign Up & Sign In)
+    // ==========================================
 
-        // PER-PACKAGE DEV ACTIVE USER OVERRIDES (Persisted in localStorage)
-        let packageUserOverrides = JSON.parse(localStorage.getItem('apex_package_user_overrides')) || {
-            'Micro Vault': 152,
-            'Standard Vault': 34,
-            'Starter Vault': 58,
-            'Pro Vault': 32,
-            'Executive Vault': 25,
-            'Apex VIP Vault': 7,
-            'Pro VIP Vault': 11,
-            'Institutional Vault': 4,
-            'Apex Mega Vault': 1
-        };
+    async function signUpUser(email, password, username) {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email: email,
+        password: password
+      });
 
-        // GLOBAL MULTI-CHAIN ADDRESS CONFIGURATION & PERSISTENCE
-        let systemData = JSON.parse(localStorage.getItem('apex_system_data')) || {
-            addresses: {
-                TRC20: "TGF9M6LZERPtkqr6bLpUAFrnJwrHs5n4tn",
-                ERC20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7",
-                SPL: "CrhVTDhKCkP2m2g568rJCYmJMGXE2ASpfJfrcCCffCjg",
-                BEP20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7"
-            },
-            devEmail: "yieldsapex@gmail.com",
-            pendingDeposits: [],
-            pendingPayouts: [],
-            auditLogs: []
-        };
+      if (error) {
+        alert("Sign up failed: " + error.message);
+        return;
+      }
 
-        let usersData = JSON.parse(localStorage.getItem('apex_users_data')) || {};
-        let currentUser = null;
-        let selectedPackage = null;
+      if (data.user) {
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .insert([{ id: data.user.id, username: username, balance: 0, role: 'user' }]);
 
-        function saveData() {
-            localStorage.setItem('apex_system_data', JSON.stringify(systemData));
-            localStorage.setItem('apex_users_data', JSON.stringify(usersData));
-            localStorage.setItem('apex_package_user_overrides', JSON.stringify(packageUserOverrides));
+        if (profileError) console.error("Profile creation error:", profileError.message);
+      }
+
+      alert("Account created successfully! Check your email to confirm.");
+    }
+
+    async function loginUser(email, password) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (error) {
+        alert("Login failed: " + error.message);
+      } else {
+        alert("Logged in!");
+        loadUserProfile();
+      }
+    }
+
+    async function logoutUser() {
+      await supabaseClient.auth.signOut();
+      alert("Logged out successfully");
+    }
+
+    // ==========================================
+    // 2. USER PROFILE & BALANCE DISPLAY
+    // ==========================================
+
+    async function loadUserProfile() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) return alert("Please log in first");
+
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('username, balance, role')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error("Error loading profile:", error.message);
+      } else {
+        const balanceElem = document.getElementById('user-balance');
+        const nameElem = document.getElementById('username-display');
+        if (balanceElem) balanceElem.innerText = `$${data.balance}`;
+        if (nameElem) nameElem.innerText = data.username;
+      }
+    }
+
+    // ==========================================
+    // 3. DEPOSIT & YIELD UPDATE LOGIC
+    // ==========================================
+
+    async function processDeposit(amount) {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) return alert("Please log in first");
+
+      const { data: profile, error: fetchErr } = await supabaseClient
+        .from('profiles')
+        .select('balance')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchErr) return alert("Error reading balance");
+
+      const newBalance = Number(profile.balance) + Number(amount);
+
+      const { error: updateErr } = await supabaseClient
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', user.id);
+
+      if (updateErr) {
+        alert("Deposit failed: " + updateErr.message);
+      } else {
+        alert(`Success! New balance: $${newBalance}`);
+        loadUserProfile();
+      }
+    }
+
+    // ANNOUNCEMENT POPUP CONTROLLERS
+    function openAnnouncementModal(title = "Welcome to Apex Yields", message = null) {
+        if (title) document.getElementById('announcementTitle').innerText = title;
+        if (message) document.getElementById('announcementMessage').innerText = message;
+        document.getElementById('announcementModal').classList.remove('hidden');
+    }
+
+    function closeAnnouncementModal() {
+        document.getElementById('announcementModal').classList.add('hidden');
+    }
+
+    // DEV OVERRIDE GLOBAL STATE
+    let devManualOverrideCount = null;
+
+    const extendedMarketCoins = [
+        { name: "Bitcoin", symbol: "BTC" },
+        { name: "Ethereum", symbol: "ETH" },
+        { name: "Solana", symbol: "SOL" },
+        { name: "BNB", symbol: "BNB" },
+        { name: "Ripple", symbol: "XRP" },
+        { name: "Cardano", symbol: "ADA" },
+        { name: "Dogecoin", symbol: "DOGE" },
+        { name: "Avalanche", symbol: "AVAX" },
+        { name: "Chainlink", symbol: "LINK" },
+        { name: "Polkadot", symbol: "DOT" }
+    ];
+
+    let packageUserOverrides = JSON.parse(localStorage.getItem('apex_package_user_overrides')) || {
+        'Micro Vault': 152,
+        'Standard Vault': 34,
+        'Starter Vault': 58,
+        'Pro Vault': 32,
+        'Executive Vault': 25,
+        'Apex VIP Vault': 7,
+        'Pro VIP Vault': 11,
+        'Institutional Vault': 4,
+        'Apex Mega Vault': 1
+    };
+
+    let systemData = JSON.parse(localStorage.getItem('apex_system_data')) || {
+        addresses: {
+            TRC20: "TGF9M6LZERPtkqr6bLpUAFrnJwrHs5n4tn",
+            ERC20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7",
+            SPL: "CrhVTDhKCkP2m2g568rJCYmJMGXE2ASpfJfrcCCffCjg",
+            BEP20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7"
+        },
+        devEmail: "yieldsapex@gmail.com",
+        pendingDeposits: [],
+        pendingPayouts: [],
+        auditLogs: []
+    };
+
+    let usersData = JSON.parse(localStorage.getItem('apex_users_data')) || {};
+    let currentUser = null;
+    let selectedPackage = null;
+
+    function saveData() {
+        localStorage.setItem('apex_system_data', JSON.stringify(systemData));
+        localStorage.setItem('apex_users_data', JSON.stringify(usersData));
+        localStorage.setItem('apex_package_user_overrides', JSON.stringify(packageUserOverrides));
+    }
+
+    function generateCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let res = '';
+        for (let i = 0; i < 6; i++) {
+            res += chars.charAt(Math.floor(Math.random() * chars.length));
         }
+        return 'APEX-' + res;
+    }
 
-        function generateCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let res = '';
-            for (let i = 0; i < 6; i++) {
-                res += chars.charAt(Math.floor(Math.random() * chars.length));
+    function logEvent(userId, type, details) {
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+        systemData.auditLogs.unshift({ time, userId, type, details });
+        saveData();
+        renderAuditLogs();
+    }
+
+    function formatCompactNumber(num) {
+        const val = Number(num) || 0;
+        if (val < 1000) return val.toLocaleString();
+        return new Intl.NumberFormat('en-US', {
+            notation: 'compact',
+            compactDisplay: 'short',
+            maximumFractionDigits: 1
+        }).format(val).toLowerCase();
+    }
+
+    function getActivePackageCount() {
+        if (devManualOverrideCount !== null) {
+            return devManualOverrideCount;
+        }
+        if (!currentUser || !usersData[currentUser] || !usersData[currentUser].activeSubscriptions) {
+            return 0;
+        }
+        return usersData[currentUser].activeSubscriptions.filter(s => s.status === 'ACTIVE').length;
+    }
+
+    function getPackageActiveUsers(pkgName) {
+        let realCount = 0;
+        Object.keys(usersData).forEach(u => {
+            if (usersData[u].claimedPackages && usersData[u].claimedPackages.includes(pkgName)) {
+                realCount++;
             }
-            return 'APEX-' + res;
+        });
+
+        if (packageUserOverrides[pkgName] !== undefined && packageUserOverrides[pkgName] !== null) {
+            return packageUserOverrides[pkgName];
         }
 
-        function logEvent(userId, type, details) {
-            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-            systemData.auditLogs.unshift({ time, userId, type, details });
-            saveData();
-            renderAuditLogs();
+        return realCount;
+    }
+
+    function updateUniversalPackageCounts() {
+        const activeCount = getActivePackageCount();
+        const textEl = document.getElementById('headerActiveCountText');
+        if (textEl) {
+            textEl.innerText = `${activeCount} Active`;
         }
+    }
 
-        function formatCompactNumber(num) {
-            const val = Number(num) || 0;
-            if (val < 1000) return val.toLocaleString();
-            return new Intl.NumberFormat('en-US', {
-                notation: 'compact',
-                compactDisplay: 'short',
-                maximumFractionDigits: 1
-            }).format(val).toLowerCase();
-        }
-
-        function getActivePackageCount() {
-            if (devManualOverrideCount !== null) {
-                return devManualOverrideCount;
-            }
-            if (!currentUser || !usersData[currentUser] || !usersData[currentUser].activeSubscriptions) {
-                return 0;
-            }
-            return usersData[currentUser].activeSubscriptions.filter(s => s.status === 'ACTIVE').length;
-        }
-
-        function getPackageActiveUsers(pkgName) {
-            let realCount = 0;
-            Object.keys(usersData).forEach(u => {
-                if (usersData[u].claimedPackages && usersData[u].claimedPackages.includes(pkgName)) {
-                    realCount++;
-                }
-            });
-
-            if (packageUserOverrides[pkgName] !== undefined && packageUserOverrides[pkgName] !== null) {
-                return packageUserOverrides[pkgName];
-            }
-
-            return realCount;
-        }
-
-        function updateUniversalPackageCounts() {
-            const activeCount = getActivePackageCount();
-            const textEl = document.getElementById('headerActiveCountText');
-            if (textEl) {
-                textEl.innerText = `${activeCount} Active`;
-            }
-        }
-
-        function setDevActiveCount() {
-            const input = document.getElementById("dev-count-input");
-            const val = parseInt(input.value, 10);
-            if (!isNaN(val)) {
-                devManualOverrideCount = Math.max(0, val);
-                updateUniversalPackageCounts();
-            }
-        }
-
-        function setSinglePackageDevCount(pkgName, count) {
-            const val = parseInt(count, 10);
-            if (!isNaN(val)) {
-                packageUserOverrides[pkgName] = Math.max(0, val);
-                saveData();
-                renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
-            }
-        }
-
-        function quickAdjustCount(delta) {
-            const current = getActivePackageCount();
-            devManualOverrideCount = Math.max(0, current + delta);
-            const input = document.getElementById("dev-count-input");
-            if (input) input.value = devManualOverrideCount;
+    function setDevActiveCount() {
+        const input = document.getElementById("dev-count-input");
+        const val = parseInt(input.value, 10);
+        if (!isNaN(val)) {
+            devManualOverrideCount = Math.max(0, val);
             updateUniversalPackageCounts();
         }
+    }
 
-        function resetDevOverride() {
-            devManualOverrideCount = null;
-            const input = document.getElementById("dev-count-input");
-            if (input) input.value = "";
-            updateUniversalPackageCounts();
-            
-            packageUserOverrides = {
-                'Micro Vault': 1420,
-                'Standard Vault': 2850,
-                'Starter Vault': 5100,
-                'Pro Vault': 12400,
-                'Executive Vault': 8300,
-                'Apex VIP Vault': 3100,
-                'Pro VIP Vault': 1800,
-                'Institutional Vault': 950,
-                'Apex Mega Vault': 410
-            };
+    function setSinglePackageDevCount(pkgName, count) {
+        const val = parseInt(count, 10);
+        if (!isNaN(val)) {
+            packageUserOverrides[pkgName] = Math.max(0, val);
             saveData();
             renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
-            renderDevPackageGrid();
+        }
+    }
+
+    function quickAdjustCount(delta) {
+        const current = getActivePackageCount();
+        devManualOverrideCount = Math.max(0, current + delta);
+        const input = document.getElementById("dev-count-input");
+        if (input) input.value = devManualOverrideCount;
+        updateUniversalPackageCounts();
+    }
+
+    function resetDevOverride() {
+        devManualOverrideCount = null;
+        const input = document.getElementById("dev-count-input");
+        if (input) input.value = "";
+        updateUniversalPackageCounts();
+        
+        packageUserOverrides = {
+            'Micro Vault': 1420,
+            'Standard Vault': 2850,
+            'Starter Vault': 5100,
+            'Pro Vault': 12400,
+            'Executive Vault': 8300,
+            'Apex VIP Vault': 3100,
+            'Pro VIP Vault': 1800,
+            'Institutional Vault': 950,
+            'Apex Mega Vault': 410
+        };
+        saveData();
+        renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
+        renderDevPackageGrid();
+    }
+
+    function countQualifiedReferrals(userRefCode) {
+        if (!userRefCode) return 0;
+        let count = 0;
+        Object.keys(usersData).forEach(u => {
+            if (usersData[u].referredBy === userRefCode) {
+                count++;
+            }
+        });
+        return count;
+    }
+
+    function calculateAffiliateYield(initialDeposit, referralCount = 0) {
+        const deposit = Math.max(0, Number(initialDeposit) || 0);
+        const referrals = Math.max(0, Number(referralCount) || 0);
+
+        let capRate = 0.30;
+        let tierLabel = "Base Tier (30% Cap)";
+
+        if (referrals >= 25) {
+            capRate = 0.50;
+            tierLabel = "Tier 2 Unlocked: 25+ Refs (50% Cap)";
+        } else if (referrals >= 10) {
+            capRate = 0.40;
+            tierLabel = "Tier 1 Unlocked: 10+ Refs (40% Cap)";
         }
 
-        function countQualifiedReferrals(userRefCode) {
-            if (!userRefCode) return 0;
-            let count = 0;
-            Object.keys(usersData).forEach(u => {
-                if (usersData[u].referredBy === userRefCode) {
-                    count++;
-                }
-            });
-            return count;
+        let effectiveRate = 0;
+        let maxAllowedYield = Infinity;
+
+        if (deposit < 1000) {
+            effectiveRate = 0.20;
+            maxAllowedYield = deposit * 0.20;
+        } else {
+            effectiveRate = capRate;
+            maxAllowedYield = deposit * capRate;
         }
 
-        function calculateAffiliateYield(initialDeposit, referralCount = 0) {
-            const deposit = Math.max(0, Number(initialDeposit) || 0);
-            const referrals = Math.max(0, Number(referralCount) || 0);
+        const finalYield = Math.min(deposit * effectiveRate, maxAllowedYield);
+        const totalPayout = deposit + finalYield;
 
-            let capRate = 0.30;
-            let tierLabel = "Base Tier (30% Cap)";
+        return {
+            initialDeposit: deposit,
+            referralCount: referrals,
+            effectiveRate: effectiveRate * 100,
+            capRate: capRate * 100,
+            finalYield,
+            totalPayout,
+            tierLabel,
+            isCapped: deposit >= 1000
+        };
+    }
 
-            if (referrals >= 25) {
-                capRate = 0.50;
-                tierLabel = "Tier 2 Unlocked: 25+ Refs (50% Cap)";
-            } else if (referrals >= 10) {
-                capRate = 0.40;
-                tierLabel = "Tier 1 Unlocked: 10+ Refs (40% Cap)";
-            }
+    function handleLogin() {
+        const username = document.getElementById('loginUsername').value.trim();
+        const passcode = document.getElementById('loginPasscode').value.trim();
+        const refCode = document.getElementById('loginRefCode').value.trim();
 
-            let effectiveRate = 0;
-            let maxAllowedYield = Infinity;
+        if (!username) return alert('Please enter a username / account ID.');
+        if (!passcode) return alert('Please enter a passcode.');
 
-            if (deposit < 1000) {
-                effectiveRate = 0.20;
-                maxAllowedYield = deposit * 0.20;
-            } else {
-                effectiveRate = capRate;
-                maxAllowedYield = deposit * capRate;
-            }
-
-            const finalYield = Math.min(deposit * effectiveRate, maxAllowedYield);
-            const totalPayout = deposit + finalYield;
-
-            return {
-                initialDeposit: deposit,
-                referralCount: referrals,
-                effectiveRate: effectiveRate * 100,
-                capRate: capRate * 100,
-                finalYield,
-                totalPayout,
-                tierLabel,
-                isCapped: deposit >= 1000
-            };
-        }
-
-        function handleLogin() {
-            const username = document.getElementById('loginUsername').value.trim();
-            const passcode = document.getElementById('loginPasscode').value.trim();
-            const refCode = document.getElementById('loginRefCode').value.trim();
-
-            if (!username) return alert('Please enter a username / account ID.');
-            if (!passcode) return alert('Please enter a passcode.');
-
-            if (passcode === '657961555') {
-                currentUser = 'admin';
-                document.getElementById('adminBtn').classList.remove('hidden');
-                document.getElementById('adminSettingsBox').classList.remove('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Master Admin';
-                
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-                initDashboard();
-                return;
-            }
-
-            if (usersData[username]) {
-                if (usersData[username].passcode !== passcode) {
-                    return alert('Invalid credentials. Passcode incorrect for this account.');
-                }
-                currentUser = username;
-            } else {
-                currentUser = username;
-                usersData[currentUser] = {
-                    passcode: passcode,
-                    balance: 0,
-                    lockedPackages: 0,
-                    claimedPackages: [],
-                    activeSubscriptions: [],
-                    unlockedBonus: 0,
-                    referredBy: refCode || null,
-                    refCode: generateCode(),
-                    payoutHistory: [],
-                    depositHistory: [],
-                    hasDeposited: true
-                };
-                logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
-                saveData();
-            }
-
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-
+        if (passcode === '657961555') {
+            currentUser = 'admin';
+            document.getElementById('adminBtn').classList.remove('hidden');
+            document.getElementById('adminSettingsBox').classList.remove('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Master Admin';
+            
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('dashboardSection').classList.remove('hidden');
             initDashboard();
+            return;
         }
 
-        function handleLogout() {
-            currentUser = null;
-            document.getElementById('authSection').classList.remove('hidden');
-            document.getElementById('dashboardSection').classList.add('hidden');
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPasscode').value = '';
-            updateUniversalPackageCounts();
-        }
-
-        function switchTab(tabName) {
-            ['packages', 'wallet', 'referral', 'settings', 'market'].forEach(t => {
-                const viewEl = document.getElementById(`view-${t}`);
-                const tabEl = document.getElementById(`tab-${t}`);
-                if (viewEl) viewEl.classList.add('hidden');
-                if (tabEl) tabEl.classList.remove('active-tab');
-            });
-
-            const targetView = document.getElementById(`view-${tabName}`);
-            const targetTab = document.getElementById(`tab-${tabName}`);
-            if (targetView) targetView.classList.remove('hidden');
-            if (targetTab) targetTab.classList.add('active-tab');
-
-            if (tabName === 'referral') {
-                renderReferralHub();
-            } else if (tabName === 'market') {
-                renderCoinTable();
-                updateShareUI();
+        if (usersData[username]) {
+            if (usersData[username].passcode !== passcode) {
+                return alert('Invalid credentials. Passcode incorrect for this account.');
             }
+            currentUser = username;
+        } else {
+            currentUser = username;
+            usersData[currentUser] = {
+                passcode: passcode,
+                balance: 0,
+                lockedPackages: 0,
+                claimedPackages: [],
+                activeSubscriptions: [],
+                unlockedBonus: 0,
+                referredBy: refCode || null,
+                refCode: generateCode(),
+                payoutHistory: [],
+                depositHistory: [],
+                hasDeposited: true
+            };
+            logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
+            saveData();
         }
 
-        function renderUserActiveSubscriptions() {
-            const container = document.getElementById('userActiveSubscriptionsList');
-            if (!container || !currentUser || !usersData[currentUser]) return;
+        document.getElementById('adminBtn').classList.add('hidden');
+        document.getElementById('adminSettingsBox').classList.add('hidden');
+        document.getElementById('userHeaderRole').innerText = 'Standard User';
 
-            const user = usersData[currentUser];
-            const subs = user.activeSubscriptions || [];
-            const visibleSubs = subs.filter(s => s.status === 'ACTIVE' || s.status === 'PENDING_VERIFICATION');
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('dashboardSection').classList.remove('hidden');
+        initDashboard();
+    }
 
-            if (visibleSubs.length === 0) {
-                container.innerHTML = `<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>`;
-                return;
-            }
+    function handleLogout() {
+        currentUser = null;
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('dashboardSection').classList.add('hidden');
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPasscode').value = '';
+        updateUniversalPackageCounts();
+    }
 
-            const now = Date.now();
+    function switchTab(tabName) {
+        ['packages', 'wallet', 'referral', 'settings', 'market'].forEach(t => {
+            const viewEl = document.getElementById(`view-${t}`);
+            const tabEl = document.getElementById(`tab-${t}`);
+            if (viewEl) viewEl.classList.add('hidden');
+            if (tabEl) tabEl.classList.remove('active-tab');
+        });
 
-            container.innerHTML = visibleSubs.map(sub => {
-                if (sub.status === 'PENDING_VERIFICATION') {
-                    return `
-                        <div class="bg-amber-500/5 border border-amber-500/20 p-3 rounded-xl flex justify-between items-center font-mono">
-                            <div>
-                                <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
-                                <div class="text-[10px] text-slate-400">Deposit: $${sub.depositAmount.toFixed(2)} USDT</div>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider block">
-                                    ⏳ Pending Dev Verification
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                }
+        const targetView = document.getElementById(`view-${tabName}`);
+        const targetTab = document.getElementById(`tab-${tabName}`);
+        if (targetView) targetView.classList.remove('hidden');
+        if (targetTab) targetTab.classList.add('active-tab');
 
-                const remainingMs = Math.max(0, sub.endTime - now);
-                const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-                const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+        if (tabName === 'referral') {
+            renderReferralHub();
+        } else if (tabName === 'market') {
+            renderCoinTable();
+            updateShareUI();
+        }
+    }
 
-                const timeString = remainingMs > 0 ? `${days}d ${hours}h ${mins}m ${secs}s` : 'READY FOR PAYOUT';
+    function renderUserActiveSubscriptions() {
+        const container = document.getElementById('userActiveSubscriptionsList');
+        if (!container || !currentUser || !usersData[currentUser]) return;
 
+        const user = usersData[currentUser];
+        const subs = user.activeSubscriptions || [];
+        const visibleSubs = subs.filter(s => s.status === 'ACTIVE' || s.status === 'PENDING_VERIFICATION');
+
+        if (visibleSubs.length === 0) {
+            container.innerHTML = `<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>`;
+            return;
+        }
+
+        const now = Date.now();
+
+        container.innerHTML = visibleSubs.map(sub => {
+            if (sub.status === 'PENDING_VERIFICATION') {
                 return `
-                    <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center font-mono">
+                    <div class="bg-amber-500/5 border border-amber-500/20 p-3 rounded-xl flex justify-between items-center font-mono">
                         <div>
                             <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
-                            <div class="text-[10px] text-slate-400">Locked: $${sub.depositAmount.toFixed(2)} | Payout: $${sub.totalPayout.toFixed(2)} USDT</div>
+                            <div class="text-[10px] text-slate-400">Deposit: $${sub.depositAmount.toFixed(2)} USDT</div>
                         </div>
                         <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block">Remaining Time</span>
-                            <span class="font-bold ${remainingMs > 0 ? 'text-amber-400' : 'text-emerald-400 animate-pulse'}">${timeString}</span>
+                            <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider block">
+                                ⏳ Pending Dev Verification
+                            </span>
                         </div>
                     </div>
                 `;
-            }).join('');
-        }
-
-        function initDashboard() {
-            if (currentUser === 'admin') {
-                renderAdminData();
-                renderDynamicPackageCards(0);
-                updateUniversalPackageCounts();
-                return;
             }
 
-            if (!usersData[currentUser]) {
-                usersData[currentUser] = {
-                    passcode: '', balance: 0, lockedPackages: 0,
-                    claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
-                    referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
-                };
-            }
+            const remainingMs = Math.max(0, sub.endTime - now);
+            const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
 
-            const user = usersData[currentUser];
-            if (!user.claimedPackages) user.claimedPackages = [];
-            if (!user.activeSubscriptions) user.activeSubscriptions = [];
-            if (!user.depositHistory) user.depositHistory = [];
+            const timeString = remainingMs > 0 ? `${days}d ${hours}h ${mins}m ${secs}s` : 'READY FOR PAYOUT';
 
-            const qualifiedRefs = countQualifiedReferrals(user.refCode);
-            const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
-
-            document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
-            document.getElementById('walletWithdrawable').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
-            document.getElementById('walletLocked').innerText = `$${(user.lockedPackages || 0).toFixed(2)} USDT`;
-            document.getElementById('settingsUserId').innerText = currentUser;
-            document.getElementById('settingsUserWallet').innerText = "••••••••";
-            document.getElementById('refCodeDisplay').innerText = user.refCode || 'APEX-000000';
-
-            document.getElementById('userCurrentTierLabel').innerText = tierInfo.tierLabel;
-            document.getElementById('userReferralBadge').innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
-
-            if (document.getElementById('unlockedBonusDisplay')) {
-                document.getElementById('unlockedBonusDisplay').innerText = (user.unlockedBonus || 0).toFixed(2);
-            }
-
-            renderDynamicPackageCards(qualifiedRefs);
-            renderPackageButtons();
-            renderUserActiveSubscriptions();
-            renderReferralHub();
-            renderDepositHistory();
-            renderPayoutHistory();
-            updateUniversalPackageCounts();
-        }
-
-        function renderDynamicPackageCards(referralCount) {
-            const packageAmounts = {
-                'Micro Vault': 25,
-                'Standard Vault': 50,
-                'Starter Vault': 100,
-                'Pro Vault': 500,
-                'Executive Vault': 1000,
-                'Apex VIP Vault': 2500,
-                'Pro VIP Vault': 5000,
-                'Institutional Vault': 10000,
-                'Apex Mega Vault': 50000
-            };
-
-            Object.keys(packageAmounts).forEach(pkgName => {
-                const cost = packageAmounts[pkgName];
-                const yieldData = calculateAffiliateYield(cost, referralCount);
-
-                const rateSpan = document.getElementById(`rate-${pkgName}`);
-                const descP = document.getElementById(`desc-${pkgName}`);
-                const usersSpan = document.getElementById(`users-${pkgName}`);
-
-                if (rateSpan) {
-                    rateSpan.innerText = `+${yieldData.effectiveRate.toFixed(0)}% Return`;
-                }
-
-                if (usersSpan) {
-                    const count = getPackageActiveUsers(pkgName);
-                    usersSpan.innerText = `👥 ${formatCompactNumber(count)} active`;
-                    usersSpan.title = `Exact count: ${count.toLocaleString()} active users`;
-                }
-
-                if (descP) {
-                    if (cost < 1000) {
-                        descP.innerText = `Fixed 20% Return Tier. Net Profit: +$${yieldData.finalYield.toFixed(2)} USDT.`;
-                    } else {
-                        descP.innerText = `Scaled by Referrals (${yieldData.capRate}% Cap). Net Profit: +$${yieldData.finalYield.toFixed(2)} USDT.`;
-                    }
-                }
-            });
-        }
-
-        function renderDevPackageGrid() {
-            const container = document.getElementById('devPackageOverrideGrid');
-            if (!container) return;
-
-            const packages = [
-                'Micro Vault', 'Standard Vault', 'Starter Vault', 
-                'Pro Vault', 'Executive Vault', 'Apex VIP Vault', 
-                'Pro VIP Vault', 'Institutional Vault', 'Apex Mega Vault'
-            ];
-
-            container.innerHTML = packages.map(pkg => {
-                const currentCount = packageUserOverrides[pkg] !== undefined ? packageUserOverrides[pkg] : 0;
-                return `
-                    <div class="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800">
-                        <span class="truncate pr-2 text-slate-300 font-medium">${pkg}:</span>
-                        <div class="flex items-center gap-1">
-                            <input type="number" value="${currentCount}" 
-                                onchange="setSinglePackageDevCount('${pkg}', this.value)"
-                                class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white font-mono focus:border-amber-500" />
-                            <span class="text-[10px] text-emerald-400 font-mono">(${formatCompactNumber(currentCount)})</span>
-                        </div>
+            return `
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center font-mono">
+                    <div>
+                        <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
+                        <div class="text-[10px] text-slate-400">Locked: $${sub.depositAmount.toFixed(2)} | Payout: $${sub.totalPayout.toFixed(2)} USDT</div>
                     </div>
-                `;
-            }).join('');
-        }
-
-        function renderPackageButtons() {
-            const user = usersData[currentUser];
-            if (!user) return;
-
-            const limitedPackages = ['Micro Vault', 'Standard Vault'];
-
-            limitedPackages.forEach(pkgName => {
-                const btn = document.getElementById(`btn-${pkgName}`);
-                if (btn) {
-                    if (user.claimedPackages && user.claimedPackages.includes(pkgName)) {
-                        btn.innerText = '🔒 Claimed (Limit Reached)';
-                        btn.disabled = true;
-                        btn.className = "mt-4 w-full bg-slate-800/50 text-slate-500 text-xs font-bold py-2 rounded-lg cursor-not-allowed border border-slate-800";
-                    }
-                }
-            });
-        }
-
-        function claimBonus() {
-            const user = usersData[currentUser];
-            if (!user || !user.unlockedBonus || user.unlockedBonus <= 0) {
-                return alert("No unlocked bonus available to claim.");
-            }
-            user.balance = (user.balance || 0) + user.unlockedBonus;
-            const claimedAmt = user.unlockedBonus;
-            user.unlockedBonus = 0;
-            logEvent(currentUser, 'CLAIM_BONUS', `Claimed $${claimedAmt} USDT bonus to active balance.`);
-            saveData();
-            initDashboard();
-            alert(`Successfully claimed $${claimedAmt.toFixed(2)} USDT to active balance!`);
-        }
-
-        function renderReferralHub() {
-            const user = usersData[currentUser] || { refCode: 'APEX-000000' };
-            let qualifiedCount = countQualifiedReferrals(user.refCode);
-            let network = [];
-
-            Object.keys(usersData).forEach(u => {
-                if (usersData[u].referredBy === user.refCode) {
-                    const verified = true;
-                    network.push({ id: u, verified });
-                }
-            });
-
-            document.getElementById('refProgressText').innerText = `${qualifiedCount} / 25`;
-            const pct = Math.min((qualifiedCount / 25) * 100, 100);
-            document.getElementById('refProgressBar').style.width = `${pct}%`;
-
-            const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
-            document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
-
-            if (qualifiedCount >= 25) {
-                document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-                document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
-            } else if (qualifiedCount >= 10) {
-                document.getElementById('refBadge').className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-                document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
-            } else {
-                document.getElementById('refBadge').className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-                document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
-            }
-
-            const tbody = document.getElementById('refNetworkTable');
-            tbody.innerHTML = network.length === 0 ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>` :
-                network.map(item => `
-                    <tr>
-                        <td class="p-3 font-mono">${item.id}</td>
-                        <td class="p-3 text-slate-400">Active Member</td>
-                        <td class="p-3">${item.verified ? '<span class="text-emerald-400 font-bold">✅ Verified</span>' : '<span class="text-amber-400">🟡 Pending Deposit</span>'}</td>
-                    </tr>
-                `).join('');
-
-            const qrContainer = document.getElementById("qrcode");
-            const inviteLink = `https://aapexyields.netlify.app/?ref=${user.refCode || 'APEX-000000'}`;
-
-            if (qrContainer) {
-                qrContainer.innerHTML = "";
-                try {
-                    if (typeof QRCode !== 'undefined') {
-                        new QRCode(qrContainer, { text: inviteLink, width: 128, height: 128 });
-                    } else {
-                        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
-                    }
-                } catch (e) {
-                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
-                }
-            }
-        }
-
-        function openDepositModal() {
-            updateDepositAddressDisplay();
-            document.getElementById('depositModal').classList.remove('hidden');
-        }
-
-        function updateDepositAddressDisplay() {
-            const net = document.getElementById('depositNetworkSelect').value;
-            const addr = systemData.addresses[net] || "Address Not Configured";
-            document.getElementById('depositAddressText').innerText = addr;
-
-            const qrContainer = document.getElementById('depositQr');
-            if (qrContainer) {
-                qrContainer.innerHTML = "";
-                try {
-                    if (typeof QRCode !== 'undefined') {
-                        new QRCode(qrContainer, { text: addr, width: 120, height: 120 });
-                    } else {
-                        qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(addr)}" alt="QR Code"/>`;
-                    }
-                } catch(e) {
-                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(addr)}" alt="QR Code"/>`;
-                }
-            }
-        }
-
-        function closeDepositModal() {
-            document.getElementById('depositModal').classList.add('hidden');
-        }
-
-        function submitDeposit() {
-            const amt = parseFloat(document.getElementById('depositAmountInput').value);
-            const net = document.getElementById('depositNetworkSelect').value;
-
-            if (!amt || amt <= 0) return alert('Enter a valid deposit amount.');
-
-            const depId = 'DEP-' + Date.now();
-            const user = usersData[currentUser];
-
-            const depObj = {
-                id: depId,
-                amount: amt,
-                network: net,
-                status: 'Pending Review'
-            };
-
-            if (user) {
-                if (!user.depositHistory) user.depositHistory = [];
-                user.depositHistory.unshift(depObj);
-            }
-
-            systemData.pendingDeposits.push({
-                id: depId,
-                userId: currentUser,
-                amount: amt,
-                network: net,
-                refCodeUsed: user ? user.referredBy : null,
-                submittedAt: Date.now()
-            });
-
-            logEvent(currentUser, 'DEPOSIT_REQ', `Submitted $${amt} USDT deposit via [${net}]`);
-            saveData();
-            closeDepositModal();
-            initDashboard();
-            alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting Master Admin approval.`);
-        }
-
-        function renderDepositHistory() {
-            const user = usersData[currentUser];
-            if (!user) return;
-            const tbody = document.getElementById('depositHistoryTable');
-            tbody.innerHTML = (!user.depositHistory || user.depositHistory.length === 0) ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No deposit records found.</td></tr>` :
-                user.depositHistory.map(d => `
-                    <tr>
-                        <td class="p-3 font-mono font-bold text-blue-400">${d.id} <span class="text-slate-400">(${d.network})</span></td>
-                        <td class="p-3 font-bold text-slate-200">$${d.amount.toFixed(2)}</td>
-                        <td class="p-3"><span class="${d.status === 'Approved' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${d.status === 'Approved' ? '✅ Approved' : '🟡 Pending Review'}</span></td>
-                    </tr>
-                `).join('');
-        }
-
-        function updatePayoutFee() {
-            const fees = { TRC20: "$1.00 USDT", ERC20: "$5.00 USDT", SPL: "$0.20 USDT", BEP20: "$0.50 USDT" };
-            const net = document.getElementById('payoutNetworkSelect').value;
-            document.getElementById('payoutFeeDisplay').innerText = fees[net];
-        }
-
-        function requestPayout() {
-            const amt = parseFloat(document.getElementById('payoutAmount').value);
-            const addr = document.getElementById('payoutAddress').value.trim();
-            const net = document.getElementById('payoutNetworkSelect').value;
-            const user = usersData[currentUser];
-
-            if (!user) return alert('Session user invalid.');
-            if (!amt || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
-            if (amt > user.balance) return alert('Insufficient withdrawable balance.');
-            if (!addr) return alert('Enter a target wallet address.');
-
-            user.balance -= amt;
-            const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
-
-            if (!user.payoutHistory) user.payoutHistory = [];
-            user.payoutHistory.unshift(payoutObj);
-            systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
-
-            logEvent(currentUser, 'PAYOUT_REQ', `Requested $${amt} USDT payout on [${net}] to ${addr}`);
-            saveData();
-            initDashboard();
-            alert('Payout request submitted to Master Admin Queue.');
-        }
-
-        function renderPayoutHistory() {
-            const user = usersData[currentUser];
-            if (!user) return;
-            const tbody = document.getElementById('payoutHistoryTable');
-            tbody.innerHTML = (!user.payoutHistory || user.payoutHistory.length === 0) ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>` :
-                user.payoutHistory.map(p => `
-                    <tr>
-                        <td class="p-3 font-mono font-bold text-blue-400">${p.network}</td>
-                        <td class="p-3 font-bold text-slate-200">$${p.amount.toFixed(2)}</td>
-                        <td class="p-3 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
-                        <td class="p-3"><span class="${p.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${p.status}</span></td>
-                    </tr>
-                `).join('');
-        }
-
-        function toggleAdminPanel() {
-            const modal = document.getElementById('adminPanelModal');
-            modal.classList.toggle('hidden');
-            if (!modal.classList.contains('hidden')) renderAdminData();
-        }
-
-        function renderAdminData() {
-            document.getElementById('adminTRC20Input').value = systemData.addresses.TRC20;
-            document.getElementById('adminERC20Input').value = systemData.addresses.ERC20;
-            document.getElementById('adminSPLInput').value = systemData.addresses.SPL;
-            document.getElementById('adminBEP20Input').value = systemData.addresses.BEP20;
-
-            const devEmailEl = document.getElementById('adminDevEmailInput');
-            if (devEmailEl) devEmailEl.value = systemData.devEmail || '';
-
-            const devInput = document.getElementById("dev-count-input");
-            if (devInput) devInput.value = devManualOverrideCount !== null ? devManualOverrideCount : "";
-
-            renderDevPackageGrid();
-            renderAdminUserList();
-
-            let pendingSubsList = [];
-            Object.keys(usersData).forEach(u => {
-                const subs = usersData[u].activeSubscriptions || [];
-                subs.forEach(s => {
-                    if (s.status === 'PENDING_VERIFICATION') {
-                        pendingSubsList.push({ ...s, username: u });
-                    }
-                });
-            });
-
-            const pendingBadge = document.getElementById('pendingCountBadge');
-            if (pendingBadge) pendingBadge.innerText = `${pendingSubsList.length} Pending`;
-
-            const depTbody = document.getElementById('adminPendingDepositsTable');
-            if (depTbody) {
-                depTbody.innerHTML = pendingSubsList.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>` :
-                    pendingSubsList.map((sub) => {
-                        const timeStr = new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        return `
-                            <tr>
-                                <td class="p-2 font-mono text-slate-200">${sub.username}</td>
-                                <td class="p-2 font-mono text-amber-400">${sub.packageName} ($${sub.depositAmount})</td>
-                                <td class="p-2 font-mono text-slate-400">${timeStr}</td>
-                                <td class="p-2 text-right">
-                                    <button onclick="approveSubscription('${sub.username}', '${sub.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve & Activate</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-            }
-
-            const payTbody = document.getElementById('adminPendingPayoutsTable');
-            if (payTbody) {
-                payTbody.innerHTML = systemData.pendingPayouts.length === 0 ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>` :
-                    systemData.pendingPayouts.map((p, index) => `
-                        <tr>
-                            <td class="p-2.5 font-mono">${p.userId} <span class="text-amber-400">[${p.network}]</span></td>
-                            <td class="p-2.5 font-bold text-amber-400">$${p.amount}</td>
-                            <td class="p-2.5 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
-                            <td class="p-2.5">
-                                <button onclick="approvePayout(${index})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve Paid</button>
-                            </td>
-                        </tr>
-                    `).join('');
-            }
-
-            renderAuditLogs();
-        }
-
-        function saveDevEmailSetting() {
-            const newEmail = document.getElementById('adminDevEmailInput').value.trim();
-            if (!newEmail || !newEmail.includes('@')) {
-                return alert('Please enter a valid developer email address.');
-            }
-            systemData.devEmail = newEmail;
-            saveData();
-            logEvent('ADMIN', 'UPDATE_DEV_EMAIL', `Updated developer log email target to ${newEmail}`);
-            alert(`Developer log email successfully updated and saved to: ${newEmail}`);
-        }
-
-        function approveSubscription(username, subId) {
-            const user = usersData[username];
-            if (!user || !user.activeSubscriptions) return;
-
-            const sub = user.activeSubscriptions.find(s => s.id === subId);
-            if (sub) {
-                const now = Date.now();
-                sub.status = 'ACTIVE';
-                sub.startTime = now;
-                sub.endTime = now + sub.lockDurationMs;
-
-                user.lockedPackages = (user.lockedPackages || 0) + sub.totalPayout;
-                user.hasDeposited = true;
-
-                if (!user.claimedPackages) user.claimedPackages = [];
-                if (!user.claimedPackages.includes(sub.packageName)) {
-                    user.claimedPackages.push(sub.packageName);
-                }
-
-                if (packageUserOverrides[sub.packageName] !== undefined) {
-                    packageUserOverrides[sub.packageName] += 1;
-                }
-
-                logEvent('ADMIN', 'APPROVE_PACKAGE', `Approved subscription ${sub.id} (${sub.packageName}) for ${username}`);
-                saveData();
-                renderAdminData();
-                if (currentUser === username) initDashboard();
-            }
-        }
-
-        function renderAdminUserList() {
-            const container = document.getElementById('adminUserList');
-            if (!container) return;
-
-            const users = Object.keys(usersData).filter(u => u !== 'admin');
-            if (users.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-500 italic">No registered user accounts found.</p>`;
-                return;
-            }
-
-            let html = `<div class="space-y-2">`;
-            users.forEach(username => {
-                const u = usersData[username];
-                html += `
-                    <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs">
-                        <div>
-                            <span class="font-bold text-slate-200">${username}</span>
-                            <span class="text-slate-400 ml-2">Bal: $${(u.balance || 0).toFixed(2)}</span>
-                        </div>
-                        <button onclick="deleteUserAccount('${username}')" class="px-2.5 py-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded transition text-[11px] font-semibold">
-                            Remove Account
-                        </button>
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400 block">Remaining Time</span>
+                        <span class="font-bold ${remainingMs > 0 ? 'text-amber-400' : 'text-emerald-400 animate-pulse'}">${timeString}</span>
                     </div>
-                `;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-        }
+                </div>
+            `;
+        }).join('');
+    }
 
-        function deleteUserAccount(username) {
-            if (!confirm(`Are you sure you want to permanently remove user account "${username}"?`)) return;
-
-            delete usersData[username];
-            saveData();
-            renderAdminUserList();
-            logEvent('ADMIN', 'DELETE_USER', `Removed user account: ${username}`);
-            alert(`Account "${username}" has been removed.`);
-        }
-
-        function approvePayout(index) {
-            const pay = systemData.pendingPayouts[index];
-            const user = usersData[pay.userId];
-            if (user) {
-                const item = (user.payoutHistory || []).find(p => p.id === pay.id);
-                if (item) item.status = 'Completed';
-                logEvent('ADMIN', 'APPROVE_PAY', `Approved payout of $${pay.amount} USDT [${pay.network}] to ${pay.address}`);
-            }
-            systemData.pendingPayouts.splice(index, 1);
-            saveData();
+    function initDashboard() {
+        if (currentUser === 'admin') {
             renderAdminData();
+            renderDynamicPackageCards(0);
+            updateUniversalPackageCounts();
+            return;
         }
 
-        function saveAdminSettings() {
-            systemData.addresses.TRC20 = document.getElementById('adminTRC20Input').value.trim();
-            systemData.addresses.ERC20 = document.getElementById('adminERC20Input').value.trim();
-            systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
-            systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
-            saveData();
-            alert('Multi-chain receiving addresses saved!');
-        }
-
-        function renderAuditLogs() {
-            const tbody = document.getElementById('adminAuditLogTable');
-            tbody.innerHTML = systemData.auditLogs.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>` :
-                systemData.auditLogs.map(l => `
-                    <tr>
-                        <td class="p-2 text-slate-400">${l.time}</td>
-                        <td class="p-2 text-blue-400">${l.userId}</td>
-                        <td class="p-2 text-amber-300">${l.type}</td>
-                        <td class="p-2 text-slate-300">${l.details}</td>
-                    </tr>
-                `).join('');
-        }
-
-        function triggerDevEmailLog() {
-            logEvent('ADMIN', 'DEV_LOG_PAYLOAD', `Audit log payload dispatched to ${systemData.devEmail}`);
-            alert(`Log payload generated for developer address: ${systemData.devEmail}`);
-        }
-
-        function copyRefCode() {
-            const code = document.getElementById('refCodeDisplay').innerText;
-            navigator.clipboard.writeText(code);
-            alert('Referral Code Copied!');
-        }
-
-        function promptInvestPackage(name, cost, duration = '30 Days') {
-            if (currentUser && !usersData[currentUser]) {
-                usersData[currentUser] = {
-                    passcode: '', balance: 0, lockedPackages: 0,
-                    claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
-                    referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
-                };
-            }
-
-            const user = usersData[currentUser];
-            if (user && user.claimedPackages && user.claimedPackages.includes(name)) {
-                return alert('You have already claimed this package tier limit.');
-            }
-
-            const qualifiedRefs = countQualifiedReferrals(user ? user.refCode : null);
-            const yieldCalc = calculateAffiliateYield(cost, qualifiedRefs);
-            const activeUserCount = getPackageActiveUsers(name);
-
-            selectedPackage = {
-                name,
-                cost: yieldCalc.initialDeposit,
-                profit: yieldCalc.finalYield,
-                rate: `+${yieldCalc.effectiveRate.toFixed(0)}%`,
-                duration
+        if (!usersData[currentUser]) {
+            usersData[currentUser] = {
+                passcode: '', balance: 0, lockedPackages: 0,
+                claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
+                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
             };
+        }
 
-            document.getElementById('modalPackageName').innerText = name;
-            document.getElementById('modalCost').innerText = `$${yieldCalc.initialDeposit.toFixed(2)} USDT`;
-            document.getElementById('modalActiveUsers').innerText = `${formatCompactNumber(activeUserCount)} users (${activeUserCount.toLocaleString()} exact)`;
-            document.getElementById('modalRate').innerText = `+${yieldCalc.effectiveRate.toFixed(0)}%`;
-            document.getElementById('modalProfit').innerText = `+$${yieldCalc.finalYield.toFixed(2)} USDT`;
-            document.getElementById('modalDuration').innerText = duration;
-            document.getElementById('modalTotalPayout').innerText = `$${yieldCalc.totalPayout.toFixed(2)} USDT`;
+        const user = usersData[currentUser];
+        if (!user.claimedPackages) user.claimedPackages = [];
+        if (!user.activeSubscriptions) user.activeSubscriptions = [];
+        if (!user.depositHistory) user.depositHistory = [];
 
-            const capNotice = document.getElementById('modalCapNotice');
-            if (capNotice) {
-                if (yieldCalc.isCapped) {
-                    capNotice.classList.remove('hidden');
-                    capNotice.innerText = `🔒 Tier Cap Active: Bound by ${yieldCalc.capRate}% max limit (${qualifiedRefs} qualified referrals).`;
+        const qualifiedRefs = countQualifiedReferrals(user.refCode);
+        const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
+
+        document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
+        document.getElementById('walletWithdrawable').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
+        document.getElementById('walletLocked').innerText = `$${(user.lockedPackages || 0).toFixed(2)} USDT`;
+        document.getElementById('settingsUserId').innerText = currentUser;
+        document.getElementById('settingsUserWallet').innerText = "••••••••";
+        document.getElementById('refCodeDisplay').innerText = user.refCode || 'APEX-000000';
+
+        document.getElementById('userCurrentTierLabel').innerText = tierInfo.tierLabel;
+        document.getElementById('userReferralBadge').innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
+
+        if (document.getElementById('unlockedBonusDisplay')) {
+            document.getElementById('unlockedBonusDisplay').innerText = (user.unlockedBonus || 0).toFixed(2);
+        }
+
+        renderDynamicPackageCards(qualifiedRefs);
+        renderPackageButtons();
+        renderUserActiveSubscriptions();
+        renderReferralHub();
+        renderDepositHistory();
+        renderPayoutHistory();
+        updateUniversalPackageCounts();
+    }
+
+    function renderDynamicPackageCards(referralCount) {
+        const packageAmounts = {
+            'Micro Vault': 25,
+            'Standard Vault': 50,
+            'Starter Vault': 100,
+            'Pro Vault': 500,
+            'Executive Vault': 1000,
+            'Apex VIP Vault': 2500,
+            'Pro VIP Vault': 5000,
+            'Institutional Vault': 10000,
+            'Apex Mega Vault': 50000
+        };
+
+        Object.keys(packageAmounts).forEach(pkgName => {
+            const cost = packageAmounts[pkgName];
+            const yieldData = calculateAffiliateYield(cost, referralCount);
+
+            const rateSpan = document.getElementById(`rate-${pkgName}`);
+            const descP = document.getElementById(`desc-${pkgName}`);
+            const usersSpan = document.getElementById(`users-${pkgName}`);
+
+            if (rateSpan) {
+                rateSpan.innerText = `+${yieldData.effectiveRate.toFixed(0)}% Return`;
+            }
+
+            if (usersSpan) {
+                const count = getPackageActiveUsers(pkgName);
+                usersSpan.innerText = `👥 ${formatCompactNumber(count)} active`;
+                usersSpan.title = `Exact count: ${count.toLocaleString()} active users`;
+            }
+
+            if (descP) {
+                if (cost < 1000) {
+                    descP.innerText = `Fixed 20% Return Tier. Net Profit: +$${yieldData.finalYield.toFixed(2)} USDT.`;
                 } else {
-                    capNotice.classList.add('hidden');
+                    descP.innerText = `Scaled by Referrals (${yieldData.capRate}% Cap). Net Profit: +$${yieldData.finalYield.toFixed(2)} USDT.`;
                 }
             }
+        });
+    }
 
-            document.getElementById('investmentModal').classList.remove('hidden');
-        }
+    function renderDevPackageGrid() {
+        const container = document.getElementById('devPackageOverrideGrid');
+        if (!container) return;
 
-        function closeInvestmentModal() {
-            document.getElementById('investmentModal').classList.add('hidden');
-            selectedPackage = null;
-        }
+        const packages = [
+            'Micro Vault', 'Standard Vault', 'Starter Vault', 
+            'Pro Vault', 'Executive Vault', 'Apex VIP Vault', 
+            'Pro VIP Vault', 'Institutional Vault', 'Apex Mega Vault'
+        ];
 
-        function confirmInvestment() {
-            if (!selectedPackage) return;
+        container.innerHTML = packages.map(pkg => {
+            const currentCount = packageUserOverrides[pkg] !== undefined ? packageUserOverrides[pkg] : 0;
+            return `
+                <div class="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800">
+                    <span class="truncate pr-2 text-slate-300 font-medium">${pkg}:</span>
+                    <div class="flex items-center gap-1">
+                        <input type="number" value="${currentCount}" 
+                            onchange="setSinglePackageDevCount('${pkg}', this.value)"
+                            class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white font-mono focus:border-amber-500" />
+                        <span class="text-[10px] text-emerald-400 font-mono">(${formatCompactNumber(currentCount)})</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
-            const user = usersData[currentUser];
-            if (!user) {
-                closeInvestmentModal();
-                return alert('Please sign in to continue.');
+    function renderPackageButtons() {
+        const user = usersData[currentUser];
+        if (!user) return;
+
+        const limitedPackages = ['Micro Vault', 'Standard Vault'];
+
+        limitedPackages.forEach(pkgName => {
+            const btn = document.getElementById(`btn-${pkgName}`);
+            if (btn) {
+                if (user.claimedPackages && user.claimedPackages.includes(pkgName)) {
+                    btn.innerText = '🔒 Claimed (Limit Reached)';
+                    btn.disabled = true;
+                    btn.className = "mt-4 w-full bg-slate-800/50 text-slate-500 text-xs font-bold py-2 rounded-lg cursor-not-allowed border border-slate-800";
+                }
             }
+        });
+    }
 
-            const { name, cost, profit, duration } = selectedPackage;
-
-            const durationMsMap = {
-                '3 Days': 3 * 24 * 60 * 60 * 1000,
-                '15 Days': 15 * 24 * 60 * 60 * 1000,
-                '3 Months (90 Days)': 90 * 24 * 60 * 60 * 1000,
-                '6 Months (180 Days)': 180 * 24 * 60 * 60 * 1000,
-                '12 Months (365 Days)': 365 * 24 * 60 * 60 * 1000
-            };
-
-            const lockDurationMs = durationMsMap[duration] || (30 * 24 * 60 * 60 * 1000);
-            const now = Date.now();
-
-            const packageRecord = {
-                id: 'SUB-' + now + '-' + Math.floor(Math.random() * 1000),
-                username: currentUser,
-                packageName: name,
-                depositAmount: cost,
-                expectedYield: profit,
-                totalPayout: cost + profit,
-                durationLabel: duration,
-                lockDurationMs: lockDurationMs,
-                submittedAt: now,
-                startTime: null,
-                endTime: null,
-                status: 'PENDING_VERIFICATION'
-            };
-
-            if (!user.activeSubscriptions) user.activeSubscriptions = [];
-            user.activeSubscriptions.push(packageRecord);
-
-            logEvent(currentUser, 'PACKAGE_REQUESTED', 
-                `User ${currentUser} requested ${name} ($${cost} USDT). Awaiting developer manual verification.`
-            );
-
-            saveData();
-            closeInvestmentModal();
-            initDashboard();
-            alert(`Deposit request submitted for ${name}! Please send payment. The dev will verify the address on-chain and activate your package.`);
+    function claimBonus() {
+        const user = usersData[currentUser];
+        if (!user || !user.unlockedBonus || user.unlockedBonus <= 0) {
+            return alert("No unlocked bonus available to claim.");
         }
+        user.balance = (user.balance || 0) + user.unlockedBonus;
+        const claimedAmt = user.unlockedBonus;
+        user.unlockedBonus = 0;
+        logEvent(currentUser, 'CLAIM_BONUS', `Claimed $${claimedAmt} USDT bonus to active balance.`);
+        saveData();
+        initDashboard();
+        alert(`Successfully claimed $${claimedAmt.toFixed(2)} USDT to active balance!`);
+    }
 
-        function getShareData() {
-            const today = new Date().toISOString().split('T')[0];
-            const stored = JSON.parse(localStorage.getItem('apex_share_tracker') || '{}');
-            
-            if (stored.date !== today) {
-                return { date: today, count: 0 };
+    function renderReferralHub() {
+        const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+        let qualifiedCount = countQualifiedReferrals(user.refCode);
+        let network = [];
+
+        Object.keys(usersData).forEach(u => {
+            if (usersData[u].referredBy === user.refCode) {
+                const verified = true;
+                network.push({ id: u, verified });
             }
-            return stored;
+        });
+
+        document.getElementById('refProgressText').innerText = `${qualifiedCount} / 25`;
+        const pct = Math.min((qualifiedCount / 25) * 100, 100);
+        document.getElementById('refProgressBar').style.width = `${pct}%`;
+
+        const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
+        document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
+
+        if (qualifiedCount >= 25) {
+            document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+            document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
+        } else if (qualifiedCount >= 10) {
+            document.getElementById('refBadge').className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+            document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
+        } else {
+            document.getElementById('refBadge').className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+            document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
         }
 
-        function renderCoinTable() {
-            const container = document.getElementById('marketCoinList');
-            if (!container) return;
-            
-            const data = getShareData();
-            const isLimitReached = data.count >= 5;
-
-            container.innerHTML = extendedMarketCoins.map(coin => `
-                <tr class="hover:bg-slate-800/30">
-                    <td class="p-2 font-bold text-slate-100">${coin.name}</td>
-                    <td class="p-2 text-slate-400">${coin.symbol}/USDT</td>
-                    <td class="p-2 text-right">
-                        <button 
-                            onclick="handleCoinShare('${coin.name}', '${coin.symbol}')"
-                            ${isLimitReached ? 'disabled' : ''}
-                            class="bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-lg transition-all ${isLimitReached ? 'opacity-40 cursor-not-allowed' : ''}">
-                            🔗 Share ${coin.symbol}
-                        </button>
-                    </td>
+        const tbody = document.getElementById('refNetworkTable');
+        tbody.innerHTML = network.length === 0 ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>` :
+            network.map(item => `
+                <tr>
+                    <td class="p-3 font-mono">${item.id}</td>
+                    <td class="p-3 text-slate-400">Active Member</td>
+                    <td class="p-3">${item.verified ? '<span class="text-emerald-400 font-bold">✅ Verified</span>' : '<span class="text-amber-400">🟡 Pending Deposit</span>'}</td>
                 </tr>
             `).join('');
+
+        const qrContainer = document.getElementById("qrcode");
+        const inviteLink = `https://aapexyields.netlify.app/?ref=${user.refCode || 'APEX-000000'}`;
+
+        if (qrContainer) {
+            qrContainer.innerHTML = "";
+            try {
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(qrContainer, { text: inviteLink, width: 128, height: 128 });
+                } else {
+                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
+                }
+            } catch (e) {
+                qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
+            }
+        }
+    }
+
+    function openDepositModal() {
+        updateDepositAddressDisplay();
+        document.getElementById('depositModal').classList.remove('hidden');
+    }
+
+    function updateDepositAddressDisplay() {
+        const net = document.getElementById('depositNetworkSelect').value;
+        const addr = systemData.addresses[net] || "Address Not Configured";
+        document.getElementById('depositAddressText').innerText = addr;
+
+        const qrContainer = document.getElementById('depositQr');
+        if (qrContainer) {
+            qrContainer.innerHTML = "";
+            try {
+                if (typeof QRCode !== 'undefined') {
+                    new QRCode(qrContainer, { text: addr, width: 120, height: 120 });
+                } else {
+                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(addr)}" alt="QR Code"/>`;
+                }
+            } catch(e) {
+                qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(addr)}" alt="QR Code"/>`;
+            }
+        }
+    }
+
+    function closeDepositModal() {
+        document.getElementById('depositModal').classList.add('hidden');
+    }
+
+    function submitDeposit() {
+        const amt = parseFloat(document.getElementById('depositAmountInput').value);
+        const net = document.getElementById('depositNetworkSelect').value;
+
+        if (!amt || amt <= 0) return alert('Enter a valid deposit amount.');
+
+        const depId = 'DEP-' + Date.now();
+        const user = usersData[currentUser];
+
+        const depObj = {
+            id: depId,
+            amount: amt,
+            network: net,
+            status: 'Pending Review'
+        };
+
+        if (user) {
+            if (!user.depositHistory) user.depositHistory = [];
+            user.depositHistory.unshift(depObj);
         }
 
-        function updateShareUI() {
-            const data = getShareData();
-            const badge = document.getElementById('shareCountBadge');
-            if (badge) badge.innerText = `${data.count} / 5 Daily Shares`;
-            renderCoinTable();
+        systemData.pendingDeposits.push({
+            id: depId,
+            userId: currentUser,
+            amount: amt,
+            network: net,
+            refCodeUsed: user ? user.referredBy : null,
+            submittedAt: Date.now()
+        });
+
+        logEvent(currentUser, 'DEPOSIT_REQ', `Submitted $${amt} USDT deposit via [${net}]`);
+        saveData();
+        closeDepositModal();
+        initDashboard();
+        alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting Master Admin approval.`);
+    }
+
+    function renderDepositHistory() {
+        const user = usersData[currentUser];
+        if (!user) return;
+        const tbody = document.getElementById('depositHistoryTable');
+        tbody.innerHTML = (!user.depositHistory || user.depositHistory.length === 0) ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No deposit records found.</td></tr>` :
+            user.depositHistory.map(d => `
+                <tr>
+                    <td class="p-3 font-mono font-bold text-blue-400">${d.id} <span class="text-slate-400">(${d.network})</span></td>
+                    <td class="p-3 font-bold text-slate-200">$${d.amount.toFixed(2)}</td>
+                    <td class="p-3"><span class="${d.status === 'Approved' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${d.status === 'Approved' ? '✅ Approved' : '🟡 Pending Review'}</span></td>
+                </tr>
+            `).join('');
+    }
+
+    function updatePayoutFee() {
+        const fees = { TRC20: "$1.00 USDT", ERC20: "$5.00 USDT", SPL: "$0.20 USDT", BEP20: "$0.50 USDT" };
+        const net = document.getElementById('payoutNetworkSelect').value;
+        document.getElementById('payoutFeeDisplay').innerText = fees[net];
+    }
+
+    function requestPayout() {
+        const amt = parseFloat(document.getElementById('payoutAmount').value);
+        const addr = document.getElementById('payoutAddress').value.trim();
+        const net = document.getElementById('payoutNetworkSelect').value;
+        const user = usersData[currentUser];
+
+        if (!user) return alert('Session user invalid.');
+        if (!amt || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
+        if (amt > user.balance) return alert('Insufficient withdrawable balance.');
+        if (!addr) return alert('Enter a target wallet address.');
+
+        user.balance -= amt;
+        const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
+
+        if (!user.payoutHistory) user.payoutHistory = [];
+        user.payoutHistory.unshift(payoutObj);
+        systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
+
+        logEvent(currentUser, 'PAYOUT_REQ', `Requested $${amt} USDT payout on [${net}] to ${addr}`);
+        saveData();
+        initDashboard();
+        alert('Payout request submitted to Master Admin Queue.');
+    }
+
+    function renderPayoutHistory() {
+        const user = usersData[currentUser];
+        if (!user) return;
+        const tbody = document.getElementById('payoutHistoryTable');
+        tbody.innerHTML = (!user.payoutHistory || user.payoutHistory.length === 0) ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>` :
+            user.payoutHistory.map(p => `
+                <tr>
+                    <td class="p-3 font-mono font-bold text-blue-400">${p.network}</td>
+                    <td class="p-3 font-bold text-slate-200">$${p.amount.toFixed(2)}</td>
+                    <td class="p-3 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
+                    <td class="p-3"><span class="${p.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${p.status}</span></td>
+                </tr>
+            `).join('');
+    }
+
+    function toggleAdminPanel() {
+        const modal = document.getElementById('adminPanelModal');
+        modal.classList.toggle('hidden');
+        if (!modal.classList.contains('hidden')) renderAdminData();
+    }
+
+    function renderAdminData() {
+        document.getElementById('adminTRC20Input').value = systemData.addresses.TRC20;
+        document.getElementById('adminERC20Input').value = systemData.addresses.ERC20;
+        document.getElementById('adminSPLInput').value = systemData.addresses.SPL;
+        document.getElementById('adminBEP20Input').value = systemData.addresses.BEP20;
+
+        const devEmailEl = document.getElementById('adminDevEmailInput');
+        if (devEmailEl) devEmailEl.value = systemData.devEmail || '';
+
+        const devInput = document.getElementById("dev-count-input");
+        if (devInput) devInput.value = devManualOverrideCount !== null ? devManualOverrideCount : "";
+
+        renderDevPackageGrid();
+        renderAdminUserList();
+
+        let pendingSubsList = [];
+        Object.keys(usersData).forEach(u => {
+            const subs = usersData[u].activeSubscriptions || [];
+            subs.forEach(s => {
+                if (s.status === 'PENDING_VERIFICATION') {
+                    pendingSubsList.push({ ...s, username: u });
+                }
+            });
+        });
+
+        const pendingBadge = document.getElementById('pendingCountBadge');
+        if (pendingBadge) pendingBadge.innerText = `${pendingSubsList.length} Pending`;
+
+        const depTbody = document.getElementById('adminPendingDepositsTable');
+        if (depTbody) {
+            depTbody.innerHTML = pendingSubsList.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>` :
+                pendingSubsList.map((sub) => {
+                    const timeStr = new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <tr>
+                            <td class="p-2 font-mono text-slate-200">${sub.username}</td>
+                            <td class="p-2 font-mono text-amber-400">${sub.packageName} ($${sub.depositAmount})</td>
+                            <td class="p-2 font-mono text-slate-400">${timeStr}</td>
+                            <td class="p-2 text-right">
+                                <button onclick="approveSubscription('${sub.username}', '${sub.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve & Activate</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
         }
 
-        async function handleCoinShare(coinName, symbol) {
-            const data = getShareData();
-            if (data.count >= 5) return;
+        const payTbody = document.getElementById('adminPendingPayoutsTable');
+        if (payTbody) {
+            payTbody.innerHTML = systemData.pendingPayouts.length === 0 ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>` :
+                systemData.pendingPayouts.map((p, index) => `
+                    <tr>
+                        <td class="p-2.5 font-mono">${p.userId} <span class="text-amber-400">[${p.network}]</span></td>
+                        <td class="p-2.5 font-bold text-amber-400">$${p.amount}</td>
+                        <td class="p-2.5 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
+                        <td class="p-2.5">
+                            <button onclick="approvePayout(${index})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve Paid</button>
+                        </td>
+                    </tr>
+                `).join('');
+        }
 
-            const shareUrl = window.location.href;
-            const shareData = {
-                title: `Apex Yields - ${coinName} (${symbol})`,
-                text: `Check out live market data for ${coinName} (${symbol}) on Apex Yields!`,
-                url: shareUrl
+        renderAuditLogs();
+    }
+
+    function saveDevEmailSetting() {
+        const newEmail = document.getElementById('adminDevEmailInput').value.trim();
+        if (!newEmail || !newEmail.includes('@')) {
+            return alert('Please enter a valid developer email address.');
+        }
+        systemData.devEmail = newEmail;
+        saveData();
+        logEvent('ADMIN', 'UPDATE_DEV_EMAIL', `Updated developer log email target to ${newEmail}`);
+        alert(`Developer log email successfully updated and saved to: ${newEmail}`);
+    }
+
+    function approveSubscription(username, subId) {
+        const user = usersData[username];
+        if (!user || !user.activeSubscriptions) return;
+
+        const sub = user.activeSubscriptions.find(s => s.id === subId);
+        if (sub) {
+            const now = Date.now();
+            sub.status = 'ACTIVE';
+            sub.startTime = now;
+            sub.endTime = now + sub.lockDurationMs;
+
+            user.lockedPackages = (user.lockedPackages || 0) + sub.totalPayout;
+            user.hasDeposited = true;
+
+            if (!user.claimedPackages) user.claimedPackages = [];
+            if (!user.claimedPackages.includes(sub.packageName)) {
+                user.claimedPackages.push(sub.packageName);
+            }
+
+            if (packageUserOverrides[sub.packageName] !== undefined) {
+                packageUserOverrides[sub.packageName] += 1;
+            }
+
+            logEvent('ADMIN', 'APPROVE_PACKAGE', `Approved subscription ${sub.id} (${sub.packageName}) for ${username}`);
+            saveData();
+            renderAdminData();
+            if (currentUser === username) initDashboard();
+        }
+    }
+
+    function renderAdminUserList() {
+        const container = document.getElementById('adminUserList');
+        if (!container) return;
+
+        const users = Object.keys(usersData).filter(u => u !== 'admin');
+        if (users.length === 0) {
+            container.innerHTML = `<p class="text-xs text-slate-500 italic">No registered user accounts found.</p>`;
+            return;
+        }
+
+        let html = `<div class="space-y-2">`;
+        users.forEach(username => {
+            const u = usersData[username];
+            html += `
+                <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs">
+                    <div>
+                        <span class="font-bold text-slate-200">${username}</span>
+                        <span class="text-slate-400 ml-2">Bal: $${(u.balance || 0).toFixed(2)}</span>
+                    </div>
+                    <button onclick="deleteUserAccount('${username}')" class="px-2.5 py-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded transition text-[11px] font-semibold">
+                        Remove Account
+                    </button>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+
+    function deleteUserAccount(username) {
+        if (!confirm(`Are you sure you want to permanently remove user account "${username}"?`)) return;
+
+        delete usersData[username];
+        saveData();
+        renderAdminUserList();
+        logEvent('ADMIN', 'DELETE_USER', `Removed user account: ${username}`);
+        alert(`Account "${username}" has been removed.`);
+    }
+
+    function approvePayout(index) {
+        const pay = systemData.pendingPayouts[index];
+        const user = usersData[pay.userId];
+        if (user) {
+            const item = (user.payoutHistory || []).find(p => p.id === pay.id);
+            if (item) item.status = 'Completed';
+            logEvent('ADMIN', 'APPROVE_PAY', `Approved payout of $${pay.amount} USDT [${pay.network}] to ${pay.address}`);
+        }
+        systemData.pendingPayouts.splice(index, 1);
+        saveData();
+        renderAdminData();
+    }
+
+    function saveAdminSettings() {
+        systemData.addresses.TRC20 = document.getElementById('adminTRC20Input').value.trim();
+        systemData.addresses.ERC20 = document.getElementById('adminERC20Input').value.trim();
+        systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
+        systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
+        saveData();
+        alert('Multi-chain receiving addresses saved!');
+    }
+
+    function renderAuditLogs() {
+        const tbody = document.getElementById('adminAuditLogTable');
+        tbody.innerHTML = systemData.auditLogs.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>` :
+            systemData.auditLogs.map(l => `
+                <tr>
+                    <td class="p-2 text-slate-400">${l.time}</td>
+                    <td class="p-2 text-blue-400">${l.userId}</td>
+                    <td class="p-2 text-amber-300">${l.type}</td>
+                    <td class="p-2 text-slate-300">${l.details}</td>
+                </tr>
+            `).join('');
+    }
+
+    function triggerDevEmailLog() {
+        logEvent('ADMIN', 'DEV_LOG_PAYLOAD', `Audit log payload dispatched to ${systemData.devEmail}`);
+        alert(`Log payload generated for developer address: ${systemData.devEmail}`);
+    }
+
+    function copyRefCode() {
+        const code = document.getElementById('refCodeDisplay').innerText;
+        navigator.clipboard.writeText(code);
+        alert('Referral Code Copied!');
+    }
+
+    function promptInvestPackage(name, cost, duration = '30 Days') {
+        if (currentUser && !usersData[currentUser]) {
+            usersData[currentUser] = {
+                passcode: '', balance: 0, lockedPackages: 0,
+                claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
+                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
             };
+        }
 
-            if (navigator.share) {
-                try {
-                    await navigator.share(shareData);
-                    data.count++;
-                    localStorage.setItem('apex_share_tracker', JSON.stringify(data));
-                    updateShareUI();
-                } catch (err) {}
+        const user = usersData[currentUser];
+        if (user && user.claimedPackages && user.claimedPackages.includes(name)) {
+            return alert('You have already claimed this package tier limit.');
+        }
+
+        const qualifiedRefs = countQualifiedReferrals(user ? user.refCode : null);
+        const yieldCalc = calculateAffiliateYield(cost, qualifiedRefs);
+        const activeUserCount = getPackageActiveUsers(name);
+
+        selectedPackage = {
+            name,
+            cost: yieldCalc.initialDeposit,
+            profit: yieldCalc.finalYield,
+            rate: `+${yieldCalc.effectiveRate.toFixed(0)}%`,
+            duration
+        };
+
+        document.getElementById('modalPackageName').innerText = name;
+        document.getElementById('modalCost').innerText = `$${yieldCalc.initialDeposit.toFixed(2)} USDT`;
+        document.getElementById('modalActiveUsers').innerText = `${formatCompactNumber(activeUserCount)} users (${activeUserCount.toLocaleString()} exact)`;
+        document.getElementById('modalRate').innerText = `+${yieldCalc.effectiveRate.toFixed(0)}%`;
+        document.getElementById('modalProfit').innerText = `+$${yieldCalc.finalYield.toFixed(2)} USDT`;
+        document.getElementById('modalDuration').innerText = duration;
+        document.getElementById('modalTotalPayout').innerText = `$${yieldCalc.totalPayout.toFixed(2)} USDT`;
+
+        const capNotice = document.getElementById('modalCapNotice');
+        if (capNotice) {
+            if (yieldCalc.isCapped) {
+                capNotice.classList.remove('hidden');
+                capNotice.innerText = `🔒 Tier Cap Active: Bound by ${yieldCalc.capRate}% max limit (${qualifiedRefs} qualified referrals).`;
             } else {
-                navigator.clipboard.writeText(shareUrl);
-                alert(`Link for ${coinName} (${symbol}) copied to clipboard!`);
+                capNotice.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('investmentModal').classList.remove('hidden');
+    }
+
+    function closeInvestmentModal() {
+        document.getElementById('investmentModal').classList.add('hidden');
+        selectedPackage = null;
+    }
+
+    function confirmInvestment() {
+        if (!selectedPackage) return;
+
+        const user = usersData[currentUser];
+        if (!user) {
+            closeInvestmentModal();
+            return alert('Please sign in to continue.');
+        }
+
+        const { name, cost, profit, duration } = selectedPackage;
+
+        const durationMsMap = {
+            '3 Days': 3 * 24 * 60 * 60 * 1000,
+            '15 Days': 15 * 24 * 60 * 60 * 1000,
+            '3 Months (90 Days)': 90 * 24 * 60 * 60 * 1000,
+            '6 Months (180 Days)': 180 * 24 * 60 * 60 * 1000,
+            '12 Months (365 Days)': 365 * 24 * 60 * 60 * 1000
+        };
+
+        const lockDurationMs = durationMsMap[duration] || (30 * 24 * 60 * 60 * 1000);
+        const now = Date.now();
+
+        const packageRecord = {
+            id: 'SUB-' + now + '-' + Math.floor(Math.random() * 1000),
+            username: currentUser,
+            packageName: name,
+            depositAmount: cost,
+            expectedYield: profit,
+            totalPayout: cost + profit,
+            durationLabel: duration,
+            lockDurationMs: lockDurationMs,
+            submittedAt: now,
+            startTime: null,
+            endTime: null,
+            status: 'PENDING_VERIFICATION'
+        };
+
+        if (!user.activeSubscriptions) user.activeSubscriptions = [];
+        user.activeSubscriptions.push(packageRecord);
+
+        logEvent(currentUser, 'PACKAGE_REQUESTED', 
+            `User ${currentUser} requested ${name} ($${cost} USDT). Awaiting developer manual verification.`
+        );
+
+        saveData();
+        closeInvestmentModal();
+        initDashboard();
+        alert(`Deposit request submitted for ${name}! Please send payment. The dev will verify the address on-chain and activate your package.`);
+    }
+
+    function getShareData() {
+        const today = new Date().toISOString().split('T')[0];
+        const stored = JSON.parse(localStorage.getItem('apex_share_tracker') || '{}');
+        
+        if (stored.date !== today) {
+            return { date: today, count: 0 };
+        }
+        return stored;
+    }
+
+    function renderCoinTable() {
+        const container = document.getElementById('marketCoinList');
+        if (!container) return;
+        
+        const data = getShareData();
+        const isLimitReached = data.count >= 5;
+
+        container.innerHTML = extendedMarketCoins.map(coin => `
+            <tr class="hover:bg-slate-800/30">
+                <td class="p-2 font-bold text-slate-100">${coin.name}</td>
+                <td class="p-2 text-slate-400">${coin.symbol}/USDT</td>
+                <td class="p-2 text-right">
+                    <button 
+                        onclick="handleCoinShare('${coin.name}', '${coin.symbol}')"
+                        ${isLimitReached ? 'disabled' : ''}
+                        class="bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-lg transition-all ${isLimitReached ? 'opacity-40 cursor-not-allowed' : ''}">
+                        🔗 Share ${coin.symbol}
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updateShareUI() {
+        const data = getShareData();
+        const badge = document.getElementById('shareCountBadge');
+        if (badge) badge.innerText = `${data.count} / 5 Daily Shares`;
+        renderCoinTable();
+    }
+
+    async function handleCoinShare(coinName, symbol) {
+        const data = getShareData();
+        if (data.count >= 5) return;
+
+        const shareUrl = window.location.href;
+        const shareData = {
+            title: `Apex Yields - ${coinName} (${symbol})`,
+            text: `Check out live market data for ${coinName} (${symbol}) on Apex Yields!`,
+            url: shareUrl
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
                 data.count++;
                 localStorage.setItem('apex_share_tracker', JSON.stringify(data));
                 updateShareUI();
-            }
+            } catch (err) {}
+        } else {
+            navigator.clipboard.writeText(shareUrl);
+            alert(`Link for ${coinName} (${symbol}) copied to clipboard!`);
+            data.count++;
+            localStorage.setItem('apex_share_tracker', JSON.stringify(data));
+            updateShareUI();
         }
+    }
 
-        function handleDailyShare() {
-            handleCoinShare('Apex Yields', 'USDT');
-        }
+    function handleDailyShare() {
+        handleCoinShare('Apex Yields', 'USDT');
+    }
 
-        window.devSetPackageCount = (count) => {
-            devManualOverrideCount = count;
-            updateUniversalPackageCounts();
-        };
-
-        window.devSetPackageUserCount = (pkgName, count) => {
-            setSinglePackageDevCount(pkgName, count);
-        };
-
-        // DOM Load Initializer
-        document.addEventListener("DOMContentLoaded", () => {
-            updateUniversalPackageCounts();
-            renderDynamicPackageCards(0);
-            setInterval(renderUserActiveSubscriptions, 1000);
-        });
+    window.devSetPackageCount = (count) => {
+        devManualOverrideCount = parseInt(count, 10);
+        updateUniversalPackageCounts();
+    };
     </script>
 </body>
 </html>

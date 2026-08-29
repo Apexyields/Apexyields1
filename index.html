@@ -758,30 +758,39 @@
     </main>
 
     <script>
-        // Initialize Supabase Client
-    let supabaseClient = null;
+  // Initialize Supabase Client
+  let supabaseClient = null;
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (window.supabase) {
-        const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp'; // keep your full key here
-        
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (window.supabase) {
+      const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';
 
-        // 1. Check for existing session on page refresh
-        const { data: { session } } = await supabaseClient.auth.getSession();
+      // 1. Force explicit localStorage persistence options
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          storage: window.localStorage,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+
+      // 2. Listen for session updates
+      supabaseClient.auth.onAuthStateChange((event, session) => {
         if (session) {
           loadUserProfile();
         }
+      });
 
-        // 2. Listen for auth changes (login/logout)
-        supabaseClient.auth.onAuthStateChange((event, session) => {
-          if (session) {
-            loadUserProfile();
-          }
-        });
+      // 3. Fallback check for session on hard refresh
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        loadUserProfile();
       }
-    });
+    }
+  });
+
 
 
     // ==========================================

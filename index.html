@@ -758,14 +758,31 @@
     </main>
 
     <script>
-    // Initialize Supabase Client
-    const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp'; // Ensure your anon key is supplied here
-    
+        // Initialize Supabase Client
     let supabaseClient = null;
-    if (window.supabase) {
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (window.supabase) {
+        const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp'; // keep your full key here
+        
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
+
+        // 1. Check for existing session on page refresh
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          loadUserProfile();
+        }
+
+        // 2. Listen for auth changes (login/logout)
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+          if (session) {
+            loadUserProfile();
+          }
+        });
+      }
+    });
+
 
     // ==========================================
     // 1. AUTHENTICATION (Sign Up & Sign In)
@@ -1936,16 +1953,6 @@
         devManualOverrideCount = parseInt(count, 10);
         updateUniversalPackageCounts();
     };
-    // Listen for Supabase session initialization & changes automatically
-if (supabaseClient) {
-
-  supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (session) {
-      loadUserProfile();
-    }
-  });
-}
-
     </script>
 </body>
 </html>

@@ -760,7 +760,7 @@
     <script>
     // Initialize Supabase Client
     const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Ensure your anon key is supplied here
+    const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp'; // Ensure your anon key is supplied here
     
     let supabaseClient = null;
     if (window.supabase) {
@@ -1936,6 +1936,19 @@
         devManualOverrideCount = parseInt(count, 10);
         updateUniversalPackageCounts();
     };
+        // Automatically check session and load profile on page load/refresh
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!supabaseClient) return;
+
+  // Get the active session from local storage
+  const { data: { session } } = await supabaseClient.auth.getSession();
+
+  // If a logged-in session exists, load the profile details
+  if (session) {
+    loadUserProfile();
+  }
+});
+
     </script>
 </body>
 </html>

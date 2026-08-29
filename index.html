@@ -851,9 +851,8 @@
       if (!supabaseClient) return;
 
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return alert("Please log in first");
-
-      const { data, error } = await supabaseClient
+      if (!user) return;
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('username, balance, role')
         .eq('id', user.id)
@@ -864,7 +863,7 @@
       } else {
         const balanceElem = document.getElementById('userActiveBalance');
         const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${data.balance.toFixed(2)} USDT`;
+        if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)
         if (nameElem) nameElem.innerText = data.username;
       }
     }

@@ -1936,18 +1936,15 @@
         devManualOverrideCount = parseInt(count, 10);
         updateUniversalPackageCounts();
     };
-        // Automatically check session and load profile on page load/refresh
-document.addEventListener('DOMContentLoaded', async () => {
-  if (!supabaseClient) return;
+    // Listen for Supabase session initialization & changes automatically
+if (supabaseClient) {
 
-  // Get the active session from local storage
-  const { data: { session } } = await supabaseClient.auth.getSession();
-
-  // If a logged-in session exists, load the profile details
-  if (session) {
-    loadUserProfile();
-  }
-});
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      loadUserProfile();
+    }
+  });
+}
 
     </script>
 </body>

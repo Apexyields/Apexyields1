@@ -836,6 +836,17 @@
         loadUserProfile();
       }
     }
+async function handleLogin(e) {
+  if (e) e.preventDefault();
+  const emailElem = document.getElementById('login-email') || document.getElementById('email');
+  const passwordElem = document.getElementById('login-password') || document.getElementById('password');
+  
+  if (emailElem && passwordElem) {
+    await loginUser(emailElem.value, passwordElem.value);
+  } else {
+    alert("Could not find login input fields.");
+  }
+}
 
     async function logoutUser() {
       if (!supabaseClient) return alert("Supabase is not initialized correctly.");

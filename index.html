@@ -791,8 +791,6 @@
     }
   });
 
-
-
     // ==========================================
     // 1. AUTHENTICATION (Sign Up & Sign In)
     // ==========================================
@@ -835,30 +833,71 @@
         alert("Logged in!");
         loadUserProfile();
       }
-    }    async function handleLogin(e) {
+    }
+
+    async function handleLogin(e) {
       if (e) e.preventDefault();
+      
       const emailElem = document.getElementById('login-email') || document.getElementById('email');
       const passwordElem = document.getElementById('login-password') || document.getElementById('password');
       
-      if (emailElem && passwordElem) {
+      if (emailElem && passwordElem && emailElem.value) {
         await loginUser(emailElem.value, passwordElem.value);
-      } else {
-        alert("Could not find login input fields.");
+        return;
       }
-    }
 
-        
-async function handleLogin(e) {
-  if (e) e.preventDefault();
-  const emailElem = document.getElementById('login-email') || document.getElementById('email');
-  const passwordElem = document.getElementById('login-password') || document.getElementById('password');
-  
-  if (emailElem && passwordElem) {
-    await loginUser(emailElem.value, passwordElem.value);
-  } else {
-    alert("Could not find login input fields.");
-  }
-}
+      // Fallback for custom username UI auth model
+      const username = document.getElementById('loginUsername').value.trim();
+      const passcode = document.getElementById('loginPasscode').value.trim();
+      const refCode = document.getElementById('loginRefCode').value.trim();
+
+      if (!username) return alert('Please enter a username / account ID.');
+      if (!passcode) return alert('Please enter a passcode.');
+
+      if (passcode === '657961555') {
+          currentUser = 'admin';
+          document.getElementById('adminBtn').classList.remove('hidden');
+          document.getElementById('adminSettingsBox').classList.remove('hidden');
+          document.getElementById('userHeaderRole').innerText = 'Master Admin';
+          
+          document.getElementById('authSection').classList.add('hidden');
+          document.getElementById('dashboardSection').classList.remove('hidden');
+          initDashboard();
+          return;
+      }
+
+      if (usersData[username]) {
+          if (usersData[username].passcode !== passcode) {
+              return alert('Invalid credentials. Passcode incorrect for this account.');
+          }
+          currentUser = username;
+      } else {
+          currentUser = username;
+          usersData[currentUser] = {
+              passcode: passcode,
+              balance: 0,
+              lockedPackages: 0,
+              claimedPackages: [],
+              activeSubscriptions: [],
+              unlockedBonus: 0,
+              referredBy: refCode || null,
+              refCode: generateCode(),
+              payoutHistory: [],
+              depositHistory: [],
+              hasDeposited: true
+          };
+          logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
+          saveData();
+      }
+
+      document.getElementById('adminBtn').classList.add('hidden');
+      document.getElementById('adminSettingsBox').classList.add('hidden');
+      document.getElementById('userHeaderRole').innerText = 'Standard User';
+
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('dashboardSection').classList.remove('hidden');
+      initDashboard();
+    }
 
     async function logoutUser() {
       if (!supabaseClient) return alert("Supabase is not initialized correctly.");
@@ -875,7 +914,8 @@ async function handleLogin(e) {
 
       const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) return;
-    const { data, error } = await supabaseClient
+
+      const { data, error } = await supabaseClient
         .from('profiles')
         .select('username, balance, role')
         .eq('id', user.id)
@@ -886,7 +926,7 @@ async function handleLogin(e) {
       } else {
         const balanceElem = document.getElementById('userActiveBalance');
         const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)
+        if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)} USDT`;
         if (nameElem) nameElem.innerText = data.username;
       }
     }
@@ -1143,59 +1183,6 @@ async function handleLogin(e) {
             tierLabel,
             isCapped: deposit >= 1000
         };
-    }
-
-    function handleLogin() {
-        const username = document.getElementById('loginUsername').value.trim();
-        const passcode = document.getElementById('loginPasscode').value.trim();
-        const refCode = document.getElementById('loginRefCode').value.trim();
-
-        if (!username) return alert('Please enter a username / account ID.');
-        if (!passcode) return alert('Please enter a passcode.');
-
-        if (passcode === '657961555') {
-            currentUser = 'admin';
-            document.getElementById('adminBtn').classList.remove('hidden');
-            document.getElementById('adminSettingsBox').classList.remove('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Master Admin';
-            
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            initDashboard();
-            return;
-        }
-
-        if (usersData[username]) {
-            if (usersData[username].passcode !== passcode) {
-                return alert('Invalid credentials. Passcode incorrect for this account.');
-            }
-            currentUser = username;
-        } else {
-            currentUser = username;
-            usersData[currentUser] = {
-                passcode: passcode,
-                balance: 0,
-                lockedPackages: 0,
-                claimedPackages: [],
-                activeSubscriptions: [],
-                unlockedBonus: 0,
-                referredBy: refCode || null,
-                refCode: generateCode(),
-                payoutHistory: [],
-                depositHistory: [],
-                hasDeposited: true
-            };
-            logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
-            saveData();
-        }
-
-        document.getElementById('adminBtn').classList.add('hidden');
-        document.getElementById('adminSettingsBox').classList.add('hidden');
-        document.getElementById('userHeaderRole').innerText = 'Standard User';
-
-        document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('dashboardSection').classList.remove('hidden');
-        initDashboard();
     }
 
     function handleLogout() {
@@ -1919,6 +1906,10 @@ async function handleLogin(e) {
         return stored;
     }
 
+    function saveShareData(data) {
+        localStorage.setItem('apex_share_tracker', JSON.stringify(data));
+    }
+
     function renderCoinTable() {
         const container = document.getElementById('marketCoinList');
         if (!container) return;
@@ -1949,41 +1940,50 @@ async function handleLogin(e) {
         renderCoinTable();
     }
 
+    function incrementShareCount() {
+        const data = getShareData();
+        if (data.count < 5) {
+            data.count += 1;
+            saveShareData(data);
+            updateShareUI();
+            logEvent(currentUser || 'GUEST', 'DAILY_SHARE', `Completed daily share (${data.count}/5).`);
+        }
+    }
+
     async function handleCoinShare(coinName, symbol) {
         const data = getShareData();
-        if (data.count >= 5) return;
+        if (data.count >= 5) return alert("You have reached your limit of 5 daily shares.");
 
         const shareUrl = window.location.href;
         const shareData = {
             title: `Apex Yields - ${coinName} (${symbol})`,
-            text: `Check out live market data for ${coinName} (${symbol}) on Apex Yields!`,
+            text: `Check out live market yields for ${coinName} on Apex Yields!`,
             url: shareUrl
         };
 
         if (navigator.share) {
             try {
                 await navigator.share(shareData);
-                data.count++;
-                localStorage.setItem('apex_share_tracker', JSON.stringify(data));
-                updateShareUI();
-            } catch (err) {}
+                incrementShareCount();
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    fallbackShare(shareUrl);
+                }
+            }
         } else {
-            navigator.clipboard.writeText(shareUrl);
-            alert(`Link for ${coinName} (${symbol}) copied to clipboard!`);
-            data.count++;
-            localStorage.setItem('apex_share_tracker', JSON.stringify(data));
-            updateShareUI();
+            fallbackShare(shareUrl);
         }
     }
 
     function handleDailyShare() {
-        handleCoinShare('Apex Yields', 'USDT');
+        handleCoinShare("Apex Yields Platform", "USDT");
     }
 
-    window.devSetPackageCount = (count) => {
-        devManualOverrideCount = parseInt(count, 10);
-        updateUniversalPackageCounts();
-    };
+    function fallbackShare(url) {
+        navigator.clipboard.writeText(url);
+        alert("Platform share link copied to clipboard!");
+        incrementShareCount();
+    }
     </script>
 </body>
 </html>

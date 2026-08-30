@@ -1270,7 +1270,24 @@
         }).join('');
     }
 
-    function initDashboard() {
+    async function initDashboard() {
+        // Recover user session on page refresh before running dashboard logic
+        if (typeof supabase !== 'undefined' && supabase.auth) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user) {
+                currentUser = session.user.email || session.user.id;
+            }
+        }
+
+        if (!currentUser) {
+            currentUser = localStorage.getItem('currentUser') || localStorage.getItem('activeUser');
+        }
+
+        if (!currentUser) {
+            window.location.href = 'index.html';
+            return;
+        }
+
         if (currentUser === 'admin') {
             renderAdminData();
             renderDynamicPackageCards(0);
@@ -1285,6 +1302,7 @@
                 referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
             };
         }
+
 
         const user = usersData[currentUser];
         if (!user.claimedPackages) user.claimedPackages = [];

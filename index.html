@@ -758,151 +758,151 @@
     </main>
 
     <script>
-  // Initialize Supabase Client
-  let supabaseClient = null;
+    // Initialize Supabase Client
+    let supabaseClient = null;
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    if (window.supabase) {
-      const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
-      const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (window.supabase) {
+            const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
+            const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';
 
-      // 1. Force explicit localStorage persistence options
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          storage: window.localStorage,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
+            // 1. Force explicit localStorage persistence options
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    persistSession: true,
+                    storage: window.localStorage,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            });
+
+            // 2. Listen for session updates
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (session) {
+                    loadUserProfile();
+                }
+            });
+
+            // 3. Fallback check for session on hard refresh
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                loadUserProfile();
+            }
         }
-      });
-
-      // 2. Listen for session updates
-      supabaseClient.auth.onAuthStateChange((event, session) => {
-        if (session) {
-          loadUserProfile();
-        }
-      });
-
-      // 3. Fallback check for session on hard refresh
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session) {
-        loadUserProfile();
-      }
-    }
-  });
+    });
 
     // ==========================================
     // 1. AUTHENTICATION (Sign Up & Sign In)
     // ==========================================
 
     async function signUpUser(email, password, username) {
-      if (!supabaseClient) return alert("Supabase is not initialized correctly.");
-      
-      const { data, error } = await supabaseClient.auth.signUp({
-        email: email,
-        password: password
-      });
+        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
+        
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password
+        });
 
-      if (error) {
-        alert("Sign up failed: " + error.message);
-        return;
-      }
+        if (error) {
+            alert("Sign up failed: " + error.message);
+            return;
+        }
 
-      if (data.user) {
-        const { error: profileError } = await supabaseClient
-          .from('profiles')
-          .insert([{ id: data.user.id, username: username, balance: 0, role: 'user' }]);
+        if (data.user) {
+            const { error: profileError } = await supabaseClient
+                .from('profiles')
+                .insert([{ id: data.user.id, username: username, balance: 0, role: 'user' }]);
 
-        if (profileError) console.error("Profile creation error:", profileError.message);
-      }
+            if (profileError) console.error("Profile creation error:", profileError.message);
+        }
 
-      alert("Account created successfully! Check your email to confirm.");
+        alert("Account created successfully! Check your email to confirm.");
     }
 
     async function loginUser(email, password) {
-      if (!supabaseClient) return alert("Supabase is not initialized correctly.");
+        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
 
-      if (error) {
-        alert("Login failed: " + error.message);
-      } else {
-        alert("Logged in!");
-        loadUserProfile();
-      }
+        if (error) {
+            alert("Login failed: " + error.message);
+        } else {
+            alert("Logged in!");
+            loadUserProfile();
+        }
     }
 
     async function handleLogin(e) {
-      if (e) e.preventDefault();
-      
-      const emailElem = document.getElementById('login-email') || document.getElementById('email');
-      const passwordElem = document.getElementById('login-password') || document.getElementById('password');
-      
-      if (emailElem && passwordElem && emailElem.value) {
-        await loginUser(emailElem.value, passwordElem.value);
-        return;
-      }
+        if (e) e.preventDefault();
+        
+        const emailElem = document.getElementById('login-email') || document.getElementById('email');
+        const passwordElem = document.getElementById('login-password') || document.getElementById('password');
+        
+        if (emailElem && passwordElem && emailElem.value) {
+            await loginUser(emailElem.value, passwordElem.value);
+            return;
+        }
 
-      // Fallback for custom username UI auth model
-      const username = document.getElementById('loginUsername').value.trim();
-      const passcode = document.getElementById('loginPasscode').value.trim();
-      const refCode = document.getElementById('loginRefCode').value.trim();
+        // Fallback for custom username UI auth model
+        const username = document.getElementById('loginUsername').value.trim();
+        const passcode = document.getElementById('loginPasscode').value.trim();
+        const refCode = document.getElementById('loginRefCode').value.trim();
 
-      if (!username) return alert('Please enter a username / account ID.');
-      if (!passcode) return alert('Please enter a passcode.');
+        if (!username) return alert('Please enter a username / account ID.');
+        if (!passcode) return alert('Please enter a passcode.');
 
-      if (passcode === '657961555') {
-          currentUser = 'admin';
-          document.getElementById('adminBtn').classList.remove('hidden');
-          document.getElementById('adminSettingsBox').classList.remove('hidden');
-          document.getElementById('userHeaderRole').innerText = 'Master Admin';
-          
-          document.getElementById('authSection').classList.add('hidden');
-          document.getElementById('dashboardSection').classList.remove('hidden');
-          initDashboard();
-          return;
-      }
+        if (passcode === '657961555') {
+            currentUser = 'admin';
+            document.getElementById('adminBtn').classList.remove('hidden');
+            document.getElementById('adminSettingsBox').classList.remove('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Master Admin';
+            
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            initDashboard();
+            return;
+        }
 
-      if (usersData[username]) {
-          if (usersData[username].passcode !== passcode) {
-              return alert('Invalid credentials. Passcode incorrect for this account.');
-          }
-          currentUser = username;
-      } else {
-          currentUser = username;
-          usersData[currentUser] = {
-              passcode: passcode,
-              balance: 0,
-              lockedPackages: 0,
-              claimedPackages: [],
-              activeSubscriptions: [],
-              unlockedBonus: 0,
-              referredBy: refCode || null,
-              refCode: generateCode(),
-              payoutHistory: [],
-              depositHistory: [],
-              hasDeposited: true
-          };
-          logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
-          saveData();
-      }
+        if (usersData[username]) {
+            if (usersData[username].passcode !== passcode) {
+                return alert('Invalid credentials. Passcode incorrect for this account.');
+            }
+            currentUser = username;
+        } else {
+            currentUser = username;
+            usersData[currentUser] = {
+                passcode: passcode,
+                balance: 0,
+                lockedPackages: 0,
+                claimedPackages: [],
+                activeSubscriptions: [],
+                unlockedBonus: 0,
+                referredBy: refCode || null,
+                refCode: generateCode(),
+                payoutHistory: [],
+                depositHistory: [],
+                hasDeposited: true
+            };
+            logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
+            saveData();
+        }
 
-      document.getElementById('adminBtn').classList.add('hidden');
-      document.getElementById('adminSettingsBox').classList.add('hidden');
-      document.getElementById('userHeaderRole').innerText = 'Standard User';
+        document.getElementById('adminBtn').classList.add('hidden');
+        document.getElementById('adminSettingsBox').classList.add('hidden');
+        document.getElementById('userHeaderRole').innerText = 'Standard User';
 
-      document.getElementById('authSection').classList.add('hidden');
-      document.getElementById('dashboardSection').classList.remove('hidden');
-      initDashboard();
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('dashboardSection').classList.remove('hidden');
+        initDashboard();
     }
 
     async function logoutUser() {
-      if (!supabaseClient) return alert("Supabase is not initialized correctly.");
-      await supabaseClient.auth.signOut();
-      alert("Logged out successfully");
+        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
+        await supabaseClient.auth.signOut();
+        alert("Logged out successfully");
     }
 
     // ==========================================
@@ -910,25 +910,25 @@
     // ==========================================
 
     async function loadUserProfile() {
-      if (!supabaseClient) return;
+        if (!supabaseClient) return;
 
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return;
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
 
-      const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('username, balance, role')
-        .eq('id', user.id)
-        .single();
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('username, balance, role')
+            .eq('id', user.id)
+            .single();
 
-      if (error) {
-        console.error("Error loading profile:", error.message);
-      } else {
-        const balanceElem = document.getElementById('userActiveBalance');
-        const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)} USDT`;
-        if (nameElem) nameElem.innerText = data.username;
-      }
+        if (error) {
+            console.error("Error loading profile:", error.message);
+        } else {
+            const balanceElem = document.getElementById('userActiveBalance');
+            const nameElem = document.getElementById('username-display');
+            if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)} USDT`;
+            if (nameElem) nameElem.innerText = data.username;
+        }
     }
 
     // ==========================================
@@ -936,32 +936,32 @@
     // ==========================================
 
     async function processDeposit(amount) {
-      if (!supabaseClient) return alert("Supabase is not initialized correctly.");
+        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
 
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return alert("Please log in first");
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return alert("Please log in first");
 
-      const { data: profile, error: fetchErr } = await supabaseClient
-        .from('profiles')
-        .select('balance')
-        .eq('id', user.id)
-        .single();
+        const { data: profile, error: fetchErr } = await supabaseClient
+            .from('profiles')
+            .select('balance')
+            .eq('id', user.id)
+            .single();
 
-      if (fetchErr) return alert("Error reading balance");
+        if (fetchErr) return alert("Error reading balance");
 
-      const newBalance = Number(profile.balance) + Number(amount);
+        const newBalance = Number(profile.balance) + Number(amount);
 
-      const { error: updateErr } = await supabaseClient
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', user.id);
+        const { error: updateErr } = await supabaseClient
+            .from('profiles')
+            .update({ balance: newBalance })
+            .eq('id', user.id);
 
-      if (updateErr) {
-        alert("Deposit failed: " + updateErr.message);
-      } else {
-        alert(`Success! New balance: $${newBalance}`);
-        loadUserProfile();
-      }
+        if (updateErr) {
+            alert("Deposit failed: " + updateErr.message);
+        } else {
+            alert(`Success! New balance: $${newBalance}`);
+            loadUserProfile();
+        }
     }
 
     // ANNOUNCEMENT POPUP CONTROLLERS
@@ -1302,7 +1302,6 @@
                 referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
             };
         }
-
 
         const user = usersData[currentUser];
         if (!user.claimedPackages) user.claimedPackages = [];
@@ -1928,6 +1927,61 @@
         localStorage.setItem('apex_share_tracker', JSON.stringify(data));
     }
 
+    function updateShareUI() {
+        const data = getShareData();
+        const badge = document.getElementById('shareCountBadge');
+        if (badge) {
+            badge.innerText = `${data.count} / 5 Daily Shares`;
+        }
+    }
+
+    function executeShareAction(shareTitle, shareText) {
+        const shareData = getShareData();
+        if (shareData.count >= 5) {
+            alert("Daily share limit reached (5/5). Come back tomorrow to share more!");
+            return;
+        }
+
+        const shareUrl = window.location.origin + window.location.pathname;
+
+        if (navigator.share) {
+            navigator.share({
+                title: shareTitle,
+                text: shareText,
+                url: shareUrl
+            }).then(() => {
+                shareData.count += 1;
+                saveShareData(shareData);
+                updateShareUI();
+                renderCoinTable();
+                alert(`Shared successfully! (${shareData.count}/5 daily shares completed)`);
+            }).catch(err => {
+                if (err.name !== 'AbortError') {
+                    fallbackCopyShare(shareUrl, shareData);
+                }
+            });
+        } else {
+            fallbackCopyShare(shareUrl, shareData);
+        }
+    }
+
+    function fallbackCopyShare(url, shareData) {
+        navigator.clipboard.writeText(url);
+        shareData.count += 1;
+        saveShareData(shareData);
+        updateShareUI();
+        renderCoinTable();
+        alert(`Platform link copied to clipboard! (${shareData.count}/5 daily shares completed)`);
+    }
+
+    function handleDailyShare() {
+        executeShareAction("Apex Yields Platform", "Join Apex Yields to explore multi-chain USDT yield vaults!");
+    }
+
+    function handleCoinShare(name, symbol) {
+        executeShareAction(`${name} (${symbol}) on Apex Yields`, `Check out real-time ${name} performance on Apex Yields!`);
+    }
+
     function renderCoinTable() {
         const container = document.getElementById('marketCoinList');
         if (!container) return;
@@ -1949,58 +2003,6 @@
                 </td>
             </tr>
         `).join('');
-    }
-
-    function updateShareUI() {
-        const data = getShareData();
-        const badge = document.getElementById('shareCountBadge');
-        if (badge) badge.innerText = `${data.count} / 5 Daily Shares`;
-        renderCoinTable();
-    }
-
-    function incrementShareCount() {
-        const data = getShareData();
-        if (data.count < 5) {
-            data.count += 1;
-            saveShareData(data);
-            updateShareUI();
-            logEvent(currentUser || 'GUEST', 'DAILY_SHARE', `Completed daily share (${data.count}/5).`);
-        }
-    }
-
-    async function handleCoinShare(coinName, symbol) {
-        const data = getShareData();
-        if (data.count >= 5) return alert("You have reached your limit of 5 daily shares.");
-
-        const shareUrl = window.location.href;
-        const shareData = {
-            title: `Apex Yields - ${coinName} (${symbol})`,
-            text: `Check out live market yields for ${coinName} on Apex Yields!`,
-            url: shareUrl
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-                incrementShareCount();
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    fallbackShare(shareUrl);
-                }
-            }
-        } else {
-            fallbackShare(shareUrl);
-        }
-    }
-
-    function handleDailyShare() {
-        handleCoinShare("Apex Yields Platform", "USDT");
-    }
-
-    function fallbackShare(url) {
-        navigator.clipboard.writeText(url);
-        alert("Platform share link copied to clipboard!");
-        incrementShareCount();
     }
     </script>
 </body>

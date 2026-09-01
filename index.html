@@ -763,6 +763,23 @@
     let supabaseClient = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
+            // Auto-capture referral code from URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const refParam = urlParams.get('ref');
+    if (refParam) {
+        localStorage.setItem('apex_pending_ref', refParam);
+        const refInput = document.getElementById('loginRefCode');
+        if (refInput) {
+            refInput.value = refParam;
+        }
+    } else {
+        const savedRef = localStorage.getItem('apex_pending_ref');
+        const refInput = document.getElementById('loginRefCode');
+        if (savedRef && refInput) {
+            refInput.value = savedRef;
+        }
+    }
+
         if (window.supabase) {
             const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';

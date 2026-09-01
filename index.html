@@ -1936,13 +1936,16 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
         const lockDurationMs = durationMsMap[duration] || (30 * 24 * 60 * 60 * 1000);
         const now = Date.now();
 
+                const activeCapRate = user.activeCap || 30;
+        const adjustedProfit = cost * (activeCapRate / 100);
+
         const packageRecord = {
             id: 'SUB-' + now + '-' + Math.floor(Math.random() * 1000),
             username: currentUser,
             packageName: name,
             depositAmount: cost,
-            expectedYield: profit,
-            totalPayout: cost + profit,
+            expectedYield: adjustedProfit,
+            totalPayout: cost + adjustedProfit,
             durationLabel: duration,
             lockDurationMs: lockDurationMs,
             submittedAt: now,
@@ -1950,6 +1953,7 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
             endTime: null,
             status: 'PENDING_VERIFICATION'
         };
+
 
         if (!user.activeSubscriptions) user.activeSubscriptions = [];
         user.activeSubscriptions.unshift(packageRecord);

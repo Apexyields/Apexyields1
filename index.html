@@ -835,8 +835,12 @@
         }
     }
 
-        async function handleLogin(e) {
-        if (e) e.preventDefault();
+            async function handleLogin(e) {
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        } else if (window.event) {
+            window.event.returnValue = false;
+        }
 
         const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
         const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
@@ -883,6 +887,47 @@
             initDashboard();
             return;
         }
+
+        // 2. If login failed because account doesn't exist, automatically Sign Up
+        if (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400) {
+            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password
+            });
+
+            if (signUpError) {
+                return alert("Authentication failed: " + signUpError.message);
+            }
+
+            if (signUpData.user) {
+                // Create user profile in 'profiles' table
+                const { error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ 
+                        id: signUpData.user.id, 
+                        username: username, 
+                        balance: 0, 
+                        role: 'user',
+                        referred_by: refCode || null 
+                    }]);
+
+                if (profileError) console.error("Profile creation error:", profileError.message);
+
+                // Switch UI to Dashboard
+                document.getElementById('adminBtn').classList.add('hidden');
+                document.getElementById('adminSettingsBox').classList.add('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Standard User';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+
+                loadUserProfile();
+                initDashboard();
+            }
+        } else {
+            alert("Login failed: " + signInError.message);
+        }
+    }
+
 
         // 2. If login failed because account doesn't exist, automatically Sign Up
         if (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400) {

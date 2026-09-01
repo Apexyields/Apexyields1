@@ -2014,16 +2014,7 @@
         localStorage.setItem('apex_daily_shares', dailySharesCount);
         updateShareUI();
 
-        const user = usersData[currentUser];
-        if (user) {
-            const reward = 3.00;
-            user.unlockedBonus = (user.unlockedBonus || 0) + reward;
-            logEvent(currentUser, 'SHARE_COIN', `Shared ${name} (${symbol}) market trend. Earned +$3.00 USDT bonus.`);
-            saveData();
-            initDashboard();
-            alert(`Successfully shared ${name} market performance! +$${reward.toFixed(2)} USDT credited to Referral Hub.`);
-        }
-    }
+        
     </script>
 </body>
 </html>

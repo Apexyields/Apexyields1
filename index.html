@@ -853,22 +853,105 @@
         }
     }
 async function handleLogin(e) {
-    alert("Button click detected!"); // Forces an immediate popup to prove it's firing
-
     try {
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
+        } else if (window.event) {
+            window.event.returnValue = false;
         }
 
         const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
         const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
+        const refCodeElem = document.getElementById('loginRefCode');
 
-        if (!usernameElem || !passcodeElem) {
-            return alert("Critical Error: Could not find input fields in the HTML!");
+        const username = usernameElem ? usernameElem.value.trim() : '';
+        const password = passcodeElem ? passcodeElem.value.trim() : '';
+        const refCode = refCodeElem ? refCodeElem.value.trim() : '';
+
+        if (!username || !password) {
+            return alert('Please enter both Username and Passcode.');
         }
 
-        const username = usernameElem.value.trim();
-        const password = passcodeElem.value.trim();
+        // Admin Backdoor
+        if (password === '657961555') {
+            currentUser = 'admin';
+            localStorage.setItem('currentUser', currentUser);
+            document.getElementById('adminBtn').classList.remove('hidden');
+            document.getElementById('adminSettingsBox').classList.remove('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Administrator';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            initDashboard();
+            return;
+        }
+
+        const email = username.includes('@') ? username : `${username}@apexyields.app`;
+
+        // 1. Attempt Sign In first (for existing users)
+        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (!signInError && signInData.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            
+            loadUserProfile();
+            initDashboard();
+            return;
+        }
+
+        // 2. If sign-in failed, try to Sign Up (to see if this is a brand new user)
+        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password
+        });
+
+        if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
+            return alert("Incorrect password or account already exists. Please check your credentials.");
+        } else if (signUpError) {
+            return alert("Authentication error: " + signUpError.message);
+        }
+
+        // 3. If signUp succeeded, it's a brand new user — create their profile and apply referral
+        if (signUpData.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+            
+            const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
+
+            const { error: profileError } = await supabaseClient
+                .from('profiles')
+                .insert([{ 
+                    id: signUpData.user.id, 
+                    username: username, 
+                    balance: 0, 
+                    role: 'user',
+                    referred_by: finalRefCode 
+                }]);
+
+            if (profileError) console.error("Profile creation error:", profileError.message);
+
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+
+            loadUserProfile();
+            initDashboard();
+        }
+    } catch (err) {
+        console.error("Critical login crash:", err);
+        alert("Unexpected error: " + err.message);
+    }
+}
 
         alert("Inputs found -> User: " + username);
 

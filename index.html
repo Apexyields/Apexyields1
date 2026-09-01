@@ -84,8 +84,8 @@
                 <input type="text" id="loginUsername" placeholder="Username / Account ID" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <input type="password" id="loginPasscode" placeholder="Password / Passcode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <input type="text" id="loginRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">
-                    Sign In / Register
+                <button onclick="handleLogin(event)" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">
+        Sign In / Register
                 </button>
             </div>
         </section>
@@ -834,8 +834,7 @@
             loadUserProfile();
         }
     }
-
-            async function handleLogin(e) {
+       async function handleLogin(e) {
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         } else if (window.event) {
@@ -927,10 +926,9 @@
             alert("Login failed: " + signInError.message);
         }
     }
-document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
+window.handleLogin = handleLogin;
 
-
-        // 2. If login failed because account doesn't exist, automatically Sign Up
+    // 2. If login failed because account doesn't exist, automatically Sign Up
         if (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400) {
             const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
                 email: email,

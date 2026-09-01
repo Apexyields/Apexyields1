@@ -1990,15 +1990,17 @@
         const isLimitReached = data.count >= 5;
 
         container.innerHTML = extendedMarketCoins.map(coin => `
-            <tr class="hover:bg-slate-800/30">
-                <td class="p-2 font-bold text-slate-100">${coin.name}</td>
-                <td class="p-2 text-slate-400">${coin.symbol}/USDT</td>
+            <tr>
+                <td class="p-2 font-semibold text-slate-100">${coin.name}</td>
+                <td class="p-2 font-mono text-slate-400">${coin.symbol}</td>
                 <td class="p-2 text-right">
-                    <button 
-                        onclick="handleCoinShare('${coin.name}', '${coin.symbol}')"
-                        ${isLimitReached ? 'disabled' : ''}
-                        class="bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-lg transition-all ${isLimitReached ? 'opacity-40 cursor-not-allowed' : ''}">
-                        🔗 Share ${coin.symbol}
+                    <button onclick="handleCoinShare('${coin.name}', '${coin.symbol}')" 
+                        class="px-2.5 py-1 text-[11px] font-bold rounded transition-all ${
+                            isLimitReached 
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' 
+                            : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 border border-emerald-500/30'
+                        }">
+                        ${isLimitReached ? 'Limit Reached' : '🔗 Share Coin'}
                     </button>
                 </td>
             </tr>

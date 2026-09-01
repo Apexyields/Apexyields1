@@ -852,8 +852,8 @@
             loadUserProfile();
         }
     }
-
-    async function handleLogin(e) {
+async function handleLogin(e) {
+    try {
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         } else if (window.event) {
@@ -875,17 +875,19 @@
         // Admin Backdoor
         if (password === '657961555') {
             currentUser = 'admin';
+            localStorage.setItem('currentUser', currentUser);
             document.getElementById('adminBtn').classList.remove('hidden');
             document.getElementById('adminSettingsBox').classList.remove('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Master Admin';
+            document.getElementById('userHeaderRole').innerText = 'Administrator';
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('dashboardSection').classList.remove('hidden');
             initDashboard();
             return;
         }
 
-        // Format username as a synthetic email for Supabase Auth
         const email = username.includes('@') ? username : `${username}@apexyields.app`;
+
+        console.log("Attempting sign in for:", email);
 
         // 1. Attempt Sign In
         const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
@@ -906,6 +908,53 @@
             initDashboard();
             return;
         }
+
+        console.log("Sign-in failed, attempting auto sign-up...", signInError);
+
+        // 2. Fallback: Automatically Sign Up if user doesn't exist
+        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password
+        });
+
+        if (signUpError) {
+            return alert("Sign-up error: " + signUpError.message);
+        }
+
+        if (signUpData.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+            
+            const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
+
+            const { error: profileError } = await supabaseClient
+                .from('profiles')
+                .insert([{ 
+                    id: signUpData.user.id, 
+                    username: username, 
+                    balance: 0, 
+                    role: 'user',
+                    referred_by: finalRefCode 
+                }]);
+
+            if (profileError) console.error("Profile creation error:", profileError.message);
+
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+
+            loadUserProfile();
+            initDashboard();
+        }
+    } catch (err) {
+        console.error("Critical login crash:", err);
+        alert("Unexpected error: " + err.message);
+    }
+}
+
+    
 
         // Log the exact error to inspect why sign-in failed
         console.log("Sign-in failed, checking fallback:", signInError);

@@ -1965,53 +1965,57 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
         alert(`Lockup request for ${name} submitted successfully! Awaiting admin verification.`);
     }
 
-    let dailySharesCount = parseInt(localStorage.getItem('apex_daily_shares') || '0', 10);
-    let lastShareDay = localStorage.getItem('apex_last_share_date') || '';
-
-    function checkDailyReset() {
+        function checkDailyReset(user) {
         const todayStr = new Date().toDateString();
-        if (lastShareDay !== todayStr) {
-            dailySharesCount = 0;
-            lastShareDay = todayStr;
-            localStorage.setItem('apex_daily_shares', dailySharesCount);
-            localStorage.setItem('apex_last_share_date', lastShareDay);
+        if (user.lastShareDay !== todayStr) {
+            user.dailySharesCount = 0;
+            user.lastShareDay = todayStr;
         }
     }
 
     function updateShareUI() {
-        checkDailyReset();
+        const user = usersData[currentUser];
+        if (!user) return;
+        
+        checkDailyReset(user);
+        const count = user.dailySharesCount || 0;
+        
         const badge = document.getElementById('shareCountBadge');
         const btn = document.getElementById('shareBtn');
-        if (badge) badge.innerText = `${dailySharesCount} / 5 Daily Shares`;
+        if (badge) badge.innerText = `${count} / 5 Daily Shares`;
 
-        if (dailySharesCount >= 5) {
+        if (count >= 5) {
             if (btn) {
                 btn.disabled = true;
                 btn.className = "bg-slate-800 text-slate-500 font-bold text-xs px-4 py-2 rounded-xl cursor-not-allowed";
                 btn.innerText = "Daily Limit Reached (5/5)";
             }
+        } else {
+            if (btn) {
+                btn.disabled = false;
+                btn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition";
+                btn.innerText = "Share Platform";
+            }
         }
     }
 
     function handleDailyShare() {
-        checkDailyReset();
-        if (dailySharesCount >= 5) {
+        const user = usersData[currentUser];
+        if (!user) return alert('Please sign in to share.');
+
+        checkDailyReset(user);
+        if ((user.dailySharesCount || 0) >= 5) {
             return alert("You have reached the maximum of 5 daily shares today. Come back tomorrow!");
         }
 
-        dailySharesCount++;
-        localStorage.setItem('apex_daily_shares', dailySharesCount);
-        updateShareUI();
-
-        const user = usersData[currentUser];
-        if (user) {
-            const reward = 2.50;
-            user.unlockedBonus = (user.unlockedBonus || 0) + reward;
-            logEvent(currentUser, 'DAILY_SHARE', `Shared market asset, earned +$${reward} USDT referral bonus credit.`);
-            saveData();
-            initDashboard();
-            alert(`Platform shared successfully! +$${reward.toFixed(2)} USDT added to your Unlocked Referral Bonus.`);
-        }
+        user.dailySharesCount = (user.dailySharesCount || 0) + 1;
+        const reward = 2.50;
+        user.unlockedBonus = (user.unlockedBonus || 0) + reward;
+        
+        logEvent(currentUser, 'DAILY_SHARE', `Shared market asset, earned +$${reward} USDT referral bonus credit.`);
+        saveData();
+        initDashboard();
+        alert(`Platform shared successfully! +$${reward.toFixed(2)} USDT added to your Unlocked Referral Bonus.`);
     }
 
     function renderCoinTable() {
@@ -2030,19 +2034,22 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
             </tr>
         `).join('');
     }
-        function shareSpecificCoin(name, symbol) {
-    checkDailyReset();
-    if (dailySharesCount >= 5) {
-        return alert("Daily share limit reached (5/5).");
+
+    function shareSpecificCoin(name, symbol) {
+        const user = usersData[currentUser];
+        if (!user) return alert('Please sign in to share.');
+
+        checkDailyReset(user);
+        if ((user.dailySharesCount || 0) >= 5) {
+            return alert("Daily share limit reached (5/5).");
+        }
+
+        user.dailySharesCount = (user.dailySharesCount || 0) + 1;
+        saveData();
+        initDashboard();
     }
 
-    dailySharesCount++;
-    localStorage.setItem('apex_daily_shares', dailySharesCount);
-    updateShareUI();
-    
-    saveData();
-    initDashboard();
-}
+
 
     </script>
 </body>

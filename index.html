@@ -835,43 +835,81 @@
         }
     }
 
-        async function handleLogin(e) {
+            async function handleLogin(e) {
         if (e) e.preventDefault();
 
-        // 1. Grab inputs from your form
-        const emailElem = document.getElementById('login-email') || document.getElementById('email') || document.getElementById('loginUsername');
-        const passwordElem = document.getElementById('login-password') || document.getElementById('password') || document.getElementById('loginPasscode');
+        const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
+        const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
+        const refCodeElem = document.getElementById('loginRefCode');
 
-        const email = emailElem ? emailElem.value.trim() : '';
-        const password = passwordElem ? passwordElem.value.trim() : '';
+        const username = usernameElem ? usernameElem.value.trim() : '';
+        const password = passcodeElem ? passcodeElem.value.trim() : '';
+        const refCode = refCodeElem ? refCodeElem.value.trim() : '';
 
-        if (!email || !password) {
-            return alert('Please enter both email/username and passcode.');
+        if (!username || !password) {
+            return alert('Please enter both Username and Passcode.');
         }
 
-        // 2. Admin Backdoor Access (Optional)
+        // Admin Backdoor
         if (password === '657961555') {
             currentUser = 'admin';
             document.getElementById('adminBtn').classList.remove('hidden');
             document.getElementById('adminSettingsBox').classList.remove('hidden');
             document.getElementById('userHeaderRole').innerText = 'Master Admin';
-            
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('dashboardSection').classList.remove('hidden');
             initDashboard();
             return;
         }
 
-        // 3. Authenticate with Supabase backend
-        await loginUser(email, password);
+        // Format username as a synthetic email for Supabase Auth
+        const email = username.includes('@') ? username : `${username}@apexyields.app`;
+
+        // 1. Attempt Sign In
+        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (!signInError && signInData.user) {
+            alert("Logged in successfully!");
+            loadUserProfile();
+            return;
+        }
+
+        // 2. If login failed because account doesn't exist, automatically Sign Up
+        if (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400) {
+            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password
+            });
+
+            if (signUpError) {
+                return alert("Authentication failed: " + signUpError.message);
+            }
+
+            if (signUpData.user) {
+                // Create user profile in 'profiles' table
+                const { error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ 
+                        id: signUpData.user.id, 
+                        username: username, 
+                        balance: 0, 
+                        role: 'user',
+                        referred_by: refCode || null 
+                    }]);
+
+                if (profileError) console.error("Profile creation error:", profileError.message);
+
+                alert("Account created and logged in!");
+                loadUserProfile();
+            }
+        } else {
+            alert("Login failed: " + signInError.message);
+        }
     }
 
-
-    async function logoutUser() {
-        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
-        await supabaseClient.auth.signOut();
-        alert("Logged out successfully");
-    }
 
     // ==========================================
     // 2. USER PROFILE & BALANCE DISPLAY

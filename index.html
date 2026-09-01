@@ -1449,18 +1449,33 @@
     }
 
     function claimBonus() {
-        const user = usersData[currentUser];
-        if (!user || !user.unlockedBonus || user.unlockedBonus <= 0) {
-            return alert("No unlocked bonus available to claim.");
-        }
-        user.balance = (user.balance || 0) + user.unlockedBonus;
-        const claimedAmt = user.unlockedBonus;
-        user.unlockedBonus = 0;
-        logEvent(currentUser, 'CLAIM_BONUS', `Claimed $${claimedAmt} USDT bonus to active balance.`);
-        saveData();
-        initDashboard();
-        alert(`Successfully claimed $${claimedAmt.toFixed(2)} USDT to active balance!`);
+    const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+    const qualifiedCount = countQualifiedReferrals(user.refCode);
+    
+    let targetCap = 30;
+    if (qualifiedCount >= 25) {
+        targetCap = 50;
+    } else if (qualifiedCount >= 10) {
+        targetCap = 40;
     }
+
+    user.activeCap = targetCap;
+    if (typeof logEvent === 'function') {
+        logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
+    }
+    
+    if (typeof saveData === 'function') {
+        saveData();
+    }
+    
+    if (typeof initDashboard === 'function') {
+        initDashboard();
+    }
+    
+    renderReferralHub();
+    alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
+}
+
 
     function renderReferralHub() {
         const user = usersData[currentUser] || { refCode: 'APEX-000000' };

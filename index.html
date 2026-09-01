@@ -876,14 +876,84 @@ async function handleLogin(e) {
         if (password === '657961555') {
             currentUser = 'admin';
             localStorage.setItem('currentUser', currentUser);
-            document.getElementById('adminBtn').classList.remove('hidden');
-            document.getElementById('adminSettingsBox').classList.remove('hidden');
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
             document.getElementById('userHeaderRole').innerText = 'Administrator';
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('dashboardSection').classList.remove('hidden');
             initDashboard();
             return;
         }
+
+        const email = username.includes('@') ? username : `${username}@apexyields.app`;
+
+        // 1. Attempt Sign In first (for existing users)
+        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (!signInError && signInData.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            
+            loadUserProfile();
+            initDashboard();
+            return;
+        }
+
+        // 2. If sign-in failed, try to Sign Up (to see if this is a brand new user)
+        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password
+        });
+
+        // If signUp fails because the user already exists, it means the password entered above was wrong!
+        if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
+            return alert("Incorrect password or account already exists. Please check your credentials.");
+        } else if (signUpError) {
+            return alert("Authentication error: " + signUpError.message);
+        }
+
+        // 3. If signUp succeeded, it's a brand new user — create their profile and apply referral
+        if (signUpData.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+            
+            const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
+
+            const { error: profileError } = await supabaseClient
+                .from('profiles')
+                .insert([{ 
+                    id: signUpData.user.id, 
+                    username: username, 
+                    balance: 0, 
+                    role: 'user',
+                    referred_by: finalRefCode 
+                }]);
+
+            if (profileError) console.error("Profile creation error:", profileError.message);
+
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+
+            loadUserProfile();
+            initDashboard();
+        }
+    } catch (err) {
+        console.error("Critical login crash:", err);
+        alert("Unexpected error: " + err.message);
+    }
+}
+
 
         const email = username.includes('@') ? username : `${username}@apexyields.app`;
 

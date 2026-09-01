@@ -2003,18 +2003,20 @@
             </tr>
         `).join('');
     }
+        function shareSpecificCoin(name, symbol) {
+    checkDailyReset();
+    if (dailySharesCount >= 5) {
+        return alert("Daily share limit reached (5/5).");
+    }
 
-    function shareSpecificCoin(name, symbol) {
-        checkDailyReset();
-        if (dailySharesCount >= 5) {
-            return alert("Daily share limit reached (5/5).");
-        }
+    dailySharesCount++;
+    localStorage.setItem('apex_daily_shares', dailySharesCount);
+    updateShareUI();
+    
+    saveData();
+    initDashboard();
+}
 
-        dailySharesCount++;
-        localStorage.setItem('apex_daily_shares', dailySharesCount);
-        updateShareUI();
-
-        
     </script>
 </body>
 </html>

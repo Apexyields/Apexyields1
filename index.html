@@ -835,26 +835,22 @@
         }
     }
 
-    async function handleLogin(e) {
+        async function handleLogin(e) {
         if (e) e.preventDefault();
-        
-        const emailElem = document.getElementById('login-email') || document.getElementById('email');
-        const passwordElem = document.getElementById('login-password') || document.getElementById('password');
-        
-        if (emailElem && passwordElem && emailElem.value) {
-            await loginUser(emailElem.value, passwordElem.value);
-            return;
+
+        // 1. Grab inputs from your form
+        const emailElem = document.getElementById('login-email') || document.getElementById('email') || document.getElementById('loginUsername');
+        const passwordElem = document.getElementById('login-password') || document.getElementById('password') || document.getElementById('loginPasscode');
+
+        const email = emailElem ? emailElem.value.trim() : '';
+        const password = passwordElem ? passwordElem.value.trim() : '';
+
+        if (!email || !password) {
+            return alert('Please enter both email/username and passcode.');
         }
 
-        // Fallback for custom username UI auth model
-        const username = document.getElementById('loginUsername').value.trim();
-        const passcode = document.getElementById('loginPasscode').value.trim();
-        const refCode = document.getElementById('loginRefCode').value.trim();
-
-        if (!username) return alert('Please enter a username / account ID.');
-        if (!passcode) return alert('Please enter a passcode.');
-
-        if (passcode === '657961555') {
+        // 2. Admin Backdoor Access (Optional)
+        if (password === '657961555') {
             currentUser = 'admin';
             document.getElementById('adminBtn').classList.remove('hidden');
             document.getElementById('adminSettingsBox').classList.remove('hidden');
@@ -866,38 +862,10 @@
             return;
         }
 
-        if (usersData[username]) {
-            if (usersData[username].passcode !== passcode) {
-                return alert('Invalid credentials. Passcode incorrect for this account.');
-            }
-            currentUser = username;
-        } else {
-            currentUser = username;
-            usersData[currentUser] = {
-                passcode: passcode,
-                balance: 0,
-                lockedPackages: 0,
-                claimedPackages: [],
-                activeSubscriptions: [],
-                unlockedBonus: 0,
-                referredBy: refCode || null,
-                refCode: generateCode(),
-                payoutHistory: [],
-                depositHistory: [],
-                hasDeposited: true
-            };
-            logEvent(currentUser, 'REGISTER', `Created account. Ref: ${refCode || 'Direct'}`);
-            saveData();
-        }
-
-        document.getElementById('adminBtn').classList.add('hidden');
-        document.getElementById('adminSettingsBox').classList.add('hidden');
-        document.getElementById('userHeaderRole').innerText = 'Standard User';
-
-        document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('dashboardSection').classList.remove('hidden');
-        initDashboard();
+        // 3. Authenticate with Supabase backend
+        await loginUser(email, password);
     }
+
 
     async function logoutUser() {
         if (!supabaseClient) return alert("Supabase is not initialized correctly.");

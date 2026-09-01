@@ -1324,13 +1324,15 @@
             return;
         }
 
-        if (!usersData[currentUser]) {
+                if (!usersData[currentUser]) {
             usersData[currentUser] = {
                 passcode: '', balance: 0, lockedPackages: 0,
                 claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
-                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
+                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: [],
+                dailySharesCount: 0, lastShareDay: ''
             };
         }
+
 
         const user = usersData[currentUser];
         if (!user.claimedPackages) user.claimedPackages = [];
@@ -1862,14 +1864,16 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
         alert('Referral Code Copied!');
     }
 
-    function promptInvestPackage(name, cost, duration = '30 Days') {
+        function promptInvestPackage(name, cost, duration = '30 Days') {
         if (currentUser && !usersData[currentUser]) {
             usersData[currentUser] = {
                 passcode: '', balance: 0, lockedPackages: 0,
                 claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
-                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: []
+                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: [],
+                dailySharesCount: 0, lastShareDay: ''
             };
         }
+
 
         const user = usersData[currentUser];
         if (user && user.claimedPackages && user.claimedPackages.includes(name)) {

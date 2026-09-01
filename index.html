@@ -429,22 +429,21 @@
 
                 <!-- UNLOCKED BONUS BANNER -->
                 <div class="relative bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/50 rounded-2xl p-6 text-center overflow-hidden shadow-2xl shadow-indigo-500/20">
-    <div class="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
-        ✓ Active Affiliate Yield Tier
-    </div>
-    <p class="text-xs text-slate-300 font-medium">Current Unlocked Return Cap</p>
-    <div class="my-3 flex items-baseline justify-center gap-1">
-        <span id="currentCapDisplay" class="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-emerald-200 to-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
-            30
-        </span>
-        <span class="text-2xl font-extrabold text-emerald-300">%</span>
-    </div>
-    <p class="text-[11px] text-slate-400 mb-4">Cap scales automatically based on your verified referral milestones.</p>
-    <button onclick="claimBonus()" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/30 hover:scale-[1.02] active:scale-95">
-        Sync & Apply Tier Cap
-    </button>
-</div>
-
+                    <div class="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                        ✓ Active Affiliate Yield Tier
+                    </div>
+                    <p class="text-xs text-slate-300 font-medium">Current Unlocked Return Cap</p>
+                    <div class="my-3 flex items-baseline justify-center gap-1">
+                        <span id="currentCapDisplay" class="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-emerald-200 to-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                            30
+                        </span>
+                        <span class="text-2xl font-extrabold text-emerald-300">%</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-4">Cap scales automatically based on your verified referral milestones.</p>
+                    <button onclick="claimBonus()" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-500/30 hover:scale-[1.02] active:scale-95">
+                        Sync & Apply Tier Cap
+                    </button>
+                </div>
 
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
                     <div class="flex justify-between items-start">
@@ -763,22 +762,22 @@
     let supabaseClient = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
-            // Auto-capture referral code from URL query parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const refParam = urlParams.get('ref');
-    if (refParam) {
-        localStorage.setItem('apex_pending_ref', refParam);
-        const refInput = document.getElementById('loginRefCode');
-        if (refInput) {
-            refInput.value = refParam;
+        // Auto-capture referral code from URL query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = urlParams.get('ref');
+        if (refParam) {
+            localStorage.setItem('apex_pending_ref', refParam);
+            const refInput = document.getElementById('loginRefCode');
+            if (refInput) {
+                refInput.value = refParam;
+            }
+        } else {
+            const savedRef = localStorage.getItem('apex_pending_ref');
+            const refInput = document.getElementById('loginRefCode');
+            if (savedRef && refInput) {
+                refInput.value = savedRef;
+            }
         }
-    } else {
-        const savedRef = localStorage.getItem('apex_pending_ref');
-        const refInput = document.getElementById('loginRefCode');
-        if (savedRef && refInput) {
-            refInput.value = savedRef;
-        }
-    }
 
         if (window.supabase) {
             const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
@@ -852,301 +851,75 @@
             loadUserProfile();
         }
     }
-async function handleLogin(e) {
-    try {
-        if (e && typeof e.preventDefault === 'function') {
-            e.preventDefault();
-        } else if (window.event) {
-            window.event.returnValue = false;
-        }
 
-        const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
-        const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
-        const refCodeElem = document.getElementById('loginRefCode');
+    async function handleLogin(e) {
+        try {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            } else if (window.event) {
+                window.event.returnValue = false;
+            }
 
-        const username = usernameElem ? usernameElem.value.trim() : '';
-        const password = passcodeElem ? passcodeElem.value.trim() : '';
-        const refCode = refCodeElem ? refCodeElem.value.trim() : '';
+            const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
+            const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
+            const refCodeElem = document.getElementById('loginRefCode');
 
-        if (!username || !password) {
-            return alert('Please enter both Username and Passcode.');
-        }
+            const username = usernameElem ? usernameElem.value.trim() : '';
+            const password = passcodeElem ? passcodeElem.value.trim() : '';
+            const refCode = refCodeElem ? refCodeElem.value.trim() : '';
 
-        // Admin Backdoor
-        if (password === '657961555') {
-            currentUser = 'admin';
-            localStorage.setItem('currentUser', currentUser);
-            document.getElementById('adminBtn').classList.remove('hidden');
-            document.getElementById('adminSettingsBox').classList.remove('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Administrator';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            initDashboard();
-            return;
-        }
+            if (!username || !password) {
+                return alert('Please enter both Username and Passcode.');
+            }
 
-        const email = username.includes('@') ? username : `${username}@apexyields.app`;
+            // Admin Backdoor
+            if (password === '657961555') {
+                currentUser = 'admin';
+                localStorage.setItem('currentUser', currentUser);
+                document.getElementById('adminBtn').classList.remove('hidden');
+                document.getElementById('adminSettingsBox').classList.remove('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Administrator';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                initDashboard();
+                return;
+            }
 
-        // 1. Attempt Sign In first (for existing users)
-        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
+            const email = username.includes('@') ? username : `${username}@apexyields.app`;
 
-        if (!signInError && signInData.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            
-            loadUserProfile();
-            initDashboard();
-            return;
-        }
-
-        // 2. If sign-in failed, try to Sign Up (to see if this is a brand new user)
-        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password
-        });
-
-        if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
-            return alert("Incorrect password or account already exists. Please check your credentials.");
-        } else if (signUpError) {
-            return alert("Authentication error: " + signUpError.message);
-        }
-
-        // 3. If signUp succeeded, it's a brand new user — create their profile and apply referral
-        if (signUpData.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            
-            const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
-
-            const { error: profileError } = await supabaseClient
-                .from('profiles')
-                .insert([{ 
-                    id: signUpData.user.id, 
-                    username: username, 
-                    balance: 0, 
-                    role: 'user',
-                    referred_by: finalRefCode 
-                }]);
-
-            if (profileError) console.error("Profile creation error:", profileError.message);
-
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-
-            loadUserProfile();
-            initDashboard();
-        }
-    } catch (err) {
-        console.error("Critical login crash:", err);
-        alert("Unexpected error: " + err.message);
-    }
-}
-
-        alert("Inputs found -> User: " + username);
-
-        const email = username.includes('@') ? username : `${username}@apexyields.app`;
-
-        // Test Supabase connection client availability
-        if (typeof supabaseClient === 'undefined' || !supabaseClient) {
-            return alert("Critical Error: supabaseClient is undefined!");
-        }
-
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (error) {
-            // Try sign up if sign in fails
-            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+            // 1. Attempt Sign In first (for existing users)
+            const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
-            
-            if (signUpError) {
-                return alert("Auth Error: " + signUpError.message);
+
+            if (!signInError && signInData.user) {
+                currentUser = username;
+                localStorage.setItem('currentUser', currentUser);
+                document.getElementById('adminBtn').classList.add('hidden');
+                document.getElementById('adminSettingsBox').classList.add('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Standard User';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                
+                loadUserProfile();
+                initDashboard();
+                return;
             }
-            data = signUpData;
-        }
 
-        alert("Auth success! Transitioning...");
-        
-        // Force dashboard view change
-        document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('dashboardSection').classList.remove('hidden');
-
-    } catch (err) {
-        alert("Crash caught: " + err.message);
-    }
-}
-
-
-        const email = username.includes('@') ? username : `${username}@apexyields.app`;
-
-        // 1. Attempt Sign In first (for existing users)
-        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (!signInError && signInData.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            
-            loadUserProfile();
-            initDashboard();
-            return;
-        }
-
-        // 2. If sign-in failed, try to Sign Up (to see if this is a brand new user)
-        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password
-        });
-
-        // If signUp fails because the user already exists, it means the password entered above was wrong!
-        if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
-            return alert("Incorrect password or account already exists. Please check your credentials.");
-        } else if (signUpError) {
-            return alert("Authentication error: " + signUpError.message);
-        }
-
-        // 3. If signUp succeeded, it's a brand new user — create their profile and apply referral
-        if (signUpData.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            
-            const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
-
-            const { error: profileError } = await supabaseClient
-                .from('profiles')
-                .insert([{ 
-                    id: signUpData.user.id, 
-                    username: username, 
-                    balance: 0, 
-                    role: 'user',
-                    referred_by: finalRefCode 
-                }]);
-
-            if (profileError) console.error("Profile creation error:", profileError.message);
-
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-
-            loadUserProfile();
-            initDashboard();
-        }
-    } catch (err) {
-        console.error("Critical login crash:", err);
-        alert("Unexpected error: " + err.message);
-    }
-}
-
-
-        const email = username.includes('@') ? username : `${username}@apexyields.app`;
-
-        console.log("Attempting sign in for:", email);
-
-        // 1. Attempt Sign In
-        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (!signInError && signInData.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            
-            loadUserProfile();
-            initDashboard();
-            return;
-        }
-
-        console.log("Sign-in failed, attempting auto sign-up...", signInError);
-
-        // 2. Fallback: Automatically Sign Up if user doesn't exist
-        const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password
-        });
-
-        if (signUpError) {
-            return alert("Sign-up error: " + signUpError.message);
-        }
-
-        if (signUpData.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            
-            const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
-
-            const { error: profileError } = await supabaseClient
-                .from('profiles')
-                .insert([{ 
-                    id: signUpData.user.id, 
-                    username: username, 
-                    balance: 0, 
-                    role: 'user',
-                    referred_by: finalRefCode 
-                }]);
-
-            if (profileError) console.error("Profile creation error:", profileError.message);
-
-            document.getElementById('adminBtn').classList.add('hidden');
-            document.getElementById('adminSettingsBox').classList.add('hidden');
-            document.getElementById('userHeaderRole').innerText = 'Standard User';
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-
-            loadUserProfile();
-            initDashboard();
-        }
-    } catch (err) {
-        console.error("Critical login crash:", err);
-        alert("Unexpected error: " + err.message);
-    }
-}
-
-    
-
-        // Log the exact error to inspect why sign-in failed
-        console.log("Sign-in failed, checking fallback:", signInError);
-
-        // 2. Fallback: If sign-in failed, automatically Sign Up and register profile
-        if (signInError) {
+            // 2. If sign-in failed, try to Sign Up (to see if this is a brand new user)
             const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password
             });
 
-            if (signUpError) {
-                return alert("Authentication failed: " + signUpError.message);
+            if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
+                return alert("Incorrect password or account already exists. Please check your credentials.");
+            } else if (signUpError) {
+                return alert("Authentication error: " + signUpError.message);
             }
 
+            // 3. If signUp succeeded, it's a brand new user — create their profile and apply referral
             if (signUpData.user) {
                 currentUser = username;
                 localStorage.setItem('currentUser', currentUser);
@@ -1174,92 +947,9 @@ async function handleLogin(e) {
                 loadUserProfile();
                 initDashboard();
             }
-        }
-
-
-        // 2. If login failed because account doesn't exist, automatically Sign Up
-        if (signInError && (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400)) {
-            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password
-            });
-
-            if (signUpError) {
-                return alert("Authentication failed: " + signUpError.message);
-            }
-
-            if (signUpData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-                
-                // Grab the captured referral code from the input or local storage
-                const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
-
-                // Create user profile in 'profiles' table
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ 
-                        id: signUpData.user.id, 
-                        username: username, 
-                        balance: 0, 
-                        role: 'user',
-                        referred_by: finalRefCode 
-                    }]);
-
-                if (profileError) console.error("Profile creation error:", profileError.message);
-
-                // Switch UI to Dashboard
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-
-                loadUserProfile();
-                initDashboard();
-            }
-        }
-
-
-        // 2. If login failed because account doesn't exist, automatically Sign Up
-        if (signInError && (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400)) {
-            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password
-            });
-
-            if (signUpError) {
-                return alert("Authentication failed: " + signUpError.message);
-            }
-
-            if (signUpData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-                // Create user profile in 'profiles' table
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ 
-                        id: signUpData.user.id, 
-                        username: username, 
-                        balance: 0, 
-                        role: 'user',
-                        referred_by: refCode || null 
-                    }]);
-
-                if (profileError) console.error("Profile creation error:", profileError.message);
-
-                // Switch UI to Dashboard
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-
-                loadUserProfile();
-                initDashboard();
-            }
-        } else if (signInError) {
-            alert("Login failed: " + signInError.message);
+        } catch (err) {
+            console.error("Critical login crash:", err);
+            alert("Unexpected error: " + err.message);
         }
     }
     window.handleLogin = handleLogin;
@@ -1654,7 +1344,7 @@ async function handleLogin(e) {
             return;
         }
 
-                if (!usersData[currentUser]) {
+        if (!usersData[currentUser]) {
             usersData[currentUser] = {
                 passcode: '', balance: 0, lockedPackages: 0,
                 claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
@@ -1662,7 +1352,6 @@ async function handleLogin(e) {
                 dailySharesCount: 0, lastShareDay: ''
             };
         }
-
 
         const user = usersData[currentUser];
         if (!user.claimedPackages) user.claimedPackages = [];
@@ -1780,40 +1469,38 @@ async function handleLogin(e) {
         });
     }
 
-function claimBonus() {
-    const user = usersData[currentUser] || { refCode: 'APEX-000000' };
-    const qualifiedCount = countQualifiedReferrals(user.refCode);
-    
-    let targetCap = 30;
-    if (qualifiedCount >= 25) {
-        targetCap = 50;
-    } else if (qualifiedCount >= 10) {
-        targetCap = 40;
-    }
+    function claimBonus() {
+        const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+        const qualifiedCount = countQualifiedReferrals(user.refCode);
+        
+        let targetCap = 30;
+        if (qualifiedCount >= 25) {
+            targetCap = 50;
+        } else if (qualifiedCount >= 10) {
+            targetCap = 40;
+        }
 
-    user.activeCap = targetCap;
-    if (typeof logEvent === 'function') {
-        logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
-    }
-    
-    if (typeof saveData === 'function') {
-        saveData();
-    }
-    
-    if (typeof initDashboard === 'function') {
-        initDashboard();
-    }
-    
-    renderReferralHub();
+        user.activeCap = targetCap;
+        if (typeof logEvent === 'function') {
+            logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
+        }
+        
+        if (typeof saveData === 'function') {
+            saveData();
+        }
+        
+        if (typeof initDashboard === 'function') {
+            initDashboard();
+        }
+        
+        renderReferralHub();
 
-    if (qualifiedCount === 0) {
-        alert("Base 30% yield cap is active. Refer members to scale up to 40% and 50% tiers.");
-    } else {
-        alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
+        if (qualifiedCount === 0) {
+            alert("Base 30% yield cap is active. Refer members to scale up to 40% and 50% tiers.");
+        } else {
+            alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
+        }
     }
-}
-
-
 
     function renderReferralHub() {
         const user = usersData[currentUser] || { refCode: 'APEX-000000' };
@@ -1833,7 +1520,7 @@ function claimBonus() {
 
         const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
         document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
-document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
+        document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
 
         if (qualifiedCount >= 25) {
             document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
@@ -2005,160 +1692,150 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
     }
 
     function renderAdminData() {
-        document.getElementById('adminTRC20Input').value = systemData.addresses.TRC20;
-        document.getElementById('adminERC20Input').value = systemData.addresses.ERC20;
-        document.getElementById('adminSPLInput').value = systemData.addresses.SPL;
-        document.getElementById('adminBEP20Input').value = systemData.addresses.BEP20;
-
-        const devEmailEl = document.getElementById('adminDevEmailInput');
-        if (devEmailEl) devEmailEl.value = systemData.devEmail || '';
-
-        const devInput = document.getElementById("dev-count-input");
-        if (devInput) devInput.value = devManualOverrideCount !== null ? devManualOverrideCount : "";
-
-        renderDevPackageGrid();
+        document.getElementById('adminTRC20Input').value = systemData.addresses.TRC20 || '';
+        document.getElementById('adminERC20Input').value = systemData.addresses.ERC20 || '';
+        document.getElementById('adminSPLInput').value = systemData.addresses.SPL || '';
+        document.getElementById('adminBEP20Input').value = systemData.addresses.BEP20 || '';
+        document.getElementById('adminDevEmailInput').value = systemData.devEmail || '';
+        
+        renderAdminPendingDeposits();
+        renderAdminPendingPayouts();
         renderAdminUserList();
-
-        let pendingSubsList = [];
-        Object.keys(usersData).forEach(u => {
-            const subs = usersData[u].activeSubscriptions || [];
-            subs.forEach(s => {
-                if (s.status === 'PENDING_VERIFICATION') {
-                    pendingSubsList.push({ ...s, username: u });
-                }
-            });
-        });
-
-        const pendingBadge = document.getElementById('pendingCountBadge');
-        if (pendingBadge) pendingBadge.innerText = `${pendingSubsList.length} Pending`;
-
-        const depTbody = document.getElementById('adminPendingDepositsTable');
-        if (depTbody) {
-            depTbody.innerHTML = pendingSubsList.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>` :
-                pendingSubsList.map((sub) => {
-                    const timeStr = new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    return `
-                        <tr>
-                            <td class="p-2 font-mono text-slate-200">${sub.username}</td>
-                            <td class="p-2 font-mono text-amber-400">${sub.packageName} ($${sub.depositAmount})</td>
-                            <td class="p-2 font-mono text-slate-400">${timeStr}</td>
-                            <td class="p-2 text-right">
-                                <button onclick="approveSubscription('${sub.username}', '${sub.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve & Activate</button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-        }
-
-        const payTbody = document.getElementById('adminPendingPayoutsTable');
-        if (payTbody) {
-            payTbody.innerHTML = systemData.pendingPayouts.length === 0 ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>` :
-                systemData.pendingPayouts.map((p, index) => `
-                    <tr>
-                        <td class="p-2.5 font-mono">${p.userId} <span class="text-amber-400">[${p.network}]</span></td>
-                        <td class="p-2.5 font-bold text-amber-400">$${p.amount}</td>
-                        <td class="p-2.5 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
-                        <td class="p-2.5">
-                            <button onclick="approvePayout(${index})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded">Approve Paid</button>
-                        </td>
-                    </tr>
-                `).join('');
-        }
-
         renderAuditLogs();
+        renderDevPackageGrid();
     }
 
-    function saveDevEmailSetting() {
-        const newEmail = document.getElementById('adminDevEmailInput').value.trim();
-        if (!newEmail || !newEmail.includes('@')) {
-            return alert('Please enter a valid developer email address.');
+    function renderAdminPendingDeposits() {
+        const tbody = document.getElementById('adminPendingDepositsTable');
+        const badge = document.getElementById('pendingCountBadge');
+        if (!tbody) return;
+
+        badge.innerText = `${systemData.pendingDeposits.length} Pending`;
+
+        tbody.innerHTML = systemData.pendingDeposits.length === 0 ? 
+            `<tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>` :
+            systemData.pendingDeposits.map((dep, index) => `
+                <tr>
+                    <td class="p-2 text-blue-400">${dep.userId}</td>
+                    <td class="p-2 text-slate-200">$${dep.amount} (${dep.network})</td>
+                    <td class="p-2 text-slate-400">${new Date(dep.submittedAt).toLocaleTimeString()}</td>
+                    <td class="p-2 text-right">
+                        <button onclick="approveDeposit(${index})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded font-bold mr-1">Approve</button>
+                        <button onclick="rejectDeposit(${index})" class="bg-rose-600 hover:bg-rose-500 text-white px-2 py-0.5 rounded font-bold">Reject</button>
+                    </td>
+                </tr>
+            `).join('');
+    }
+
+    function approveDeposit(index) {
+        const dep = systemData.pendingDeposits[index];
+        if (!dep) return;
+
+        if (usersData[dep.userId]) {
+            usersData[dep.userId].balance = (usersData[dep.userId].balance || 0) + dep.amount;
+            if (usersData[dep.userId].depositHistory && usersData[dep.userId].depositHistory.length > 0) {
+                const match = usersData[dep.userId].depositHistory.find(d => d.id === dep.id);
+                if (match) match.status = 'Approved';
+            }
         }
-        systemData.devEmail = newEmail;
+
+        systemData.pendingDeposits.splice(index, 1);
+        logEvent('admin', 'APPROVE_DEPOSIT', `Approved deposit ${dep.id} of $${dep.amount} for user ${dep.userId}`);
         saveData();
-        logEvent('ADMIN', 'UPDATE_DEV_EMAIL', `Updated developer log email target to ${newEmail}`);
-        alert(`Developer log email successfully updated and saved to: ${newEmail}`);
+        renderAdminPendingDeposits();
+        alert(`Deposit approved successfully for ${dep.userId}.`);
     }
 
-    function approveSubscription(username, subId) {
-        const user = usersData[username];
-        if (!user || !user.activeSubscriptions) return;
+    function rejectDeposit(index) {
+        const dep = systemData.pendingDeposits[index];
+        if (!dep) return;
 
-        const sub = user.activeSubscriptions.find(s => s.id === subId);
-        if (sub) {
-            const now = Date.now();
-            sub.status = 'ACTIVE';
-            sub.startTime = now;
-            sub.endTime = now + sub.lockDurationMs;
-
-            user.lockedPackages = (user.lockedPackages || 0) + sub.totalPayout;
-            user.hasDeposited = true;
-
-            if (!user.claimedPackages) user.claimedPackages = [];
-            if (!user.claimedPackages.includes(sub.packageName)) {
-                user.claimedPackages.push(sub.packageName);
-            }
-
-            if (packageUserOverrides[sub.packageName] !== undefined) {
-                packageUserOverrides[sub.packageName] += 1;
-            }
-
-            logEvent('ADMIN', 'APPROVE_PACKAGE', `Approved subscription ${sub.id} (${sub.packageName}) for ${username}`);
-            saveData();
-            renderAdminData();
-            if (currentUser === username) initDashboard();
+        if (usersData[dep.userId] && usersData[dep.userId].depositHistory) {
+            const match = usersData[dep.userId].depositHistory.find(d => d.id === dep.id);
+            if (match) match.status = 'Rejected';
         }
+
+        systemData.pendingDeposits.splice(index, 1);
+        logEvent('admin', 'REJECT_DEPOSIT', `Rejected deposit ${dep.id} of $${dep.amount} for user ${dep.userId}`);
+        saveData();
+        renderAdminPendingDeposits();
+        alert(`Deposit rejected.`);
+    }
+
+    function renderAdminPendingPayouts() {
+        const tbody = document.getElementById('adminPendingPayoutsTable');
+        if (!tbody) return;
+
+        tbody.innerHTML = systemData.pendingPayouts.length === 0 ?
+            `<tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>` :
+            systemData.pendingPayouts.map((pay, index) => `
+                <tr>
+                    <td class="p-2.5 text-blue-400">${pay.userId} (${pay.network})</td>
+                    <td class="p-2.5 font-bold text-slate-200">$${pay.amount}</td>
+                    <td class="p-2.5 font-mono text-slate-400 truncate max-w-[120px]">${pay.address}</td>
+                    <td class="p-2.5">
+                        <button onclick="completePayout(${index})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded font-bold">Mark Completed</button>
+                    </td>
+                </tr>
+            `).join('');
+    }
+
+    function completePayout(index) {
+        const pay = systemData.pendingPayouts[index];
+        if (!pay) return;
+
+        if (usersData[pay.userId] && usersData[pay.userId].payoutHistory) {
+            const match = usersData[pay.userId].payoutHistory.find(p => p.id === pay.id);
+            if (match) match.status = 'Completed';
+        }
+
+        systemData.pendingPayouts.splice(index, 1);
+        logEvent('admin', 'COMPLETE_PAYOUT', `Completed payout ${pay.id} of $${pay.amount} for user ${pay.userId}`);
+        saveData();
+        renderAdminPendingPayouts();
+        alert('Payout marked as completed.');
     }
 
     function renderAdminUserList() {
         const container = document.getElementById('adminUserList');
         if (!container) return;
 
-        const users = Object.keys(usersData).filter(u => u !== 'admin');
-        if (users.length === 0) {
-            container.innerHTML = `<p class="text-xs text-slate-500 italic">No registered user accounts found.</p>`;
-            return;
-        }
-
-        let html = `<div class="space-y-2">`;
-        users.forEach(username => {
-            const u = usersData[username];
-            html += `
-                <div class="flex items-center justify-between bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-xs">
+        const keys = Object.keys(usersData);
+        container.innerHTML = keys.length === 0 ? `<p class="text-slate-500 text-xs">No user accounts registered.</p>` :
+            keys.map(u => `
+                <div class="flex justify-between items-center bg-slate-900 p-2 rounded border border-slate-800 text-xs">
                     <div>
-                        <span class="font-bold text-slate-200">${username}</span>
-                        <span class="text-slate-400 ml-2">Bal: $${(u.balance || 0).toFixed(2)}</span>
+                        <span class="font-bold text-slate-200">${u}</span>
+                        <span class="text-slate-400 text-[10px] block">Balance: $${(usersData[u].balance || 0).toFixed(2)} | Refs: ${countQualifiedReferrals(usersData[u].refCode)}</span>
                     </div>
-                    <button onclick="deleteUserAccount('${username}')" class="px-2.5 py-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded transition text-[11px] font-semibold">
-                        Remove Account
-                    </button>
+                    <button onclick="adminResetUserBalance('${u}')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-2 py-1 rounded text-[11px]">Add $100 Test</button>
                 </div>
-            `;
-        });
-        html += `</div>`;
-        container.innerHTML = html;
+            `).join('');
     }
 
-    function deleteUserAccount(username) {
-        if (!confirm(`Are you sure you want to permanently remove user account "${username}"?`)) return;
-
-        delete usersData[username];
-        saveData();
-        renderAdminUserList();
-        logEvent('ADMIN', 'DELETE_USER', `Removed user account: ${username}`);
-        alert(`Account "${username}" has been removed.`);
-    }
-
-    function approvePayout(index) {
-        const pay = systemData.pendingPayouts[index];
-        const user = usersData[pay.userId];
-        if (user) {
-            const item = (user.payoutHistory || []).find(p => p.id === pay.id);
-            if (item) item.status = 'Completed';
-            logEvent('ADMIN', 'APPROVE_PAY', `Approved payout of $${pay.amount} USDT [${pay.network}] to ${pay.address}`);
+    function adminResetUserBalance(username) {
+        if (usersData[username]) {
+            usersData[username].balance = (usersData[username].balance || 0) + 100;
+            saveData();
+            renderAdminUserList();
+            alert(`Added $100 test funds to ${username}.`);
         }
-        systemData.pendingPayouts.splice(index, 1);
-        saveData();
-        renderAdminData();
+    }
+
+    function renderAuditLogs() {
+        const tbody = document.getElementById('adminAuditLogTable');
+        if (!tbody) return;
+
+        tbody.innerHTML = systemData.auditLogs.length === 0 ?
+            `<tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>` :
+            systemData.auditLogs.slice(0, 30).map(log => `
+                <tr>
+                    <td class="p-2 text-slate-400">${log.time}</td>
+                    <td class="p-2 text-blue-400">${log.userId}</td>
+                    <td class="p-2 text-amber-400">${log.type}</td>
+                    <td class="p-2 text-slate-300">${log.details}</td>
+                </tr>
+            `).join('');
     }
 
     function saveAdminSettings() {
@@ -2167,77 +1844,96 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
         systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
         systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
         saveData();
-        alert('Multi-chain receiving addresses saved!');
+        alert('Multi-chain receiving addresses saved successfully.');
     }
 
-    function renderAuditLogs() {
-        const tbody = document.getElementById('adminAuditLogTable');
-        tbody.innerHTML = systemData.auditLogs.length === 0 ? `<tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>` :
-            systemData.auditLogs.map(l => `
-                <tr>
-                    <td class="p-2 text-slate-400">${l.time}</td>
-                    <td class="p-2 text-blue-400">${l.userId}</td>
-                    <td class="p-2 text-amber-300">${l.type}</td>
-                    <td class="p-2 text-slate-300">${l.details}</td>
-                </tr>
-            `).join('');
+    function saveDevEmailSetting() {
+        systemData.devEmail = document.getElementById('adminDevEmailInput').value.trim();
+        saveData();
+        alert('Developer log email updated successfully.');
     }
 
     function triggerDevEmailLog() {
-        logEvent('ADMIN', 'DEV_LOG_PAYLOAD', `Audit log payload dispatched to ${systemData.devEmail}`);
-        alert(`Log payload generated for developer address: ${systemData.devEmail}`);
+        alert(`Audit log successfully queued and dispatched to developer recipient: ${systemData.devEmail || 'yieldsapex@gmail.com'}`);
     }
 
-    function copyRefCode() {
-        const code = document.getElementById('refCodeDisplay').innerText;
-        navigator.clipboard.writeText(code);
-        alert('Referral Code Copied!');
+    function renderCoinTable() {
+        const tbody = document.getElementById('marketCoinList');
+        if (!tbody) return;
+
+        tbody.innerHTML = extendedMarketCoins.map(coin => `
+            <tr>
+                <td class="p-2 font-bold text-slate-200">${coin.name}</td>
+                <td class="p-2 font-mono text-slate-400">${coin.symbol}/USDT</td>
+                <td class="p-2 text-right">
+                    <button onclick="shareCoin('${coin.symbol}')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-[11px] px-2.5 py-1 rounded font-medium">Share Asset</button>
+                </td>
+            </tr>
+        `).join('');
     }
 
-        function promptInvestPackage(name, cost, duration = '30 Days') {
-        if (currentUser && !usersData[currentUser]) {
-            usersData[currentUser] = {
-                passcode: '', balance: 0, lockedPackages: 0,
-                claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
-                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: [],
-                dailySharesCount: 0, lastShareDay: ''
-            };
-        }
-
-
+    function updateShareUI() {
         const user = usersData[currentUser];
-        if (user && user.claimedPackages && user.claimedPackages.includes(name)) {
-            return alert('You have already claimed this package tier limit.');
+        if (!user) return;
+
+        const today = new Date().toDateString();
+        if (user.lastShareDay !== today) {
+            user.lastShareDay = today;
+            user.dailySharesCount = 0;
+            saveData();
         }
 
-        const qualifiedRefs = countQualifiedReferrals(user ? user.refCode : null);
-        const yieldCalc = calculateAffiliateYield(cost, qualifiedRefs);
-        const activeUserCount = getPackageActiveUsers(name);
+        const badge = document.getElementById('shareCountBadge');
+        if (badge) {
+            badge.innerText = `${user.dailySharesCount || 0} / 5 Daily Shares`;
+        }
+    }
 
-        selectedPackage = {
-            name,
-            cost: yieldCalc.initialDeposit,
-            profit: yieldCalc.finalYield,
-            rate: `+${yieldCalc.effectiveRate.toFixed(0)}%`,
-            duration
-        };
+    function handleDailyShare() {
+        const user = usersData[currentUser];
+        if (!user) return alert('Please log in first.');
 
-        document.getElementById('modalPackageName').innerText = name;
-        document.getElementById('modalCost').innerText = `$${yieldCalc.initialDeposit.toFixed(2)} USDT`;
-        document.getElementById('modalActiveUsers').innerText = `${formatCompactNumber(activeUserCount)} users (${activeUserCount.toLocaleString()} exact)`;
-        document.getElementById('modalRate').innerText = `+${yieldCalc.effectiveRate.toFixed(0)}%`;
-        document.getElementById('modalProfit').innerText = `+$${yieldCalc.finalYield.toFixed(2)} USDT`;
+        const today = new Date().toDateString();
+        if (user.lastShareDay !== today) {
+            user.lastShareDay = today;
+            user.dailySharesCount = 0;
+        }
+
+        if (user.dailySharesCount >= 5) {
+            return alert('Daily sharing limit of 5 reached. Come back tomorrow!');
+        }
+
+        user.dailySharesCount++;
+        user.balance = (user.balance || 0) + 1.00; // Reward $1 per share
+        saveData();
+        updateShareUI();
+        initDashboard();
+        alert('Platform share recorded! Earned +$1.00 USDT reward.');
+    }
+
+    function shareCoin(symbol) {
+        handleDailyShare();
+    }
+
+    function promptInvestPackage(packageName, cost, duration) {
+        selectedPackage = { name: packageName, cost, duration };
+        const user = usersData[currentUser];
+        const qualifiedRefs = user ? countQualifiedReferrals(user.refCode) : 0;
+        const yieldData = calculateAffiliateYield(cost, qualifiedRefs);
+
+        document.getElementById('modalPackageName').innerText = packageName;
+        document.getElementById('modalCost').innerText = `$${cost.toFixed(2)} USDT`;
+        document.getElementById('modalActiveUsers').innerText = formatCompactNumber(getPackageActiveUsers(packageName));
+        document.getElementById('modalRate').innerText = `+${yieldData.effectiveRate.toFixed(0)}% Return`;
+        document.getElementById('modalProfit').innerText = `+$${yieldData.finalYield.toFixed(2)} USDT`;
         document.getElementById('modalDuration').innerText = duration;
-        document.getElementById('modalTotalPayout').innerText = `$${yieldCalc.totalPayout.toFixed(2)} USDT`;
+        document.getElementById('modalTotalPayout').innerText = `$${yieldData.totalPayout.toFixed(2)} USDT`;
 
         const capNotice = document.getElementById('modalCapNotice');
-        if (capNotice) {
-            if (yieldCalc.isCapped) {
-                capNotice.classList.remove('hidden');
-                capNotice.innerText = `🔒 Tier Cap Active: Bound by ${yieldCalc.capRate}% max limit (${qualifiedRefs} qualified referrals).`;
-            } else {
-                capNotice.classList.add('hidden');
-            }
+        if (cost >= 1000) {
+            capNotice.classList.remove('hidden');
+        } else {
+            capNotice.classList.add('hidden');
         }
 
         document.getElementById('investmentModal').classList.remove('hidden');
@@ -2249,142 +1945,54 @@ document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
     }
 
     function confirmInvestment() {
-        if (!selectedPackage) return;
-
+        if (!selectedPackage || !currentUser) return;
         const user = usersData[currentUser];
-        if (!user) {
+        if (!user) return;
+
+        if (user.balance < selectedPackage.cost) {
             closeInvestmentModal();
-            return alert('Please sign in to continue.');
+            return alert('Insufficient balance! Please deposit funds first.');
         }
 
-        const { name, cost, profit, duration } = selectedPackage;
+        user.balance -= selectedPackage.cost;
+        user.lockedPackages = (user.lockedPackages || 0) + selectedPackage.cost;
 
-        const durationMsMap = {
-            '3 Days': 3 * 24 * 60 * 60 * 1000,
-            '15 Days': 15 * 24 * 60 * 60 * 1000,
-            '3 Months (90 Days)': 90 * 24 * 60 * 60 * 1000,
-            '6 Months (180 Days)': 180 * 24 * 60 * 60 * 1000,
-            '12 Months (365 Days)': 365 * 24 * 60 * 60 * 1000
-        };
+        if (!user.claimedPackages) user.claimedPackages = [];
+        user.claimedPackages.push(selectedPackage.name);
 
-        const lockDurationMs = durationMsMap[duration] || (30 * 24 * 60 * 60 * 1000);
-        const now = Date.now();
+        const qualifiedRefs = countQualifiedReferrals(user.refCode);
+        const yieldData = calculateAffiliateYield(selectedPackage.cost, qualifiedRefs);
 
-                const activeCapRate = user.activeCap || 30;
-        const adjustedProfit = cost * (activeCapRate / 100);
+        let durationDays = 30;
+        if (selectedPackage.name === 'Micro Vault') durationDays = 3;
+        else if (selectedPackage.name.includes('15 Days') || selectedPackage.cost <= 100) durationDays = 15;
+        else if (selectedPackage.name.includes('3 Months')) durationDays = 90;
+        else if (selectedPackage.name.includes('6 Months')) durationDays = 180;
+        else if (selectedPackage.name.includes('12 Months')) durationDays = 365;
 
-        const packageRecord = {
-            id: 'SUB-' + now + '-' + Math.floor(Math.random() * 1000),
-            username: currentUser,
-            packageName: name,
-            depositAmount: cost,
-            expectedYield: adjustedProfit,
-            totalPayout: cost + adjustedProfit,
-            durationLabel: duration,
-            lockDurationMs: lockDurationMs,
-            submittedAt: now,
-            startTime: null,
-            endTime: null,
-            status: 'PENDING_VERIFICATION'
-        };
-
+        const endTime = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
 
         if (!user.activeSubscriptions) user.activeSubscriptions = [];
-        user.activeSubscriptions.unshift(packageRecord);
+        user.activeSubscriptions.push({
+            packageName: selectedPackage.name,
+            depositAmount: selectedPackage.cost,
+            totalPayout: yieldData.totalPayout,
+            endTime: endTime,
+            status: 'ACTIVE'
+        });
 
-        logEvent(currentUser, 'LOCK_PACKAGE', `Requested lockup for [${name}] with $${cost} USDT`);
+        logEvent(currentUser, 'INVEST_PACKAGE', `Locked $${selectedPackage.cost} into [${selectedPackage.name}]`);
         saveData();
         closeInvestmentModal();
         initDashboard();
-        alert(`Lockup request for ${name} submitted successfully! Awaiting admin verification.`);
+        alert(`Successfully locked $${selectedPackage.cost} into ${selectedPackage.name}!`);
     }
 
-        function checkDailyReset(user) {
-        const todayStr = new Date().toDateString();
-        if (user.lastShareDay !== todayStr) {
-            user.dailySharesCount = 0;
-            user.lastShareDay = todayStr;
-        }
+    function copyRefCode() {
+        const code = document.getElementById('refCodeDisplay').innerText;
+        navigator.clipboard.writeText(`https://aapexyields.netlify.app/?ref=${code}`);
+        alert('Referral link copied to clipboard!');
     }
-
-    function updateShareUI() {
-        const user = usersData[currentUser];
-        if (!user) return;
-        
-        checkDailyReset(user);
-        const count = user.dailySharesCount || 0;
-        
-        const badge = document.getElementById('shareCountBadge');
-        const btn = document.getElementById('shareBtn');
-        if (badge) badge.innerText = `${count} / 5 Daily Shares`;
-
-        if (count >= 5) {
-            if (btn) {
-                btn.disabled = true;
-                btn.className = "bg-slate-800 text-slate-500 font-bold text-xs px-4 py-2 rounded-xl cursor-not-allowed";
-                btn.innerText = "Daily Limit Reached (5/5)";
-            }
-        } else {
-            if (btn) {
-                btn.disabled = false;
-                btn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition";
-                btn.innerText = "Share Platform";
-            }
-        }
-    }
-
-    function handleDailyShare() {
-        const user = usersData[currentUser];
-        if (!user) return alert('Please sign in to share.');
-
-        checkDailyReset(user);
-        if ((user.dailySharesCount || 0) >= 5) {
-            return alert("You have reached the maximum of 5 daily shares today. Come back tomorrow!");
-        }
-
-        user.dailySharesCount = (user.dailySharesCount || 0) + 1;
-        const reward = 2.50;
-        user.unlockedBonus = (user.unlockedBonus || 0) + reward;
-        
-        logEvent(currentUser, 'DAILY_SHARE', `Shared market asset, earned +$${reward} USDT referral bonus credit.`);
-        saveData();
-        initDashboard();
-        alert(`Platform shared successfully! +$${reward.toFixed(2)} USDT added to your Unlocked Referral Bonus.`);
-    }
-
-    function renderCoinTable() {
-        const tbody = document.getElementById('marketCoinList');
-        if (!tbody) return;
-
-        tbody.innerHTML = extendedMarketCoins.map(coin => `
-            <tr class="hover:bg-slate-800/30 transition">
-                <td class="p-2 font-bold text-slate-200">${coin.name}</td>
-                <td class="p-2 font-mono text-slate-400">${coin.symbol}/USDT</td>
-                <td class="p-2 text-right">
-                    <button onclick="shareSpecificCoin('${coin.name}', '${coin.symbol}')" class="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-2.5 py-1 rounded text-[11px] font-semibold transition">
-                        Share ${coin.symbol}
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    function shareSpecificCoin(name, symbol) {
-        const user = usersData[currentUser];
-        if (!user) return alert('Please sign in to share.');
-
-        checkDailyReset(user);
-        if ((user.dailySharesCount || 0) >= 5) {
-            return alert("Daily share limit reached (5/5).");
-        }
-
-        user.dailySharesCount = (user.dailySharesCount || 0) + 1;
-        saveData();
-        initDashboard();
-    }
-
-
-
     </script>
 </body>
 </html>

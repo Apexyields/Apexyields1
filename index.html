@@ -1448,7 +1448,7 @@
         });
     }
 
-    function claimBonus() {
+function claimBonus() {
     const user = usersData[currentUser] || { refCode: 'APEX-000000' };
     const qualifiedCount = countQualifiedReferrals(user.refCode);
     
@@ -1473,8 +1473,14 @@
     }
     
     renderReferralHub();
-    alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
+
+    if (qualifiedCount === 0) {
+        alert("Base 30% yield cap is active. Refer members to scale up to 40% and 50% tiers.");
+    } else {
+        alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
+    }
 }
+
 
 
     function renderReferralHub() {

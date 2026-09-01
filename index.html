@@ -835,7 +835,7 @@
         }
     }
 
-            async function handleLogin(e) {
+        async function handleLogin(e) {
         if (e) e.preventDefault();
 
         const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
@@ -872,8 +872,15 @@
         });
 
         if (!signInError && signInData.user) {
-            alert("Logged in successfully!");
+            // Switch UI to Dashboard
+            document.getElementById('adminBtn').classList.add('hidden');
+            document.getElementById('adminSettingsBox').classList.add('hidden');
+            document.getElementById('userHeaderRole').innerText = 'Standard User';
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            
             loadUserProfile();
+            initDashboard();
             return;
         }
 
@@ -902,13 +909,21 @@
 
                 if (profileError) console.error("Profile creation error:", profileError.message);
 
-                alert("Account created and logged in!");
+                // Switch UI to Dashboard
+                document.getElementById('adminBtn').classList.add('hidden');
+                document.getElementById('adminSettingsBox').classList.add('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Standard User';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+
                 loadUserProfile();
+                initDashboard();
             }
         } else {
             alert("Login failed: " + signInError.message);
         }
     }
+        
 
 
     // ==========================================

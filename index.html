@@ -85,7 +85,7 @@
                 <input type="password" id="loginPasscode" placeholder="Password / Passcode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <input type="text" id="loginRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <button onclick="handleLogin(event)" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">
-        Sign In / Register
+                    Sign In / Register
                 </button>
             </div>
         </section>
@@ -834,7 +834,8 @@
             loadUserProfile();
         }
     }
-       async function handleLogin(e) {
+
+    async function handleLogin(e) {
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         } else if (window.event) {
@@ -875,6 +876,8 @@
         });
 
         if (!signInError && signInData.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
             // Switch UI to Dashboard
             document.getElementById('adminBtn').classList.add('hidden');
             document.getElementById('adminSettingsBox').classList.add('hidden');
@@ -888,7 +891,7 @@
         }
 
         // 2. If login failed because account doesn't exist, automatically Sign Up
-        if (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400) {
+        if (signInError && (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400)) {
             const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password
@@ -899,6 +902,8 @@
             }
 
             if (signUpData.user) {
+                currentUser = username;
+                localStorage.setItem('currentUser', currentUser);
                 // Create user profile in 'profiles' table
                 const { error: profileError } = await supabaseClient
                     .from('profiles')
@@ -922,53 +927,11 @@
                 loadUserProfile();
                 initDashboard();
             }
-        } else {
+        } else if (signInError) {
             alert("Login failed: " + signInError.message);
         }
     }
-window.handleLogin = handleLogin;
-
-    // 2. If login failed because account doesn't exist, automatically Sign Up
-        if (signInError.message.toLowerCase().includes('invalid login credentials') || signInError.status === 400) {
-            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password
-            });
-
-            if (signUpError) {
-                return alert("Authentication failed: " + signUpError.message);
-            }
-
-            if (signUpData.user) {
-                // Create user profile in 'profiles' table
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ 
-                        id: signUpData.user.id, 
-                        username: username, 
-                        balance: 0, 
-                        role: 'user',
-                        referred_by: refCode || null 
-                    }]);
-
-                if (profileError) console.error("Profile creation error:", profileError.message);
-
-                // Switch UI to Dashboard
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-
-                loadUserProfile();
-                initDashboard();
-            }
-        } else {
-            alert("Login failed: " + signInError.message);
-        }
-    }
-        
-
+    window.handleLogin = handleLogin;
 
     // ==========================================
     // 2. USER PROFILE & BALANCE DISPLAY
@@ -1252,6 +1215,7 @@ window.handleLogin = handleLogin;
 
     function handleLogout() {
         currentUser = null;
+        localStorage.removeItem('currentUser');
         document.getElementById('authSection').classList.remove('hidden');
         document.getElementById('dashboardSection').classList.add('hidden');
         document.getElementById('loginUsername').value = '';
@@ -1337,10 +1301,10 @@ window.handleLogin = handleLogin;
 
     async function initDashboard() {
         // Recover user session on page refresh before running dashboard logic
-        if (typeof supabase !== 'undefined' && supabase.auth) {
-            const { data: { session } } = await supabase.auth.getSession();
+        if (typeof supabase !== 'undefined' && supabaseClient && supabaseClient.auth) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
             if (session && session.user) {
-                currentUser = session.user.email || session.user.id;
+                currentUser = session.user.email ? session.user.email.split('@')[0] : session.user.id;
             }
         }
 
@@ -1349,7 +1313,6 @@ window.handleLogin = handleLogin;
         }
 
         if (!currentUser) {
-            window.location.href = 'index.html';
             return;
         }
 
@@ -1966,110 +1929,100 @@ window.handleLogin = handleLogin;
         };
 
         if (!user.activeSubscriptions) user.activeSubscriptions = [];
-        user.activeSubscriptions.push(packageRecord);
+        user.activeSubscriptions.unshift(packageRecord);
 
-        logEvent(currentUser, 'PACKAGE_REQUESTED', 
-            `User ${currentUser} requested ${name} ($${cost} USDT). Awaiting developer manual verification.`
-        );
-
+        logEvent(currentUser, 'LOCK_PACKAGE', `Requested lockup for [${name}] with $${cost} USDT`);
         saveData();
         closeInvestmentModal();
         initDashboard();
-        alert(`Deposit request submitted for ${name}! Please send payment. The dev will verify the address on-chain and activate your package.`);
+        alert(`Lockup request for ${name} submitted successfully! Awaiting admin verification.`);
     }
 
-    function getShareData() {
-        const today = new Date().toISOString().split('T')[0];
-        const stored = JSON.parse(localStorage.getItem('apex_share_tracker') || '{}');
-        
-        if (stored.date !== today) {
-            return { date: today, count: 0 };
+    let dailySharesCount = parseInt(localStorage.getItem('apex_daily_shares') || '0', 10);
+    let lastShareDay = localStorage.getItem('apex_last_share_date') || '';
+
+    function checkDailyReset() {
+        const todayStr = new Date().toDateString();
+        if (lastShareDay !== todayStr) {
+            dailySharesCount = 0;
+            lastShareDay = todayStr;
+            localStorage.setItem('apex_daily_shares', dailySharesCount);
+            localStorage.setItem('apex_last_share_date', lastShareDay);
         }
-        return stored;
-    }
-
-    function saveShareData(data) {
-        localStorage.setItem('apex_share_tracker', JSON.stringify(data));
     }
 
     function updateShareUI() {
-        const data = getShareData();
+        checkDailyReset();
         const badge = document.getElementById('shareCountBadge');
-        if (badge) {
-            badge.innerText = `${data.count} / 5 Daily Shares`;
+        const btn = document.getElementById('shareBtn');
+        if (badge) badge.innerText = `${dailySharesCount} / 5 Daily Shares`;
+
+        if (dailySharesCount >= 5) {
+            if (btn) {
+                btn.disabled = true;
+                btn.className = "bg-slate-800 text-slate-500 font-bold text-xs px-4 py-2 rounded-xl cursor-not-allowed";
+                btn.innerText = "Daily Limit Reached (5/5)";
+            }
         }
-    }
-
-    function executeShareAction(shareTitle, shareText) {
-        const shareData = getShareData();
-        if (shareData.count >= 5) {
-            alert("Daily share limit reached (5/5). Come back tomorrow to share more!");
-            return;
-        }
-
-        const shareUrl = window.location.origin + window.location.pathname;
-
-        if (navigator.share) {
-            navigator.share({
-                title: shareTitle,
-                text: shareText,
-                url: shareUrl
-            }).then(() => {
-                shareData.count += 1;
-                saveShareData(shareData);
-                updateShareUI();
-                renderCoinTable();
-                alert(`Shared successfully! (${shareData.count}/5 daily shares completed)`);
-            }).catch(err => {
-                if (err.name !== 'AbortError') {
-                    fallbackCopyShare(shareUrl, shareData);
-                }
-            });
-        } else {
-            fallbackCopyShare(shareUrl, shareData);
-        }
-    }
-
-    function fallbackCopyShare(url, shareData) {
-        navigator.clipboard.writeText(url);
-        shareData.count += 1;
-        saveShareData(shareData);
-        updateShareUI();
-        renderCoinTable();
-        alert(`Platform link copied to clipboard! (${shareData.count}/5 daily shares completed)`);
     }
 
     function handleDailyShare() {
-        executeShareAction("Apex Yields Platform", "Join Apex Yields to explore multi-chain USDT yield vaults!");
-    }
+        checkDailyReset();
+        if (dailySharesCount >= 5) {
+            return alert("You have reached the maximum of 5 daily shares today. Come back tomorrow!");
+        }
 
-    function handleCoinShare(name, symbol) {
-        executeShareAction(`${name} (${symbol}) on Apex Yields`, `Check out real-time ${name} performance on Apex Yields!`);
+        dailySharesCount++;
+        localStorage.setItem('apex_daily_shares', dailySharesCount);
+        updateShareUI();
+
+        const user = usersData[currentUser];
+        if (user) {
+            const reward = 2.50;
+            user.unlockedBonus = (user.unlockedBonus || 0) + reward;
+            logEvent(currentUser, 'DAILY_SHARE', `Shared market asset, earned +$${reward} USDT referral bonus credit.`);
+            saveData();
+            initDashboard();
+            alert(`Platform shared successfully! +$${reward.toFixed(2)} USDT added to your Unlocked Referral Bonus.`);
+        }
     }
 
     function renderCoinTable() {
-        const container = document.getElementById('marketCoinList');
-        if (!container) return;
-        
-        const data = getShareData();
-        const isLimitReached = data.count >= 5;
+        const tbody = document.getElementById('marketCoinList');
+        if (!tbody) return;
 
-        container.innerHTML = extendedMarketCoins.map(coin => `
-            <tr>
-                <td class="p-2 font-semibold text-slate-100">${coin.name}</td>
-                <td class="p-2 font-mono text-slate-400">${coin.symbol}</td>
+        tbody.innerHTML = extendedMarketCoins.map(coin => `
+            <tr class="hover:bg-slate-800/30 transition">
+                <td class="p-2 font-bold text-slate-200">${coin.name}</td>
+                <td class="p-2 font-mono text-slate-400">${coin.symbol}/USDT</td>
                 <td class="p-2 text-right">
-                    <button onclick="handleCoinShare('${coin.name}', '${coin.symbol}')" 
-                        class="px-2.5 py-1 text-[11px] font-bold rounded transition-all ${
-                            isLimitReached 
-                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' 
-                            : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 border border-emerald-500/30'
-                        }">
-                        ${isLimitReached ? 'Limit Reached' : '🔗 Share Coin'}
+                    <button onclick="shareSpecificCoin('${coin.name}', '${coin.symbol}')" class="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-2.5 py-1 rounded text-[11px] font-semibold transition">
+                        Share ${coin.symbol}
                     </button>
                 </td>
             </tr>
         `).join('');
+    }
+
+    function shareSpecificCoin(name, symbol) {
+        checkDailyReset();
+        if (dailySharesCount >= 5) {
+            return alert("Daily share limit reached (5/5).");
+        }
+
+        dailySharesCount++;
+        localStorage.setItem('apex_daily_shares', dailySharesCount);
+        updateShareUI();
+
+        const user = usersData[currentUser];
+        if (user) {
+            const reward = 3.00;
+            user.unlockedBonus = (user.unlockedBonus || 0) + reward;
+            logEvent(currentUser, 'SHARE_COIN', `Shared ${name} (${symbol}) market trend. Earned +$3.00 USDT bonus.`);
+            saveData();
+            initDashboard();
+            alert(`Successfully shared ${name} market performance! +$${reward.toFixed(2)} USDT credited to Referral Hub.`);
+        }
     }
     </script>
 </body>

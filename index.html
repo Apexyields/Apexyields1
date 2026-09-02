@@ -793,9 +793,46 @@
                 }
             });
 
+            // Helper function to process any pending referral once logged in
+            async function processPendingReferral(userId) {
+                const pendingRef = localStorage.getItem('apex_pending_ref');
+                if (!pendingRef) return;
+
+                try {
+                    // Check if this user already has a referrer set in Supabase
+                    const { data: profile, error: fetchError } = await supabaseClient
+                        .from('profiles')
+                        .select('referred_by')
+                        .eq('id', userId)
+                        .single();
+
+                    if (!fetchError && profile && !profile.referred_by) {
+                        // Update Supabase directly so it persists across devices
+                        const { error: updateError } = await supabaseClient
+                            .from('profiles')
+                            .update({ referred_by: pendingRef })
+                            .eq('id', userId);
+
+                        if (!updateError) {
+                            console.log('Referral successfully linked to database:', pendingRef);
+                            // Clear local storage copy once successfully saved to backend
+                            localStorage.removeItem('apex_pending_ref');
+                        } else {
+                            console.error('Error saving referral to Supabase:', updateError.message);
+                        }
+                    } else {
+                        // User already has a referrer or profile doesn't need updating
+                        localStorage.removeItem('apex_pending_ref');
+                    }
+                } catch (err) {
+                    console.error('Failed to process pending referral:', err);
+                }
+            }
+
             // 2. Listen for session updates
-            supabaseClient.auth.onAuthStateChange((event, session) => {
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 if (session) {
+                    await processPendingReferral(session.user.id);
                     loadUserProfile();
                 }
             });
@@ -803,10 +840,12 @@
             // 3. Fallback check for session on hard refresh
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
+                await processPendingReferral(session.user.id);
                 loadUserProfile();
             }
         }
     });
+
 
     // ==========================================
     // 1. AUTHENTICATION (Sign Up & Sign In)

@@ -1890,26 +1890,26 @@
     }
 
     function handleDailyShare() {
-        const user = usersData[currentUser];
-        if (!user) return alert('Please log in first.');
+    const user = usersData[currentUser];
+    if (!user) return alert('Please log in first.');
 
-        const today = new Date().toDateString();
-        if (user.lastShareDay !== today) {
-            user.lastShareDay = today;
-            user.dailySharesCount = 0;
-        }
-
-        if (user.dailySharesCount >= 5) {
-            return alert('Daily sharing limit of 5 reached. Come back tomorrow!');
-        }
-
-        user.dailySharesCount++;
-        user.balance = (user.balance || 0) + 1.00; // Reward $1 per share
-        saveData();
-        updateShareUI();
-        initDashboard();
-        alert('Platform share recorded! Earned +$1.00 USDT reward.');
+    const today = new Date().toDateString();
+    if (user.lastShareDay !== today) {
+        user.lastShareDay = today;
+        user.dailySharesCount = 0;
     }
+
+    if (user.dailySharesCount >= 5) {
+        return alert('Daily sharing limit of 5 reached. Come back tomorrow!');
+    }
+
+    user.dailySharesCount++;
+    saveData();
+    updateShareUI();
+    initDashboard();
+    alert('Platform share recorded successfully.');
+}
+
 
     function shareCoin(symbol) {
         handleDailyShare();

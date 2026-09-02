@@ -1113,6 +1113,44 @@
         localStorage.setItem('apex_users_data', JSON.stringify(usersData));
         localStorage.setItem('apex_package_user_overrides', JSON.stringify(packageUserOverrides));
     }
+async function loadUserDataFromSupabase() {
+    if (!supabaseClient) return;
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return; // Not logged in yet
+
+    const userId = session.user.id;
+
+    // Fetch the user's row from Supabase profiles table
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (error) {
+        console.error('Error loading profile from Supabase:', error.message);
+        return;
+    }
+
+    if (profile) {
+        // Map Supabase columns back into your app's existing local structure
+        currentUser = profile.username; // or whatever your identifier is
+        
+        usersData[currentUser] = {
+            balance: profile.balance || 0,
+            dailySharesCount: profile.daily_shares_count || 0,
+            lastShareDay: profile.last_share_day || '',
+            // add any other fields you want to sync here
+        };
+
+        // Refresh your UI elements with the fresh cloud data
+        if (typeof initDashboard === 'function') initDashboard();
+        if (typeof updateShareUI === 'function') updateShareUI();
+        
+        console.log('User data successfully loaded from Supabase!');
+    }
+}
 
     function generateCode() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

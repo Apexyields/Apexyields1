@@ -1928,31 +1928,75 @@
         }
     }
 
-    function handleDailyShare() {
-    const user = usersData[currentUser];
-    if (!user) return alert('Please log in first.');
-
-    const today = new Date().toDateString();
-    if (user.lastShareDay !== today) {
-        user.lastShareDay = today;
-        user.dailySharesCount = 0;
+async function handleDailyShare() {
+    if (!supabaseClient) {
+        return alert('Supabase client not initialized.');
     }
 
-    if (user.dailySharesCount >= 5) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return alert('Please log in first.');
+    const userId = session.user.id;
+
+    const today = new Date().toDateString();
+
+    // 1. Fetch latest state from Supabase to ensure cross-browser sync
+    const { data: profile, error: fetchError } = await supabaseClient
+        .from('profiles')
+        .select('daily_shares_count, last_share_day')
+        .eq('id', userId)
+        .single();
+
+    if (fetchError) {
+        console.error('Error fetching share data:', fetchError.message);
+        return alert('Error checking share status.');
+    }
+
+    let currentShares = profile?.daily_shares_count || 0;
+    let lastDay = profile?.last_share_day || '';
+
+    // Reset count if it's a new day
+    if (lastDay !== today) {
+        lastDay = today;
+        currentShares = 0;
+    }
+
+    if (currentShares >= 5) {
         return alert('Daily sharing limit of 5 reached. Come back tomorrow!');
     }
 
-    user.dailySharesCount++;
-    saveData();
-    updateShareUI();
-    initDashboard();
+    currentShares++;
+
+    // 2. Persist the updated count directly to Supabase
+    const { error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({
+            daily_shares_count: currentShares,
+            last_share_day: lastDay
+        })
+        .eq('id', userId);
+
+    if (updateError) {
+        console.error('Failed to update share count in Supabase:', updateError.message);
+        return alert('Failed to record share. Please try again.');
+    }
+
+    // 3. Keep local fallback state and UI synchronized
+    const user = usersData[currentUser];
+    if (user) {
+        user.dailySharesCount = currentShares;
+        user.lastShareDay = lastDay;
+        if (typeof saveData === 'function') saveData();
+    }
+
+    if (typeof updateShareUI === 'function') updateShareUI();
+    if (typeof initDashboard === 'function') initDashboard();
     alert('Platform share recorded successfully.');
 }
 
-
-    function shareCoin(symbol) {
-        handleDailyShare();
-    }
+async function shareCoin(symbol) {
+    await handleDailyShare();
+}
+    
 
     function promptInvestPackage(packageName, cost, duration) {
         selectedPackage = { name: packageName, cost, duration };

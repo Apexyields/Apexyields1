@@ -84,10 +84,7 @@
                 <input type="text" id="loginUsername" placeholder="Username / Account ID" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <input type="password" id="loginPasscode" placeholder="Password / Passcode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <input type="text" id="loginRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-<button onclick="handleLogin(event)" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">Sign In / Register</button>
-
-
-
+                <button onclick="handleLogin(event)" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">Sign In / Register</button>
             </div>
         </section>
 
@@ -849,8 +846,6 @@
         }
     });
 
-
-
     // ==========================================
     // 1. AUTHENTICATION (Sign Up & Sign In)
     // ==========================================
@@ -930,64 +925,73 @@
 
             const email = username.includes('@') ? username : `${username}@apexyields.app`;
 
-            // 1. Attempt Sign In first (for existing users)
-            const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
+            if (supabaseClient) {
+                // 1. Attempt Sign In first (for existing users)
+                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
 
-            if (!signInError && signInData.user) {
+                if (!signInError && signInData.user) {
+                    currentUser = username;
+                    localStorage.setItem('currentUser', currentUser);
+                    document.getElementById('adminBtn').classList.add('hidden');
+                    document.getElementById('adminSettingsBox').classList.add('hidden');
+                    document.getElementById('userHeaderRole').innerText = 'Standard User';
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('dashboardSection').classList.remove('hidden');
+                    
+                    loadUserProfile();
+                    initDashboard();
+                    return;
+                }
+
+                // 2. If sign-in failed, try to Sign Up
+                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password
+                });
+
+                if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
+                    return alert("Incorrect password or account already exists. Please check your credentials.");
+                } else if (signUpError) {
+                    return alert("Authentication error: " + signUpError.message);
+                }
+
+                // 3. If signUp succeeded
+                if (signUpData.user) {
+                    currentUser = username;
+                    localStorage.setItem('currentUser', currentUser);
+                    
+                    const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
+
+                    const { error: profileError } = await supabaseClient
+                        .from('profiles')
+                        .insert([{ 
+                            id: signUpData.user.id, 
+                            username: username, 
+                            balance: 0, 
+                            role: 'user',
+                            referred_by: finalRefCode 
+                        }]);
+
+                    if (profileError) console.error("Profile creation error:", profileError.message);
+
+                    document.getElementById('adminBtn').classList.add('hidden');
+                    document.getElementById('adminSettingsBox').classList.add('hidden');
+                    document.getElementById('userHeaderRole').innerText = 'Standard User';
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('dashboardSection').classList.remove('hidden');
+
+                    loadUserProfile();
+                    initDashboard();
+                    return;
+                }
+            } else {
                 currentUser = username;
                 localStorage.setItem('currentUser', currentUser);
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
                 document.getElementById('authSection').classList.add('hidden');
                 document.getElementById('dashboardSection').classList.remove('hidden');
-                
-                loadUserProfile();
-                initDashboard();
-                return;
-            }
-
-            // 2. If sign-in failed, try to Sign Up (to see if this is a brand new user)
-            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password
-            });
-
-            if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
-                return alert("Incorrect password or account already exists. Please check your credentials.");
-            } else if (signUpError) {
-                return alert("Authentication error: " + signUpError.message);
-            }
-
-            // 3. If signUp succeeded, it's a brand new user — create their profile and apply referral
-            if (signUpData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-                
-                const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
-
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ 
-                        id: signUpData.user.id, 
-                        username: username, 
-                        balance: 0, 
-                        role: 'user',
-                        referred_by: finalRefCode 
-                    }]);
-
-                if (profileError) console.error("Profile creation error:", profileError.message);
-
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-
-                loadUserProfile();
                 initDashboard();
             }
         } catch (err) {
@@ -995,7 +999,7 @@
             alert("Unexpected error: " + err.message);
         }
     }
-    
+    window.handleLogin = handleLogin;
 
     // ==========================================
     // 2. USER PROFILE & BALANCE DISPLAY
@@ -1117,44 +1121,39 @@
         localStorage.setItem('apex_users_data', JSON.stringify(usersData));
         localStorage.setItem('apex_package_user_overrides', JSON.stringify(packageUserOverrides));
     }
-async function loadUserDataFromSupabase() {
-    if (!supabaseClient) return;
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) return; // Not logged in yet
+    async function loadUserDataFromSupabase() {
+        if (!supabaseClient) return;
 
-    const userId = session.user.id;
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) return;
 
-    // Fetch the user's row from Supabase profiles table
-    const { data: profile, error } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+        const userId = session.user.id;
 
-    if (error) {
-        console.error('Error loading profile from Supabase:', error.message);
-        return;
+        const { data: profile, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Error loading profile from Supabase:', error.message);
+            return;
+        }
+
+        if (profile) {
+            currentUser = profile.username;
+            
+            usersData[currentUser] = {
+                balance: profile.balance || 0,
+                dailySharesCount: profile.daily_shares_count || 0,
+                lastShareDay: profile.last_share_day || '',
+            };
+
+            if (typeof initDashboard === 'function') initDashboard();
+            if (typeof updateShareUI === 'function') updateShareUI();
+        }
     }
-
-    if (profile) {
-        // Map Supabase columns back into your app's existing local structure
-        currentUser = profile.username; // or whatever your identifier is
-        
-        usersData[currentUser] = {
-            balance: profile.balance || 0,
-            dailySharesCount: profile.daily_shares_count || 0,
-            lastShareDay: profile.last_share_day || '',
-            // add any other fields you want to sync here
-        };
-
-        // Refresh your UI elements with the fresh cloud data
-        if (typeof initDashboard === 'function') initDashboard();
-        if (typeof updateShareUI === 'function') updateShareUI();
-        
-        console.log('User data successfully loaded from Supabase!');
-    }
-}
 
     function generateCode() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -1402,7 +1401,6 @@ async function loadUserDataFromSupabase() {
     }
 
     async function initDashboard() {
-        // Recover user session on page refresh before running dashboard logic
         if (typeof supabase !== 'undefined' && supabaseClient && supabaseClient.auth) {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session && session.user) {
@@ -1562,18 +1560,9 @@ async function loadUserDataFromSupabase() {
         }
 
         user.activeCap = targetCap;
-        if (typeof logEvent === 'function') {
-            logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
-        }
-        
-        if (typeof saveData === 'function') {
-            saveData();
-        }
-        
-        if (typeof initDashboard === 'function') {
-            initDashboard();
-        }
-        
+        logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
+        saveData();
+        initDashboard();
         renderReferralHub();
 
         if (qualifiedCount === 0) {
@@ -1624,7 +1613,7 @@ async function loadUserDataFromSupabase() {
                 </tr>
             `).join('');
 
-                const qrContainer = document.getElementById("qrcode");
+        const qrContainer = document.getElementById("qrcode");
         const baseUrl = window.location.origin.includes('github.io') 
             ? `${window.location.origin}/Apexyields1` 
             : window.location.origin;
@@ -1642,7 +1631,130 @@ async function loadUserDataFromSupabase() {
                 qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
             }
         }
+    }
 
+    function promptInvestPackage(name, cost, duration) {
+        selectedPackage = { name, cost, duration };
+        const user = usersData[currentUser] || { refCode: '' };
+        const refs = countQualifiedReferrals(user.refCode);
+        const yieldData = calculateAffiliateYield(cost, refs);
+
+        document.getElementById('modalPackageName').innerText = name;
+        document.getElementById('modalCost').innerText = `$${cost.toFixed(2)} USDT`;
+        document.getElementById('modalActiveUsers').innerText = getPackageActiveUsers(name);
+        document.getElementById('modalRate').innerText = `+${yieldData.effectiveRate.toFixed(0)}%`;
+        document.getElementById('modalProfit').innerText = `+$${yieldData.finalYield.toFixed(2)} USDT`;
+        document.getElementById('modalDuration').innerText = duration;
+        document.getElementById('modalTotalPayout').innerText = `$${yieldData.totalPayout.toFixed(2)} USDT`;
+
+        const capNotice = document.getElementById('modalCapNotice');
+        if (capNotice) {
+            if (cost >= 1000) capNotice.classList.remove('hidden');
+            else capNotice.classList.add('hidden');
+        }
+
+        document.getElementById('investmentModal').classList.remove('hidden');
+    }
+
+    function closeInvestmentModal() {
+        document.getElementById('investmentModal').classList.add('hidden');
+    }
+
+    function confirmInvestment() {
+        if (!selectedPackage || !currentUser || !usersData[currentUser]) return;
+        const user = usersData[currentUser];
+
+        if (user.balance < selectedPackage.cost) {
+            alert('Insufficient balance. Please deposit funds first.');
+            closeInvestmentModal();
+            return;
+        }
+
+        user.balance -= selectedPackage.cost;
+        user.lockedPackages = (user.lockedPackages || 0) + selectedPackage.cost;
+
+        if (!user.claimedPackages) user.claimedPackages = [];
+        user.claimedPackages.push(selectedPackage.name);
+
+        const durationDays = selectedPackage.duration.includes('3 Days') ? 3 :
+                             selectedPackage.duration.includes('15 Days') ? 15 :
+                             selectedPackage.duration.includes('3 Months') ? 90 :
+                             selectedPackage.duration.includes('6 Months') ? 180 : 365;
+
+        const yieldData = calculateAffiliateYield(selectedPackage.cost, countQualifiedReferrals(user.refCode));
+
+        if (!user.activeSubscriptions) user.activeSubscriptions = [];
+        user.activeSubscriptions.push({
+            packageName: selectedPackage.name,
+            depositAmount: selectedPackage.cost,
+            totalPayout: yieldData.totalPayout,
+            status: 'ACTIVE',
+            startTime: Date.now(),
+            endTime: Date.now() + (durationDays * 24 * 60 * 60 * 1000)
+        });
+
+        logEvent(currentUser, 'INVEST_PACKAGE', `Locked $${selectedPackage.cost} in ${selectedPackage.name}`);
+        saveData();
+        closeInvestmentModal();
+        initDashboard();
+        alert(`Successfully locked ${selectedPackage.name}!`);
+    }
+
+    function copyRefCode() {
+        const code = document.getElementById('refCodeDisplay').innerText;
+        const baseUrl = window.location.origin.includes('github.io') 
+            ? `${window.location.origin}/Apexyields1` 
+            : window.location.origin;
+        const link = `${baseUrl}/?ref=${code}`;
+        navigator.clipboard.writeText(link).then(() => {
+            alert('Referral link copied to clipboard: ' + link);
+        }).catch(() => {
+            alert('Referral code: ' + code);
+        });
+    }
+
+    function renderCoinTable() {
+        const tbody = document.getElementById('marketCoinList');
+        if (!tbody) return;
+        tbody.innerHTML = extendedMarketCoins.map(coin => `
+            <tr>
+                <td class="p-2 font-bold">${coin.name}</td>
+                <td class="p-2 text-slate-400 font-mono">${coin.symbol}</td>
+                <td class="p-2 text-right">
+                    <button onclick="handleDailyShare()" class="bg-slate-800 hover:bg-slate-700 text-teal-400 px-2 py-1 rounded text-xs">Share</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updateShareUI() {
+        if (!currentUser || !usersData[currentUser]) return;
+        const user = usersData[currentUser];
+        const today = new Date().toDateString();
+        if (user.lastShareDay !== today) {
+            user.dailySharesCount = 0;
+            user.lastShareDay = today;
+        }
+        const badge = document.getElementById('shareCountBadge');
+        if (badge) badge.innerText = `${user.dailySharesCount || 0} / 5 Daily Shares`;
+    }
+
+    function handleDailyShare() {
+        if (!currentUser || !usersData[currentUser]) return alert('Please log in first.');
+        const user = usersData[currentUser];
+        const today = new Date().toDateString();
+        if (user.lastShareDay !== today) {
+            user.dailySharesCount = 0;
+            user.lastShareDay = today;
+        }
+        if ((user.dailySharesCount || 0) >= 5) {
+            return alert('Daily share limit reached (5/5). Come back tomorrow!');
+        }
+        user.dailySharesCount = (user.dailySharesCount || 0) + 1;
+        saveData();
+        updateShareUI();
+        alert(`Shared successfully! (${user.dailySharesCount}/5 daily shares completed)`);
+    }
 
     function openDepositModal() {
         updateDepositAddressDisplay();
@@ -1906,6 +2018,25 @@ async function loadUserDataFromSupabase() {
         }
     }
 
+    function saveAdminSettings() {
+        systemData.addresses.TRC20 = document.getElementById('adminTRC20Input').value.trim();
+        systemData.addresses.ERC20 = document.getElementById('adminERC20Input').value.trim();
+        systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
+        systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
+        saveData();
+        alert('Receiving addresses updated successfully.');
+    }
+
+    function saveDevEmailSetting() {
+        systemData.devEmail = document.getElementById('adminDevEmailInput').value.trim();
+        saveData();
+        alert('Developer log email updated successfully.');
+    }
+
+    function triggerDevEmailLog() {
+        alert(`Audit log dispatch simulated to ${systemData.devEmail || 'developer email'}.`);
+    }
+
     function renderAuditLogs() {
         const tbody = document.getElementById('adminAuditLogTable');
         if (!tbody) return;
@@ -1921,218 +2052,6 @@ async function loadUserDataFromSupabase() {
                 </tr>
             `).join('');
     }
-
-    function saveAdminSettings() {
-        systemData.addresses.TRC20 = document.getElementById('adminTRC20Input').value.trim();
-        systemData.addresses.ERC20 = document.getElementById('adminERC20Input').value.trim();
-        systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
-        systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
-        saveData();
-        alert('Multi-chain receiving addresses saved successfully.');
-    }
-
-    function saveDevEmailSetting() {
-        systemData.devEmail = document.getElementById('adminDevEmailInput').value.trim();
-        saveData();
-        alert('Developer log email updated successfully.');
-    }
-
-    function triggerDevEmailLog() {
-        alert(`Audit log successfully queued and dispatched to developer recipient: ${systemData.devEmail || 'yieldsapex@gmail.com'}`);
-    }
-
-    function renderCoinTable() {
-        const tbody = document.getElementById('marketCoinList');
-        if (!tbody) return;
-
-        tbody.innerHTML = extendedMarketCoins.map(coin => `
-            <tr>
-                <td class="p-2 font-bold text-slate-200">${coin.name}</td>
-                <td class="p-2 font-mono text-slate-400">${coin.symbol}/USDT</td>
-                <td class="p-2 text-right">
-                    <button onclick="shareCoin('${coin.symbol}')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-[11px] px-2.5 py-1 rounded font-medium">Share Asset</button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    function updateShareUI() {
-        const user = usersData[currentUser];
-        if (!user) return;
-
-        const today = new Date().toDateString();
-        if (user.lastShareDay !== today) {
-            user.lastShareDay = today;
-            user.dailySharesCount = 0;
-            saveData();
-        }
-
-        const badge = document.getElementById('shareCountBadge');
-        if (badge) {
-            badge.innerText = `${user.dailySharesCount || 0} / 5 Daily Shares`;
-        }
-    }
-
-async function handleDailyShare() {
-    if (!supabaseClient) {
-        return alert('Supabase client not initialized.');
-    }
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) return alert('Please log in first.');
-    const userId = session.user.id;
-
-    const today = new Date().toDateString();
-
-    // 1. Fetch latest state from Supabase to ensure cross-browser sync
-    const { data: profile, error: fetchError } = await supabaseClient
-        .from('profiles')
-        .select('daily_shares_count, last_share_day')
-        .eq('id', userId)
-        .single();
-
-    if (fetchError) {
-        console.error('Error fetching share data:', fetchError.message);
-        return alert('Error checking share status.');
-    }
-
-    let currentShares = profile?.daily_shares_count || 0;
-    let lastDay = profile?.last_share_day || '';
-
-    // Reset count if it's a new day
-    if (lastDay !== today) {
-        lastDay = today;
-        currentShares = 0;
-    }
-
-    if (currentShares >= 5) {
-        return alert('Daily sharing limit of 5 reached. Come back tomorrow!');
-    }
-
-    currentShares++;
-
-    // 2. Persist the updated count directly to Supabase
-    const { error: updateError } = await supabaseClient
-        .from('profiles')
-        .update({
-            daily_shares_count: currentShares,
-            last_share_day: lastDay
-        })
-        .eq('id', userId);
-
-    if (updateError) {
-        console.error('Failed to update share count in Supabase:', updateError.message);
-        return alert('Failed to record share. Please try again.');
-    }
-
-    // 3. Keep local fallback state and UI synchronized
-    const user = usersData[currentUser];
-    if (user) {
-        user.dailySharesCount = currentShares;
-        user.lastShareDay = lastDay;
-        if (typeof saveData === 'function') saveData();
-    }
-
-    if (typeof updateShareUI === 'function') updateShareUI();
-    if (typeof initDashboard === 'function') initDashboard();
-    alert('Platform share recorded successfully.');
-}
-
-async function shareCoin(symbol) {
-    await handleDailyShare();
-}
-    
-
-    function promptInvestPackage(packageName, cost, duration) {
-        selectedPackage = { name: packageName, cost, duration };
-        const user = usersData[currentUser];
-        const qualifiedRefs = user ? countQualifiedReferrals(user.refCode) : 0;
-        const yieldData = calculateAffiliateYield(cost, qualifiedRefs);
-
-        document.getElementById('modalPackageName').innerText = packageName;
-        document.getElementById('modalCost').innerText = `$${cost.toFixed(2)} USDT`;
-        document.getElementById('modalActiveUsers').innerText = formatCompactNumber(getPackageActiveUsers(packageName));
-        document.getElementById('modalRate').innerText = `+${yieldData.effectiveRate.toFixed(0)}% Return`;
-        document.getElementById('modalProfit').innerText = `+$${yieldData.finalYield.toFixed(2)} USDT`;
-        document.getElementById('modalDuration').innerText = duration;
-        document.getElementById('modalTotalPayout').innerText = `$${yieldData.totalPayout.toFixed(2)} USDT`;
-
-        const capNotice = document.getElementById('modalCapNotice');
-        if (cost >= 1000) {
-            capNotice.classList.remove('hidden');
-        } else {
-            capNotice.classList.add('hidden');
-        }
-
-        document.getElementById('investmentModal').classList.remove('hidden');
-    }
-
-    function closeInvestmentModal() {
-        document.getElementById('investmentModal').classList.add('hidden');
-        selectedPackage = null;
-    }
-
-    function confirmInvestment() {
-        if (!selectedPackage || !currentUser) return;
-        const user = usersData[currentUser];
-        if (!user) return;
-
-        if (user.balance < selectedPackage.cost) {
-            closeInvestmentModal();
-            return alert('Insufficient balance! Please deposit funds first.');
-        }
-
-        user.balance -= selectedPackage.cost;
-        user.lockedPackages = (user.lockedPackages || 0) + selectedPackage.cost;
-
-        if (!user.claimedPackages) user.claimedPackages = [];
-        user.claimedPackages.push(selectedPackage.name);
-
-        const qualifiedRefs = countQualifiedReferrals(user.refCode);
-        const yieldData = calculateAffiliateYield(selectedPackage.cost, qualifiedRefs);
-
-        let durationDays = 30;
-        if (selectedPackage.name === 'Micro Vault') durationDays = 3;
-        else if (selectedPackage.name.includes('15 Days') || selectedPackage.cost <= 100) durationDays = 15;
-        else if (selectedPackage.name.includes('3 Months')) durationDays = 90;
-        else if (selectedPackage.name.includes('6 Months')) durationDays = 180;
-        else if (selectedPackage.name.includes('12 Months')) durationDays = 365;
-
-        const endTime = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
-
-        if (!user.activeSubscriptions) user.activeSubscriptions = [];
-        user.activeSubscriptions.push({
-            packageName: selectedPackage.name,
-            depositAmount: selectedPackage.cost,
-            totalPayout: yieldData.totalPayout,
-            endTime: endTime,
-            status: 'ACTIVE'
-        });
-
-        logEvent(currentUser, 'INVEST_PACKAGE', `Locked $${selectedPackage.cost} into [${selectedPackage.name}]`);
-        saveData();
-        closeInvestmentModal();
-        initDashboard();
-        alert(`Successfully locked $${selectedPackage.cost} into ${selectedPackage.name}!`);
-    }
-
-        function copyRefCode() {
-        const code = document.getElementById('refCodeDisplay').innerText;
-        const baseUrl = window.location.origin.includes('github.io') 
-            ? `${window.location.origin}/Apexyields1` 
-            : window.location.origin;
-        navigator.clipboard.writeText(`${baseUrl}/?ref=${code}`);
-        alert('Referral link copied to clipboard!');
-    }
-document.addEventListener('DOMContentLoaded', () => {
-    const loginBtn = document.getElementById('loginBtn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', handleLogin);
-    }
-});
-
-
-
     </script>
 </body>
 </html>

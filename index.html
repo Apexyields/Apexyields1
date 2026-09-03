@@ -1632,18 +1632,10 @@ async function renderReferralHub() {
     const inviteLink = `${baseUrl}/?ref=${user.refCode || activeUserId}`;
 
     if (qrContainer) {
-        qrContainer.innerHTML = "";
-        try {
-            if (typeof QRCode !== 'undefined') {
-                new QRCode(qrContainer, { text: inviteLink, width: 128, height: 128 });
-            } else {
-                qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
-            }
-        } catch (e) {
-            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
-        }
+        qrContainer.innerHTML = `<img src="https://quickchart.io/qr?text=${encodeURIComponent(inviteLink)}&size=160" alt="Referral QR Code" class="mx-auto rounded-lg shadow-sm" />`;
     }
 }
+
 
     
 

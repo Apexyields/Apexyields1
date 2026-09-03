@@ -1263,12 +1263,27 @@
     }
 
     async function countQualifiedReferrals(userId, userRefCode) {
-    if (!userId && !userRefCode) return 0;
+    let targetId = userId;
+    let targetRefCode = userRefCode;
+
+    // Retrieve active session UUID directly if not passed in
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            targetId = session.user.id;
+        }
+    }
+
+    const conditions = [];
+    if (targetId) conditions.push(`referred_by.eq.${targetId}`);
+    if (targetRefCode) conditions.push(`referred_by.eq.${targetRefCode}`);
+
+    if (conditions.length === 0) return 0;
 
     const { data, error } = await supabaseClient
         .from('profiles')
         .select('id')
-        .or(`referred_by.eq.${userId},referred_by.eq.${userRefCode}`)
+        .or(conditions.join(','))
         .eq('has_bought_package_1', true);
 
     if (error) {
@@ -1278,6 +1293,7 @@
 
     return data ? data.length : 0;
 }
+
 
 
     function calculateAffiliateYield(initialDeposit, referralCount = 0) {

@@ -833,6 +833,7 @@
             supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 if (session) {
                     await processPendingReferral(session.user.id);
+                    await loadUserDataFromSupabase();
                     loadUserProfile();
                 }
             });
@@ -841,10 +842,12 @@
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 await processPendingReferral(session.user.id);
+                await loadUserDataFromSupabase();
                 loadUserProfile();
             }
         }
     });
+
 
 
     // ==========================================

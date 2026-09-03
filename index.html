@@ -1262,37 +1262,28 @@
         renderDevPackageGrid();
     }
 
-    async function countQualifiedReferrals(userId, userRefCode) {
-    let targetId = userId;
-    let targetRefCode = userRefCode;
-
-    // Retrieve active session UUID directly if not passed in
-    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-            targetId = session.user.id;
+    async function countQualifiedReferrals(userId) {
+    if (!userId) {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            userId = session?.user?.id;
         }
     }
 
-    const conditions = [];
-    if (targetId) conditions.push(`referred_by.eq.${targetId}`);
-    if (targetRefCode) conditions.push(`referred_by.eq.${targetRefCode}`);
+    if (!userId) return 0;
 
-    if (conditions.length === 0) return 0;
-
-    const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('id')
-        .or(conditions.join(','))
-        .eq('has_bought_package_1', true);
+    const { data, error } = await supabaseClient.rpc('get_qualified_referral_count', {
+        p_user_id: userId
+    });
 
     if (error) {
-        console.error('Error fetching qualified referrals:', error.message);
+        console.error('RPC Error:', error.message);
         return 0;
     }
 
-    return data ? data.length : 0;
+    return data || 0;
 }
+
 
 
 

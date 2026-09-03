@@ -1582,9 +1582,9 @@
         }
     }
 
-    function renderReferralHub() {
+async function renderReferralHub() {
         const user = usersData[currentUser] || { refCode: 'APEX-000000' };
-        let qualifiedCount = countQualifiedReferrals(user.refCode);
+        let qualifiedCount = await countQualifiedReferrals(user.id || currentUser, user.refCode || currentUser);
         let network = [];
 
         Object.keys(usersData).forEach(u => {
@@ -1642,6 +1642,7 @@
             }
         }
     }
+    
 
     function promptInvestPackage(name, cost, duration) {
         selectedPackage = { name, cost, duration };

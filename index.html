@@ -1595,30 +1595,43 @@
  
 
 async function renderReferralHub() {
-    const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+    // Extract active user ID and displayed referral code safely
     const activeUserId = currentUser?.id || currentUser;
+    const displayedRefCode = document.getElementById('refCodeDisplay')?.innerText?.trim();
+    const user = (typeof usersData === 'object' && usersData[activeUserId]) ? usersData[activeUserId] : {};
+    const refCode = (displayedRefCode && displayedRefCode !== 'APEX-000000') 
+        ? displayedRefCode 
+        : (user.refCode || (typeof activeUserId === 'string' ? activeUserId.substring(0, 8).toUpperCase() : 'APEX-W581WD'));
 
     // 1. Fetch live qualified referral count
-    let qualifiedCount = await countQualifiedReferrals(activeUserId, user.refCode || activeUserId);
+    let qualifiedCount = await countQualifiedReferrals(activeUserId, refCode);
 
     // 2. Update UI Progress Bar & Tier Badges
-    document.getElementById('refProgressText').innerText = `${qualifiedCount} / 25`;
+    const refProgressElem = document.getElementById('refProgressText');
+    if (refProgressElem) refProgressElem.innerText = `${qualifiedCount} / 25`;
+
     const pct = Math.min((qualifiedCount / 25) * 100, 100);
-    document.getElementById('refProgressBar').style.width = `${pct}%`;
+    const refBarElem = document.getElementById('refProgressBar');
+    if (refBarElem) refBarElem.style.width = `${pct}%`;
 
     const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
-    document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
-    document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
+    const refBadgeElem = document.getElementById('refBadge');
+    if (refBadgeElem) refBadgeElem.innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
 
-    if (qualifiedCount >= 25) {
-        document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-        document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
-    } else if (qualifiedCount >= 10) {
-        document.getElementById('refBadge').className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-        document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
-    } else {
-        document.getElementById('refBadge').className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-        document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
+    const capDisplayElem = document.getElementById('currentCapDisplay');
+    if (capDisplayElem) capDisplayElem.innerText = tierCalc.capRate;
+
+    if (refBadgeElem) {
+        if (qualifiedCount >= 25) {
+            refBadgeElem.className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+            document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
+        } else if (qualifiedCount >= 10) {
+            refBadgeElem.className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+            document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
+        } else {
+            refBadgeElem.className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+            document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
+        }
     }
 
     // 3. Render Direct Referrals Network Table from Supabase
@@ -1630,27 +1643,22 @@ async function renderReferralHub() {
         ? `${window.location.origin}/Apexyields1` 
         : window.location.origin;
 
-    // Safely extract short refCode or truncate activeUserId to prevent QRCode.js canvas overflow
-    const refCode = user?.refCode || (typeof activeUserId === 'string' ? activeUserId.substring(0, 8).toUpperCase() : 'APEX-000000');
     const inviteLink = `${baseUrl}/?ref=${refCode}`;
 
     if (qrContainer) {
-        qrContainer.innerHTML = "";
-        try {
-            if (typeof QRCode !== 'undefined') {
-                new QRCode(qrContainer, {
-                    text: inviteLink,
-                    width: 128,
-                    height: 128,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff"
-                });
-            } else {
-                qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code" class="mx-auto rounded-lg" />`;
-            }
-        } catch (e) {
-            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code" class="mx-auto rounded-lg" />`;
-        }
+        qrContainer.classList.remove('bg-white');
+        
+        const primaryQr = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inviteLink)}&color=000000&bgcolor=ffffff`;
+        const fallbackQr = `https://quickchart.io/qr?text=${encodeURIComponent(inviteLink)}&size=160`;
+
+        qrContainer.innerHTML = `
+            <img 
+                src="${primaryQr}" 
+                alt="Referral QR Code" 
+                class="w-36 h-36 mx-auto rounded-xl p-2 bg-white shadow-md block object-contain"
+                onerror="this.onerror=null; this.src='${fallbackQr}';"
+            />
+        `;
     }
 }
 

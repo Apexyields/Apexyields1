@@ -1595,7 +1595,6 @@
  
 
 async function renderReferralHub() {
-    // Extract active user ID and displayed referral code safely
     const activeUserId = currentUser?.id || currentUser;
     const displayedRefCode = document.getElementById('refCodeDisplay')?.innerText?.trim();
     const user = (typeof usersData === 'object' && usersData[activeUserId]) ? usersData[activeUserId] : {};
@@ -1604,7 +1603,14 @@ async function renderReferralHub() {
         : (user.refCode || (typeof activeUserId === 'string' ? activeUserId.substring(0, 8).toUpperCase() : 'APEX-W581WD'));
 
     // 1. Fetch live qualified referral count
-    let qualifiedCount = await countQualifiedReferrals(activeUserId, refCode);
+    let qualifiedCount = 0;
+    try {
+        if (typeof countQualifiedReferrals === 'function') {
+            qualifiedCount = await countQualifiedReferrals(activeUserId, refCode);
+        }
+    } catch (e) {
+        console.warn("Count check warning:", e);
+    }
 
     // 2. Update UI Progress Bar & Tier Badges
     const refProgressElem = document.getElementById('refProgressText');
@@ -1614,55 +1620,45 @@ async function renderReferralHub() {
     const refBarElem = document.getElementById('refProgressBar');
     if (refBarElem) refBarElem.style.width = `${pct}%`;
 
-    const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
-    const refBadgeElem = document.getElementById('refBadge');
-    if (refBadgeElem) refBadgeElem.innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
-
-    const capDisplayElem = document.getElementById('currentCapDisplay');
-    if (capDisplayElem) capDisplayElem.innerText = tierCalc.capRate;
-
-    if (refBadgeElem) {
-        if (qualifiedCount >= 25) {
-            refBadgeElem.className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-            document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
-        } else if (qualifiedCount >= 10) {
-            refBadgeElem.className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-            document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
-        } else {
-            refBadgeElem.className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-            document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
-        }
+    if (typeof calculateAffiliateYield === 'function') {
+        const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
+        const refBadgeElem = document.getElementById('refBadge');
+        const capDisplayElem = document.getElementById('currentCapDisplay');
+        
+        if (refBadgeElem) refBadgeElem.innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
+        if (capDisplayElem) capDisplayElem.innerText = tierCalc.capRate;
     }
 
-    // 3. Render Direct Referrals Network Table from Supabase
-    await renderReferralNetwork();
+    // 3. Render Direct Referrals Network Table (Isolated to prevent execution halts)
+    try {
+        if (typeof renderReferralNetwork === 'function') {
+            await renderReferralNetwork();
+        }
+    } catch (networkErr) {
+        console.error("renderReferralNetwork threw an error:", networkErr);
+    }
 
-    // 4. Generate QR Code & Invite Link
+    // 4. Generate QR Code & Invite Link (Guaranteed execution)
     const qrContainer = document.getElementById("qrcode");
-    const baseUrl = window.location.origin.includes('github.io') 
-        ? `${window.location.origin}/Apexyields1` 
-        : window.location.origin;
-
-    const inviteLink = `${baseUrl}/?ref=${refCode}`;
-
     if (qrContainer) {
-        qrContainer.classList.remove('bg-white');
-        
-        const primaryQr = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inviteLink)}&color=000000&bgcolor=ffffff`;
-        const fallbackQr = `https://quickchart.io/qr?text=${encodeURIComponent(inviteLink)}&size=160`;
+        const baseUrl = window.location.origin.includes('github.io') 
+            ? `${window.location.origin}/Apexyields1` 
+            : window.location.origin;
+
+        const inviteLink = `${baseUrl}/?ref=${refCode}`;
+        const primaryQr = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(inviteLink)}&color=000000&bgcolor=ffffff`;
+        const fallbackQr = `https://quickchart.io/qr?text=${encodeURIComponent(inviteLink)}&size=140`;
 
         qrContainer.innerHTML = `
             <img 
                 src="${primaryQr}" 
                 alt="Referral QR Code" 
-                class="w-36 h-36 mx-auto rounded-xl p-2 bg-white shadow-md block object-contain"
+                class="w-32 h-32 rounded-xl p-1.5 bg-white shadow-md block mx-auto object-contain"
                 onerror="this.onerror=null; this.src='${fallbackQr}';"
             />
         `;
     }
 }
-
-
 
 
     

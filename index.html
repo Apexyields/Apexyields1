@@ -1623,8 +1623,11 @@ async function loadUserDataFromSupabase() {
                 </tr>
             `).join('');
 
-        const qrContainer = document.getElementById("qrcode");
-        const inviteLink = `https://aapexyields.netlify.app/?ref=${user.refCode || 'APEX-000000'}`;
+                const qrContainer = document.getElementById("qrcode");
+        const baseUrl = window.location.origin.includes('github.io') 
+            ? `${window.location.origin}/Apexyields1` 
+            : window.location.origin;
+        const inviteLink = `${baseUrl}/?ref=${user.refCode || 'APEX-000000'}`;
 
         if (qrContainer) {
             qrContainer.innerHTML = "";
@@ -1638,7 +1641,7 @@ async function loadUserDataFromSupabase() {
                 qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
             }
         }
-    }
+
 
     function openDepositModal() {
         updateDepositAddressDisplay();
@@ -2112,11 +2115,15 @@ async function shareCoin(symbol) {
         alert(`Successfully locked $${selectedPackage.cost} into ${selectedPackage.name}!`);
     }
 
-    function copyRefCode() {
+        function copyRefCode() {
         const code = document.getElementById('refCodeDisplay').innerText;
-        navigator.clipboard.writeText(`https://aapexyields.netlify.app/?ref=${code}`);
+        const baseUrl = window.location.origin.includes('github.io') 
+            ? `${window.location.origin}/Apexyields1` 
+            : window.location.origin;
+        navigator.clipboard.writeText(`${baseUrl}/?ref=${code}`);
         alert('Referral link copied to clipboard!');
     }
+
     </script>
 </body>
 </html>

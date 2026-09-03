@@ -1595,22 +1595,37 @@
  
 
 async function renderReferralHub() {
-    // Extract active user ID
-    const activeUserId = currentUser?.id || currentUser || 'ANON';
+    // Extract active user ID safely
+    const rawUserId = currentUser?.id || currentUser || '';
+    const activeUserId = typeof rawUserId === 'object' ? (rawUserId.id || '') : String(rawUserId);
+    const cleanId = activeUserId.replace(/[^a-zA-Z0-9]/g, '');
+
     const user = (typeof usersData === 'object' && usersData[activeUserId]) ? usersData[activeUserId] : {};
 
-    // Generate unique per-user refCode dynamically based on user ID
+    // 1. Use user.refCode if stored in memory/database
     let refCode = user.refCode;
+
+    // 2. Check localStorage for persistent saved code for this user ID
+    if (!refCode && cleanId) {
+        refCode = localStorage.getItem(`apex_ref_${cleanId}`);
+    }
+
+    // 3. Deterministically derive code from permanent user ID prefix (e.g. b3d2f2 -> APEX-B3D2F2)
     if (!refCode) {
-        if (typeof activeUserId === 'string' && activeUserId.length >= 6) {
-            const cleanId = activeUserId.replace(/[^a-zA-Z0-9]/g, '');
-            refCode = `APEX-${cleanId.slice(-6).toUpperCase()}`;
+        if (cleanId.length >= 6) {
+            refCode = `APEX-${cleanId.substring(0, 6).toUpperCase()}`;
+        } else if (cleanId.length > 0) {
+            refCode = `APEX-${cleanId.toUpperCase().padEnd(6, '0')}`;
         } else {
-            refCode = `APEX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            refCode = 'APEX-000000';
+        }
+
+        if (cleanId) {
+            localStorage.setItem(`apex_ref_${cleanId}`, refCode);
         }
     }
 
-    // Sync UI display element with unique code
+    // Sync UI display element with persistent code
     const refDisplay = document.getElementById('refCodeDisplay');
     if (refDisplay) refDisplay.innerText = refCode;
 
@@ -1650,7 +1665,7 @@ async function renderReferralHub() {
         console.error("renderReferralNetwork threw an error:", networkErr);
     }
 
-    // 4. Generate QR Code & Invite Link using unique refCode
+    // 4. Generate QR Code & Invite Link using persistent refCode
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
         const baseUrl = window.location.origin.includes('github.io') 
@@ -1671,7 +1686,6 @@ async function renderReferralHub() {
         `;
     }
 }
-
 
     
 

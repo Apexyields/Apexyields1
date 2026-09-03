@@ -1569,29 +1569,30 @@
         });
     }
 
-    function claimBonus() {
-        const user = usersData[currentUser] || { refCode: 'APEX-000000' };
-        const qualifiedCount = countQualifiedReferrals(user.refCode);
-        
-        let targetCap = 30;
-        if (qualifiedCount >= 25) {
-            targetCap = 50;
-        } else if (qualifiedCount >= 10) {
-            targetCap = 40;
-        }
-
-        user.activeCap = targetCap;
-        logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
-        saveData();
-        initDashboard();
-        renderReferralHub();
-
-        if (qualifiedCount === 0) {
-            alert("Base 30% yield cap is active. Refer members to scale up to 40% and 50% tiers.");
-        } else {
-            alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
-        }
+   async function claimBonus() {
+    const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+    const qualifiedCount = await countQualifiedReferrals();
+    
+    let targetCap = 30;
+    if (qualifiedCount >= 25) {
+        targetCap = 50;
+    } else if (qualifiedCount >= 10) {
+        targetCap = 40;
     }
+
+    user.activeCap = targetCap;
+    logEvent(currentUser, 'SYNC_TIER_CAP', `Synced and applied ${targetCap}% affiliate yield cap.`);
+    saveData();
+    initDashboard();
+    await renderReferralHub();
+
+    if (qualifiedCount === 0) {
+        alert("Base 30% yield cap is active. Refer members to scale up to 40% and 50% tiers.");
+    } else {
+        alert(`Successfully synced! Your active ${targetCap}% yield cap is locked and applied.`);
+    }
+}
+ 
 
 async function renderReferralHub() {
         const user = usersData[currentUser] || { refCode: 'APEX-000000' };

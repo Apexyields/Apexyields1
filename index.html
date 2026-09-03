@@ -1595,12 +1595,24 @@
  
 
 async function renderReferralHub() {
-    const activeUserId = currentUser?.id || currentUser;
-    const displayedRefCode = document.getElementById('refCodeDisplay')?.innerText?.trim();
+    // Extract active user ID
+    const activeUserId = currentUser?.id || currentUser || 'ANON';
     const user = (typeof usersData === 'object' && usersData[activeUserId]) ? usersData[activeUserId] : {};
-    const refCode = (displayedRefCode && displayedRefCode !== 'APEX-000000') 
-        ? displayedRefCode 
-        : (user.refCode || (typeof activeUserId === 'string' ? activeUserId.substring(0, 8).toUpperCase() : 'APEX-W581WD'));
+
+    // Generate unique per-user refCode dynamically based on user ID
+    let refCode = user.refCode;
+    if (!refCode) {
+        if (typeof activeUserId === 'string' && activeUserId.length >= 6) {
+            const cleanId = activeUserId.replace(/[^a-zA-Z0-9]/g, '');
+            refCode = `APEX-${cleanId.slice(-6).toUpperCase()}`;
+        } else {
+            refCode = `APEX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        }
+    }
+
+    // Sync UI display element with unique code
+    const refDisplay = document.getElementById('refCodeDisplay');
+    if (refDisplay) refDisplay.innerText = refCode;
 
     // 1. Fetch live qualified referral count
     let qualifiedCount = 0;
@@ -1629,7 +1641,7 @@ async function renderReferralHub() {
         if (capDisplayElem) capDisplayElem.innerText = tierCalc.capRate;
     }
 
-    // 3. Render Direct Referrals Network Table (Isolated to prevent execution halts)
+    // 3. Render Direct Referrals Network Table
     try {
         if (typeof renderReferralNetwork === 'function') {
             await renderReferralNetwork();
@@ -1638,7 +1650,7 @@ async function renderReferralHub() {
         console.error("renderReferralNetwork threw an error:", networkErr);
     }
 
-    // 4. Generate QR Code & Invite Link (Guaranteed execution)
+    // 4. Generate QR Code & Invite Link using unique refCode
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
         const baseUrl = window.location.origin.includes('github.io') 

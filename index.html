@@ -995,7 +995,7 @@
             alert("Unexpected error: " + err.message);
         }
     }
-    window.handleLogin = handleLogin;
+    
 
     // ==========================================
     // 2. USER PROFILE & BALANCE DISPLAY
@@ -2125,11 +2125,12 @@ async function shareCoin(symbol) {
         alert('Referral link copied to clipboard!');
     }
 document.addEventListener('DOMContentLoaded', () => {
-    const loginBtn = document.getElementById('loginBtn') || document.querySelector('button[type="submit"]');
+    const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
         loginBtn.addEventListener('click', handleLogin);
     }
 });
+
 
 
     </script>

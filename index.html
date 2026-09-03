@@ -1595,51 +1595,42 @@
  
 
 async function renderReferralHub() {
-    // Extract active user ID safely
-    const rawUserId = currentUser?.id || currentUser || '';
-    const activeUserId = typeof rawUserId === 'object' ? (rawUserId.id || '') : String(rawUserId);
+    // 1. Fetch authenticated user directly from Supabase to prevent uninitialized state issues
+    let activeUserId = '';
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+            const { data } = await supabaseClient.auth.getUser();
+            activeUserId = data?.user?.id || '';
+        }
+    } catch (e) {
+        console.warn("Could not fetch auth user directly:", e);
+    }
+
+    if (!activeUserId) {
+        activeUserId = currentUser?.id || (typeof currentUser === 'string' ? currentUser : '');
+    }
+
+    // 2. Deterministically derive permanent 6-character code from Supabase UUID
     const cleanId = activeUserId.replace(/[^a-zA-Z0-9]/g, '');
+    const refCode = cleanId.length >= 6 
+        ? `APEX-${cleanId.substring(0, 6).toUpperCase()}` 
+        : (cleanId ? `APEX-${cleanId.toUpperCase().padEnd(6, '0')}` : 'APEX-000000');
 
-    const user = (typeof usersData === 'object' && usersData[activeUserId]) ? usersData[activeUserId] : {};
-
-    // 1. Use user.refCode if stored in memory/database
-    let refCode = user.refCode;
-
-    // 2. Check localStorage for persistent saved code for this user ID
-    if (!refCode && cleanId) {
-        refCode = localStorage.getItem(`apex_ref_${cleanId}`);
-    }
-
-    // 3. Deterministically derive code from permanent user ID prefix (e.g. b3d2f2 -> APEX-B3D2F2)
-    if (!refCode) {
-        if (cleanId.length >= 6) {
-            refCode = `APEX-${cleanId.substring(0, 6).toUpperCase()}`;
-        } else if (cleanId.length > 0) {
-            refCode = `APEX-${cleanId.toUpperCase().padEnd(6, '0')}`;
-        } else {
-            refCode = 'APEX-000000';
-        }
-
-        if (cleanId) {
-            localStorage.setItem(`apex_ref_${cleanId}`, refCode);
-        }
-    }
-
-    // Sync UI display element with persistent code
+    // 3. Update UI display element with permanent code
     const refDisplay = document.getElementById('refCodeDisplay');
     if (refDisplay) refDisplay.innerText = refCode;
 
-    // 1. Fetch live qualified referral count
+    // 4. Fetch live qualified referral count
     let qualifiedCount = 0;
     try {
-        if (typeof countQualifiedReferrals === 'function') {
+        if (typeof countQualifiedReferrals === 'function' && activeUserId) {
             qualifiedCount = await countQualifiedReferrals(activeUserId, refCode);
         }
     } catch (e) {
         console.warn("Count check warning:", e);
     }
 
-    // 2. Update UI Progress Bar & Tier Badges
+    // 5. Update UI Progress Bar & Tier Badges
     const refProgressElem = document.getElementById('refProgressText');
     if (refProgressElem) refProgressElem.innerText = `${qualifiedCount} / 25`;
 
@@ -1656,16 +1647,16 @@ async function renderReferralHub() {
         if (capDisplayElem) capDisplayElem.innerText = tierCalc.capRate;
     }
 
-    // 3. Render Direct Referrals Network Table
+    // 6. Render Direct Referrals Network Table
     try {
         if (typeof renderReferralNetwork === 'function') {
             await renderReferralNetwork();
         }
     } catch (networkErr) {
-        console.error("renderReferralNetwork threw an error:", networkErr);
+        console.error("renderReferralNetwork error:", networkErr);
     }
 
-    // 4. Generate QR Code & Invite Link using persistent refCode
+    // 7. Generate QR Code & Invite Link
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
         const baseUrl = window.location.origin.includes('github.io') 

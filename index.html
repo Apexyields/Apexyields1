@@ -1262,18 +1262,21 @@
         renderDevPackageGrid();
     }
 
-    async function countQualifiedReferrals(userId) {
-    if (!userId) {
-        if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            userId = session?.user?.id;
+ async function countQualifiedReferrals(userId) {
+    let activeUuid = userId;
+
+    // Fetch live session UUID to ensure we send the UUID rather than a username string
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.user?.id) {
+            activeUuid = session.user.id;
         }
     }
 
-    if (!userId) return 0;
+    if (!activeUuid) return 0;
 
     const { data, error } = await supabaseClient.rpc('get_qualified_referral_count', {
-        p_user_id: userId
+        p_user_id: activeUuid
     });
 
     if (error) {
@@ -1281,8 +1284,9 @@
         return 0;
     }
 
-    return data || 0;
+    return data !== null ? data : 0;
 }
+   
 
 
 

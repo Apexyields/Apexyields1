@@ -1631,10 +1631,13 @@ async function renderReferralHub() {
         : window.location.origin;
     const inviteLink = `${baseUrl}/?ref=${user.refCode || activeUserId}`;
 
-    if (qrContainer) {
-        qrContainer.innerHTML = `<img src="https://quickchart.io/qr?text=${encodeURIComponent(inviteLink)}&size=160" alt="Referral QR Code" class="mx-auto rounded-lg shadow-sm" />`;
+        if (qrContainer) {
+        qrContainer.classList.remove('bg-white');
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(inviteLink)}`;
+        qrContainer.innerHTML = `<img src="${qrUrl}" alt="Referral QR Code" class="w-32 h-32 mx-auto rounded-lg shadow-md block bg-white p-2" onerror="this.onerror=null; this.src='https://quickchart.io/qr?text=${encodeURIComponent(inviteLink)}&size=160';" />`;
     }
 }
+
 
 
     

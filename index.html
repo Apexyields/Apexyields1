@@ -1595,65 +1595,56 @@
  
 
 async function renderReferralHub() {
-        const user = usersData[currentUser] || { refCode: 'APEX-000000' };
-        let qualifiedCount = await countQualifiedReferrals(user.id || currentUser, user.refCode || currentUser);
-        let network = [];
+    const user = usersData[currentUser] || { refCode: 'APEX-000000' };
+    const activeUserId = currentUser?.id || currentUser;
 
-        Object.keys(usersData).forEach(u => {
-            if (usersData[u].referredBy === user.refCode) {
-                const verified = true;
-                network.push({ id: u, verified });
-            }
-        });
+    // 1. Fetch live qualified referral count
+    let qualifiedCount = await countQualifiedReferrals(activeUserId, user.refCode || activeUserId);
 
-        document.getElementById('refProgressText').innerText = `${qualifiedCount} / 25`;
-        const pct = Math.min((qualifiedCount / 25) * 100, 100);
-        document.getElementById('refProgressBar').style.width = `${pct}%`;
+    // 2. Update UI Progress Bar & Tier Badges
+    document.getElementById('refProgressText').innerText = `${qualifiedCount} / 25`;
+    const pct = Math.min((qualifiedCount / 25) * 100, 100);
+    document.getElementById('refProgressBar').style.width = `${pct}%`;
 
-        const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
-        document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
-        document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
+    const tierCalc = calculateAffiliateYield(1000, qualifiedCount);
+    document.getElementById('refBadge').innerText = `${tierCalc.capRate}% CAP UNLOCKED`;
+    document.getElementById('currentCapDisplay').innerText = tierCalc.capRate;
 
-        if (qualifiedCount >= 25) {
-            document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-            document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
-        } else if (qualifiedCount >= 10) {
-            document.getElementById('refBadge').className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-            document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
-        } else {
-            document.getElementById('refBadge').className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
-            document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
-        }
+    if (qualifiedCount >= 25) {
+        document.getElementById('refBadge').className = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+        document.getElementById('refTierTitle').innerText = "FULL 50% YIELD CAP UNLOCKED!";
+    } else if (qualifiedCount >= 10) {
+        document.getElementById('refBadge').className = "bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+        document.getElementById('refTierTitle').innerText = "Tier 1: 40% Cap Unlocked";
+    } else {
+        document.getElementById('refBadge').className = "bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-mono font-bold";
+        document.getElementById('refTierTitle').innerText = "Base Level: 30% Cap Active";
+    }
 
-        const tbody = document.getElementById('refNetworkTable');
-        tbody.innerHTML = network.length === 0 ? `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>` :
-            network.map(item => `
-                <tr>
-                    <td class="p-3 font-mono">${item.id}</td>
-                    <td class="p-3 text-slate-400">Active Member</td>
-                    <td class="p-3">${item.verified ? '<span class="text-emerald-400 font-bold">✅ Verified</span>' : '<span class="text-amber-400">🟡 Pending Deposit</span>'}</td>
-                </tr>
-            `).join('');
+    // 3. Render Direct Referrals Network Table from Supabase
+    await renderReferralNetwork();
 
-        const qrContainer = document.getElementById("qrcode");
-        const baseUrl = window.location.origin.includes('github.io') 
-            ? `${window.location.origin}/Apexyields1` 
-            : window.location.origin;
-        const inviteLink = `${baseUrl}/?ref=${user.refCode || 'APEX-000000'}`;
+    // 4. Generate QR Code & Invite Link
+    const qrContainer = document.getElementById("qrcode");
+    const baseUrl = window.location.origin.includes('github.io') 
+        ? `${window.location.origin}/Apexyields1` 
+        : window.location.origin;
+    const inviteLink = `${baseUrl}/?ref=${user.refCode || activeUserId}`;
 
-        if (qrContainer) {
-            qrContainer.innerHTML = "";
-            try {
-                if (typeof QRCode !== 'undefined') {
-                    new QRCode(qrContainer, { text: inviteLink, width: 128, height: 128 });
-                } else {
-                    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
-                }
-            } catch (e) {
+    if (qrContainer) {
+        qrContainer.innerHTML = "";
+        try {
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrContainer, { text: inviteLink, width: 128, height: 128 });
+            } else {
                 qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
             }
+        } catch (e) {
+            qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(inviteLink)}" alt="QR Code"/>`;
         }
     }
+}
+
     
 
     function promptInvestPackage(name, cost, duration) {

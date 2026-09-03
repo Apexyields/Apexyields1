@@ -1629,7 +1629,10 @@ async function renderReferralHub() {
     const baseUrl = window.location.origin.includes('github.io') 
         ? `${window.location.origin}/Apexyields1` 
         : window.location.origin;
-    const inviteLink = `${baseUrl}/?ref=${user.refCode || activeUserId}`;
+
+    // Safely extract short refCode or truncate activeUserId to prevent QRCode.js canvas overflow
+    const refCode = user?.refCode || (typeof activeUserId === 'string' ? activeUserId.substring(0, 8).toUpperCase() : 'APEX-000000');
+    const inviteLink = `${baseUrl}/?ref=${refCode}`;
 
     if (qrContainer) {
         qrContainer.innerHTML = "";

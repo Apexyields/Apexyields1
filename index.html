@@ -1262,16 +1262,23 @@
         renderDevPackageGrid();
     }
 
-    function countQualifiedReferrals(userRefCode) {
-        if (!userRefCode) return 0;
-        let count = 0;
-        Object.keys(usersData).forEach(u => {
-            if (usersData[u].referredBy === userRefCode) {
-                count++;
-            }
-        });
-        return count;
+    async function countQualifiedReferrals(userId, userRefCode) {
+    if (!userId && !userRefCode) return 0;
+
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id')
+        .or(`referred_by.eq.${userId},referred_by.eq.${userRefCode}`)
+        .eq('has_bought_package_1', true);
+
+    if (error) {
+        console.error('Error fetching qualified referrals:', error.message);
+        return 0;
     }
+
+    return data ? data.length : 0;
+}
+
 
     function calculateAffiliateYield(initialDeposit, referralCount = 0) {
         const deposit = Math.max(0, Number(initialDeposit) || 0);
@@ -1401,10 +1408,12 @@
     }
 
     async function initDashboard() {
+        let userId = null;
         if (typeof supabase !== 'undefined' && supabaseClient && supabaseClient.auth) {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session && session.user) {
                 currentUser = session.user.email ? session.user.email.split('@')[0] : session.user.id;
+                userId = session.user.id;
             }
         }
 
@@ -1437,7 +1446,8 @@
         if (!user.activeSubscriptions) user.activeSubscriptions = [];
         if (!user.depositHistory) user.depositHistory = [];
 
-        const qualifiedRefs = countQualifiedReferrals(user.refCode);
+        // Fetches async count from Supabase using user ID and ref code
+        const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);
         const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
 
         document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;

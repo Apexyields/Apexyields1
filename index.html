@@ -1820,14 +1820,26 @@ async function renderReferralHub() {
     if (!selectedPackage) return;
 
     const { name, cost } = selectedPackage;
-    const dailyRate = 0.0125; // Base daily rate (1.25%)
+    const dailyRate = 0.0125;
 
-    // 1. Close modal UI
     closeInvestmentModal();
 
-    // 2. Execute database RPC transaction
-    await handlePackageLock(name, cost, dailyRate);
+    // Call rpc on the initialized client instance
+    const { data, error } = await supabaseClient.rpc('lock_package', {
+        p_package_name: name,
+        p_amount: cost,
+        p_daily_rate: dailyRate
+    });
+
+    if (error) {
+        alert(`Lock failed: ${error.message}`);
+        return;
+    }
+
+    alert(`Successfully locked ${name}!`);
+    location.reload();
 }
+
 
 
     function copyRefCode() {

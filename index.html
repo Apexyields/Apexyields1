@@ -1058,20 +1058,17 @@ window.handleLogin = handleLogin;
         if (nameElem) nameElem.innerText = data.username;
     }
 
-    // 2. Generate dynamic referral link matching user's active UUID (e.g. APEX-59076D)
+    // 2. Display referral code matching user's short UUID
     const userRefCode = `APEX-${user.id.substring(0, 6).toUpperCase()}`;
-    const refUrl = `${window.location.origin}${window.location.pathname}?ref=${userRefCode}`;
-
-    const refLinkElem = document.getElementById('referralLinkInput') || document.getElementById('userReferralLink');
-    if (refLinkElem) {
-        if (refLinkElem.tagName === 'INPUT') refLinkElem.value = refUrl;
-        else refLinkElem.innerText = refUrl;
+    const refCodeElem = document.getElementById('refCodeDisplay');
+    if (refCodeElem) {
+        refCodeElem.innerText = userRefCode;
     }
 
-    // 3. Fetch direct referrals matching active user's UUID
+    // 3. Fetch direct referrals using the active user's full UUID
     const { data: referrals, error: refError } = await supabaseClient
         .from('profiles')
-        .select('username, created_at')
+        .select('username, balance, created_at')
         .eq('referred_by', user.id);
 
     if (refError) {
@@ -1079,21 +1076,28 @@ window.handleLogin = handleLogin;
         return;
     }
 
-    // 4. Render referrals into dashboard table
-    const refContainer = document.getElementById('directReferralsList') || document.getElementById('referralsTableBody');
+    // 4. Render 3-column rows into refNetworkTable
+    const refContainer = document.getElementById('refNetworkTable');
     if (refContainer) {
         if (!referrals || referrals.length === 0) {
-            refContainer.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-gray-400">No direct referrals yet.</td></tr>`;
+            refContainer.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>`;
         } else {
-            refContainer.innerHTML = referrals.map(ref => `
-                <tr class="border-b border-gray-700">
-                    <td class="p-3 text-white">${ref.username || 'User'}</td>
-                    <td class="p-3 text-gray-400">${new Date(ref.created_at).toLocaleDateString()}</td>
-                </tr>
-            `).join('');
+            refContainer.innerHTML = referrals.map(ref => {
+                const isQualified = (Number(ref.balance) || 0) > 0;
+                return `
+                    <tr class="border-b border-slate-800 text-slate-300">
+                        <td class="p-3 font-mono text-slate-200">${ref.username || 'User'}</td>
+                        <td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>
+                        <td class="p-3 font-medium ${isQualified ? 'text-emerald-400' : 'text-amber-400'}">
+                            ${isQualified ? 'Verified' : 'Pending Deposit'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
     }
 }
+
 
 
     // ==========================================

@@ -943,83 +943,94 @@
                 return;
             }
 
-            const email = username.includes('@') ? username : `${username}@apexyields.app`;
+                    const email = username.includes('@') ? username : `${username}@apexyields.app`;
 
-            if (supabaseClient) {
-                // 1. Attempt Sign In first (for existing users)
-                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
+        if (supabaseClient) {
+            // 1. Attempt Sign In first (for existing users)
+            const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
 
-                if (!signInError && signInData.user) {
-                    currentUser = username;
-                    localStorage.setItem('currentUser', currentUser);
-                    document.getElementById('adminBtn').classList.add('hidden');
-                    document.getElementById('adminSettingsBox').classList.add('hidden');
-                    document.getElementById('userHeaderRole').innerText = 'Standard User';
-                    document.getElementById('authSection').classList.add('hidden');
-                    document.getElementById('dashboardSection').classList.remove('hidden');
-                    
-                    loadUserProfile();
-                    initDashboard();
-                    return;
-                }
-
-                // 2. If sign-in failed, try to Sign Up
-                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password
-                });
-
-                if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
-                    return alert("Incorrect password or account already exists. Please check your credentials.");
-                } else if (signUpError) {
-                    return alert("Authentication error: " + signUpError.message);
-                }
-
-                // 3. If signUp succeeded
-                if (signUpData.user) {
-                    currentUser = username;
-                    localStorage.setItem('currentUser', currentUser);
-                    
-                    const finalRefCode = refCode || localStorage.getItem('apex_pending_ref') || null;
-
-                    const { error: profileError } = await supabaseClient
-                        .from('profiles')
-                        .insert([{ 
-                            id: signUpData.user.id, 
-                            username: username, 
-                            balance: 0, 
-                            role: 'user',
-                            referred_by: finalRefCode 
-                        }]);
-
-                    if (profileError) console.error("Profile creation error:", profileError.message);
-
-                    document.getElementById('adminBtn').classList.add('hidden');
-                    document.getElementById('adminSettingsBox').classList.add('hidden');
-                    document.getElementById('userHeaderRole').innerText = 'Standard User';
-                    document.getElementById('authSection').classList.add('hidden');
-                    document.getElementById('dashboardSection').classList.remove('hidden');
-
-                    loadUserProfile();
-                    initDashboard();
-                    return;
-                }
-            } else {
+            if (!signInError && signInData.user) {
                 currentUser = username;
                 localStorage.setItem('currentUser', currentUser);
+                document.getElementById('adminBtn').classList.add('hidden');
+                document.getElementById('adminSettingsBox').classList.add('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Standard User';
                 document.getElementById('authSection').classList.add('hidden');
                 document.getElementById('dashboardSection').classList.remove('hidden');
+                
+                loadUserProfile();
                 initDashboard();
+                return;
             }
-        } catch (err) {
-            console.error("Critical login crash:", err);
-            alert("Unexpected error: " + err.message);
+
+            // 2. Extract referral code from URL or storage BEFORE signing up
+            const urlParams = new URLSearchParams(window.location.search);
+            const finalRefCode = urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
+
+            // 3. If sign-in failed, try to Sign Up with metadata attached
+            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        referred_by_code: finalRefCode
+                    }
+                }
+            });
+
+            if (signUpError && signUpError.message.toLowerCase().includes('already registered')) {
+                return alert("Incorrect password or account already exists. Please check your credentials.");
+            } else if (signUpError) {
+                return alert("Authentication error: " + signUpError.message);
+            }
+
+            // 4. If signUp succeeded
+            if (signUpData.user) {
+                currentUser = username;
+                localStorage.setItem('currentUser', currentUser);
+
+                const { error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ 
+                        id: signUpData.user.id, 
+                        username: username, 
+                        balance: 0, 
+                        role: 'user',
+                        referred_by_code: finalRefCode,
+                        referred_by: finalRefCode 
+                    }]);
+
+                if (profileError) console.error("Profile creation error:", profileError.message);
+
+                localStorage.removeItem('apex_pending_ref');
+
+                document.getElementById('adminBtn').classList.add('hidden');
+                document.getElementById('adminSettingsBox').classList.add('hidden');
+                document.getElementById('userHeaderRole').innerText = 'Standard User';
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+
+                loadUserProfile();
+                initDashboard();
+                return;
+            }
+        } else {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            initDashboard();
         }
+    } catch (err) {
+        console.error("Critical login crash:", err);
+        alert("Unexpected error: " + err.message);
     }
-    window.handleLogin = handleLogin;
+}
+window.handleLogin = handleLogin;
+
 
     // ==========================================
     // 2. USER PROFILE & BALANCE DISPLAY

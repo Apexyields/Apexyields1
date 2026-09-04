@@ -851,28 +851,48 @@
     // ==========================================
 
     async function signUpUser(email, password, username) {
-        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
-        
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password
-        });
+    if (!supabaseClient) return alert("Supabase is not initialized correctly.");
+    
+    // 1. Extract pending referral code from URL or storage
+    const urlParams = new URLSearchParams(window.location.search);
+    const pendingRef = urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
 
-        if (error) {
-            alert("Sign up failed: " + error.message);
-            return;
+    // 2. Submit sign up with referral metadata attached
+    const { data, error } = await supabaseClient.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+            data: {
+                referred_by_code: pendingRef
+            }
         }
+    });
 
-        if (data.user) {
-            const { error: profileError } = await supabaseClient
-                .from('profiles')
-                .insert([{ id: data.user.id, username: username, balance: 0, role: 'user' }]);
-
-            if (profileError) console.error("Profile creation error:", profileError.message);
-        }
-
-        alert("Account created successfully! Check your email to confirm.");
+    if (error) {
+        alert("Sign up failed: " + error.message);
+        return;
     }
+
+    // 3. Create profile record and save referral code link
+    if (data.user) {
+        const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .insert([{ 
+                id: data.user.id, 
+                username: username, 
+                balance: 0, 
+                role: 'user',
+                referred_by_code: pendingRef
+            }]);
+
+        if (profileError) console.error("Profile creation error:", profileError.message);
+
+        localStorage.removeItem('apex_pending_ref');
+    }
+
+    alert("Account created successfully! Check your email to confirm.");
+}
+
 
     async function loginUser(email, password) {
         if (!supabaseClient) return alert("Supabase is not initialized correctly.");

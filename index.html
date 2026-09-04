@@ -1503,59 +1503,82 @@ async function loadUserProfile() {
     }
 
     function renderUserActiveSubscriptions() {
-        const container = document.getElementById('userActiveSubscriptionsList');
-        if (!container || !currentUser || !usersData[currentUser]) return;
+    const container = document.getElementById('userActiveSubscriptionsList');
+    if (!container || !currentUser || !usersData[currentUser]) return;
 
-        const user = usersData[currentUser];
-        const subs = user.activeSubscriptions || [];
-        const visibleSubs = subs.filter(s => s.status === 'ACTIVE' || s.status === 'PENDING_VERIFICATION');
+    const user = usersData[currentUser];
+    const subs = user.activeSubscriptions || [];
+    
+    // Normalize status to uppercase so 'active' and 'ACTIVE' both pass
+    const visibleSubs = subs.filter(s => {
+        const st = (s.status || '').toUpperCase();
+        return st === 'ACTIVE' || st === 'PENDING_VERIFICATION';
+    });
 
-        if (visibleSubs.length === 0) {
-            container.innerHTML = `<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>`;
-            return;
+    if (visibleSubs.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>`;
+        return;
+    }
+
+    const now = Date.now();
+
+    container.innerHTML = visibleSubs.map(sub => {
+        // Fallbacks for Supabase column names
+        const pkgName = sub.packageName || sub.package_name || 'Vault Package';
+        const deposit = Number(sub.depositAmount || sub.amount_locked || 0);
+        
+        // Payout calculation (fixed 20% profit tier = 1.2x deposit)
+        const payout = Number(sub.totalPayout || (deposit * 1.2) || 0);
+
+        // Fallback for countdown timer (defaults to 24h duration from creation if endTime isn't explicitly set)
+        let endTimeMs = sub.endTime;
+        if (!endTimeMs && (sub.created_at || sub.start_date)) {
+            const startTime = new Date(sub.created_at || sub.start_date).getTime();
+            endTimeMs = startTime + (24 * 60 * 60 * 1000); 
         }
+        if (!endTimeMs) endTimeMs = Date.now();
 
-        const now = Date.now();
+        const statusUpper = (sub.status || '').toUpperCase();
 
-        container.innerHTML = visibleSubs.map(sub => {
-            if (sub.status === 'PENDING_VERIFICATION') {
-                return `
-                    <div class="bg-amber-500/5 border border-amber-500/20 p-3 rounded-xl flex justify-between items-center font-mono">
-                        <div>
-                            <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
-                            <div class="text-[10px] text-slate-400">Deposit: $${sub.depositAmount.toFixed(2)} USDT</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider block">
-                                ⏳ Pending Dev Verification
-                            </span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            const remainingMs = Math.max(0, sub.endTime - now);
-            const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-            const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
-
-            const timeString = remainingMs > 0 ? `${days}d ${hours}h ${mins}m ${secs}s` : 'READY FOR PAYOUT';
-
+        if (statusUpper === 'PENDING_VERIFICATION') {
             return `
-                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center font-mono">
+                <div class="bg-amber-500/5 border border-amber-500/20 p-3 rounded-xl flex justify-between items-center font-mono">
                     <div>
-                        <div class="font-bold text-slate-200 text-sm">${sub.packageName}</div>
-                        <div class="text-[10px] text-slate-400">Locked: $${sub.depositAmount.toFixed(2)} | Payout: $${sub.totalPayout.toFixed(2)} USDT</div>
+                        <div class="font-bold text-slate-200 text-sm">${pkgName}</div>
+                        <div class="text-[10px] text-slate-400">Deposit: $${deposit.toFixed(2)} USDT</div>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] text-slate-400 block">Remaining Time</span>
-                        <span class="font-bold ${remainingMs > 0 ? 'text-amber-400' : 'text-emerald-400 animate-pulse'}">${timeString}</span>
+                        <span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider block">
+                            ⏳ Pending Dev Verification
+                        </span>
                     </div>
                 </div>
             `;
-        }).join('');
-    }
+        }
+
+        const remainingMs = Math.max(0, endTimeMs - now);
+        const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+
+        const timeString = remainingMs > 0 ? `${days}d ${hours}h ${mins}m ${secs}s` : 'READY FOR PAYOUT';
+
+        return `
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center font-mono">
+                <div>
+                    <div class="font-bold text-slate-200 text-sm">${pkgName}</div>
+                    <div class="text-[10px] text-slate-400">Locked: $${deposit.toFixed(2)} | Payout: $${payout.toFixed(2)} USDT</div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] text-slate-400 block">Remaining Time</span>
+                    <span class="font-bold ${remainingMs > 0 ? 'text-amber-400' : 'text-emerald-400 animate-pulse'}">${timeString}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 
     async function initDashboard() {
         let userId = null;

@@ -2355,65 +2355,61 @@ async function requestPayoutWithdrawal(packageId) {
         await loadUserDataFromSupabase();
     }
 }
-document.addEventListener('DOMContentLoaded', () => {
-    const submitBtn = Array.from(document.querySelectorAll('button'))
-        .find(btn => btn.textContent.trim().includes('Submit Withdrawal Request'));
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || !btn.textContent.trim().includes('Submit Withdrawal Request')) return;
 
-    if (submitBtn) {
-        submitBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            
-            const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
-            const withdrawalAmount = parseFloat(document.getElementById('withdrawal-amount')?.value || '0');
-            const destinationAddress = document.getElementById('destination-address')?.value || '';
+    e.preventDefault();
 
-            const { data: { user } } = await supabaseClient.auth.getUser();
+    const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
+    const withdrawalAmount = parseFloat(document.getElementById('withdrawal-amount')?.value || '0');
+    const destinationAddress = document.getElementById('destination-address')?.value || '';
 
-            if (!user) {
-                alert('Please log in to submit a withdrawal request.');
-                return;
-            }
+    const { data: { user } } = await supabaseClient.auth.getUser();
 
-            // 1. Log transaction in database
-            const { error: txError } = await supabaseClient
-                .from('transactions')
-                .insert([{
-                    user_id: user.id,
-                    type: 'withdrawal',
-                    amount: withdrawalAmount,
-                    network: selectedNetwork,
-                    wallet_address: destinationAddress,
-                    status: 'pending'
-                }]);
+    if (!user) {
+        alert('Please log in to submit a withdrawal request.');
+        return;
+    }
 
-            if (txError) {
-                alert('Error submitting withdrawal: ' + txError.message);
-                return;
-            }
+    // 1. Log transaction in database
+    const { error: txError } = await supabaseClient
+        .from('transactions')
+        .insert([{
+            user_id: user.id,
+            type: 'withdrawal',
+            amount: withdrawalAmount,
+            network: selectedNetwork,
+            wallet_address: destinationAddress,
+            status: 'pending'
+        }]);
 
-            // 2. Trigger notification email
-            const { data: emailRes, error: emailError } = await supabaseClient.functions.invoke('send-withdrawal-email', {
-                body: {
-                    userEmail: user.email,
-                    username: user.user_metadata?.username || currentUser || `User_${user.id.slice(0, 6)}`,
-                    packageName: 'Direct Balance Withdrawal',
-                    lockedAmount: 0,
-                    payoutAmount: withdrawalAmount,
-                    walletAddress: destinationAddress,
-                    network: selectedNetwork
-                }
-            });
+    if (txError) {
+        alert('Error submitting withdrawal: ' + txError.message);
+        return;
+    }
 
-            if (emailError) {
-                console.error('Email trigger warning:', emailError);
-            }
+    // 2. Trigger notification email
+    const { error: emailError } = await supabaseClient.functions.invoke('send-withdrawal-email', {
+        body: {
+            userEmail: user.email,
+            username: user.user_metadata?.username || currentUser || `User_${user.id.slice(0, 6)}`,
+            packageName: 'Direct Balance Withdrawal',
+            lockedAmount: 0,
+            payoutAmount: withdrawalAmount,
+            walletAddress: destinationAddress,
+            network: selectedNetwork
+        }
+    });
 
-            alert('Withdrawal request submitted successfully!');
+    if (emailError) {
+        console.error('Email trigger warning:', emailError);
+    }
 
-            if (typeof loadUserDataFromSupabase === 'function') {
-                await loadUserDataFromSupabase();
-            }
-        });
+    alert('Withdrawal request submitted successfully!');
+
+    if (typeof loadUserDataFromSupabase === 'function') {
+        await loadUserDataFromSupabase();
     }
 });
 

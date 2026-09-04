@@ -1816,45 +1816,19 @@ async function renderReferralHub() {
         document.getElementById('investmentModal').classList.add('hidden');
     }
 
-    function confirmInvestment() {
-        if (!selectedPackage || !currentUser || !usersData[currentUser]) return;
-        const user = usersData[currentUser];
+    async function confirmInvestment() {
+    if (!selectedPackage) return;
 
-        if (user.balance < selectedPackage.cost) {
-            alert('Insufficient balance. Please deposit funds first.');
-            closeInvestmentModal();
-            return;
-        }
+    const { name, cost } = selectedPackage;
+    const dailyRate = 0.0125; // Base daily rate (1.25%)
 
-        user.balance -= selectedPackage.cost;
-        user.lockedPackages = (user.lockedPackages || 0) + selectedPackage.cost;
+    // 1. Close modal UI
+    closeInvestmentModal();
 
-        if (!user.claimedPackages) user.claimedPackages = [];
-        user.claimedPackages.push(selectedPackage.name);
+    // 2. Execute database RPC transaction
+    await handlePackageLock(name, cost, dailyRate);
+}
 
-        const durationDays = selectedPackage.duration.includes('3 Days') ? 3 :
-                             selectedPackage.duration.includes('15 Days') ? 15 :
-                             selectedPackage.duration.includes('3 Months') ? 90 :
-                             selectedPackage.duration.includes('6 Months') ? 180 : 365;
-
-        const yieldData = calculateAffiliateYield(selectedPackage.cost, countQualifiedReferrals(user.refCode));
-
-        if (!user.activeSubscriptions) user.activeSubscriptions = [];
-        user.activeSubscriptions.push({
-            packageName: selectedPackage.name,
-            depositAmount: selectedPackage.cost,
-            totalPayout: yieldData.totalPayout,
-            status: 'ACTIVE',
-            startTime: Date.now(),
-            endTime: Date.now() + (durationDays * 24 * 60 * 60 * 1000)
-        });
-
-        logEvent(currentUser, 'INVEST_PACKAGE', `Locked $${selectedPackage.cost} in ${selectedPackage.name}`);
-        saveData();
-        closeInvestmentModal();
-        initDashboard();
-        alert(`Successfully locked ${selectedPackage.name}!`);
-    }
 
     function copyRefCode() {
         const code = document.getElementById('refCodeDisplay').innerText;
@@ -2208,6 +2182,24 @@ async function renderReferralHub() {
                 </tr>
             `).join('');
     }
+
+    // Add to the bottom of script.js
+async function handlePackageLock(packageName, amount, dailyRate) {
+  const { data, error } = await supabase.rpc('lock_package', {
+    p_package_name: packageName,
+    p_amount: amount,
+    p_daily_rate: dailyRate
+  });
+
+  if (error) {
+    alert(`Lock failed: ${error.message}`);
+    return;
+  }
+
+  alert(`Successfully locked ${packageName}!`);
+  location.reload();
+}
+
     </script>
 </body>
 </html>

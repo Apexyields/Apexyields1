@@ -1253,45 +1253,50 @@ async function loadUserProfile() {
 
     if (profile) {
         currentUser = profile.username;
-        
+
+        // 2. Fetch active packages from Supabase
+        const { data: userPackages } = await supabaseClient
+            .from('user_packages')
+            .select('*')
+            .eq('user_id', userId);
+
+        const activePkgs = userPackages || [];
+
         usersData[currentUser] = {
             balance: profile.balance || 0,
             dailySharesCount: profile.daily_shares_count || 0,
             lastShareDay: profile.last_share_day || '',
+            activeSubscriptions: activePkgs
         };
 
-        // 2. Fetch active packages to update button states
-        const { data: userPackages } = await supabaseClient
-            .from('user_packages')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('status', 'active');
+        // 3. Lock $25 and $50 buttons if already owned
+        const hasMicroVault = activePkgs.some(pkg => pkg.package_name === 'Micro Vault' || pkg.amount_locked == 25);
+        const hasStandardVault = activePkgs.some(pkg => pkg.package_name === 'Standard Vault' || pkg.amount_locked == 50);
 
-        if (userPackages) {
-            const hasMicroVault = userPackages.some(pkg => pkg.package_name === 'Micro Vault' || pkg.amount_locked == 25);
-            const hasStandardVault = userPackages.some(pkg => pkg.package_name === 'Standard Vault' || pkg.amount_locked == 50);
-
-            // Lock $25 Package UI button
-            const microBtn = document.getElementById('btn-Micro Vault');
-            if (microBtn && hasMicroVault) {
-                microBtn.disabled = true;
-                microBtn.innerText = 'Claimed (1 Max)';
-                microBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
-
-            // Lock $50 Package UI button
-            const standardBtn = document.getElementById('btn-Standard Vault');
-            if (standardBtn && hasStandardVault) {
-                standardBtn.disabled = true;
-                standardBtn.innerText = 'Claimed (1 Max)';
-                standardBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            }
+        const microBtn = document.getElementById('btn-Micro Vault');
+        if (microBtn && hasMicroVault) {
+            microBtn.disabled = true;
+            microBtn.innerText = 'Claimed (1 Max)';
+            microBtn.classList.add('opacity-50', 'cursor-not-allowed');
         }
 
+        const standardBtn = document.getElementById('btn-Standard Vault');
+        if (standardBtn && hasStandardVault) {
+            standardBtn.disabled = true;
+            standardBtn.innerText = 'Claimed (1 Max)';
+            standardBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // 4. Initialize dashboard and trigger UI renderers
         if (typeof initDashboard === 'function') initDashboard();
         if (typeof updateShareUI === 'function') updateShareUI();
+
+        // Ensure activeSubscriptions persist and render after initDashboard runs
+        usersData[currentUser].activeSubscriptions = activePkgs;
+        if (typeof renderUserActiveSubscriptions === 'function') renderUserActiveSubscriptions();
     }
 }
+
 
 
     function generateCode() {

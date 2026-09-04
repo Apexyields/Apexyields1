@@ -1057,30 +1057,32 @@
 window.handleLogin = handleLogin;
 
 
-    // ==========================================
-    // 2. USER PROFILE & BALANCE DISPLAY
-    // ==========================================
+// ==========================================
+// 2. USER PROFILE & BALANCE DISPLAY
+// ==========================================
 
-    async function loadUserProfile() {
+async function loadUserProfile() {
     if (!supabaseClient) return;
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    // 1. Fetch user profile details
+    console.log("Active logged-in User ID:", user.id);
+
+    // 1. Fetch user profile details safely using '*'
     const { data, error } = await supabaseClient
         .from('profiles')
-        .select('username, balance, role')
+        .select('*')
         .eq('id', user.id)
         .single();
 
     if (error) {
         console.error("Error loading profile:", error.message);
-    } else {
+    } else if (data) {
         const balanceElem = document.getElementById('userActiveBalance');
         const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)} USDT`;
-        if (nameElem) nameElem.innerText = data.username;
+        if (balanceElem) balanceElem.innerText = `$${Number(data.balance || 0).toFixed(2)} USDT`;
+        if (nameElem) nameElem.innerText = data.username || 'User';
     }
 
     // 2. Display referral code matching user's short UUID
@@ -1090,10 +1092,10 @@ window.handleLogin = handleLogin;
         refCodeElem.innerText = userRefCode;
     }
 
-    // 3. Fetch direct referrals using the active user's full UUID
+    // 3. Fetch direct referrals safely using '*'
     const { data: referrals, error: refError } = await supabaseClient
         .from('profiles')
-        .select('username, balance, created_at')
+        .select('*')
         .eq('referred_by', user.id);
 
     if (refError) {
@@ -1101,27 +1103,36 @@ window.handleLogin = handleLogin;
         return;
     }
 
-    // 4. Render 3-column rows into refNetworkTable
-    const refContainer = document.getElementById('refNetworkTable');
-    if (refContainer) {
-        if (!referrals || referrals.length === 0) {
-            refContainer.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>`;
-        } else {
-            refContainer.innerHTML = referrals.map(ref => {
-                const isQualified = (Number(ref.balance) || 0) > 0;
-                return `
-                    <tr class="border-b border-slate-800 text-slate-300">
-                        <td class="p-3 font-mono text-slate-200">${ref.username || 'User'}</td>
-                        <td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>
-                        <td class="p-3 font-medium ${isQualified ? 'text-emerald-400' : 'text-amber-400'}">
-                            ${isQualified ? 'Verified' : 'Pending Deposit'}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+    console.log("Fetched Referrals Array:", referrals);
+
+    // 4. Render 3-column rows into container with fallbacks
+    const refContainer = document.getElementById('refNetworkTable') 
+                      || document.getElementById('directReferralsList') 
+                      || document.getElementById('referralsTableBody');
+
+    if (!refContainer) {
+        console.error("Table container element not found in HTML!");
+        return;
+    }
+
+    if (!referrals || referrals.length === 0) {
+        refContainer.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>`;
+    } else {
+        refContainer.innerHTML = referrals.map(ref => {
+            const isQualified = (Number(ref.balance) || 0) > 0;
+            return `
+                <tr class="border-b border-slate-800 text-slate-300">
+                    <td class="p-3 font-mono text-slate-200">${ref.username || 'User_' + ref.id.substring(0, 6)}</td>
+                    <td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>
+                    <td class="p-3 font-medium ${isQualified ? 'text-emerald-400' : 'text-amber-400'}">
+                        ${isQualified ? 'Verified' : 'Pending Deposit'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 }
+
 
 
 

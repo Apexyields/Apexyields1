@@ -1514,7 +1514,6 @@ async function loadUserProfile() {
     const user = usersData[currentUser];
     const subs = user.activeSubscriptions || [];
     
-    // Normalize status to uppercase so 'active' and 'ACTIVE' both pass
     const visibleSubs = subs.filter(s => {
         const st = (s.status || '').toUpperCase();
         return st === 'ACTIVE' || st === 'PENDING_VERIFICATION';
@@ -1528,18 +1527,35 @@ async function loadUserProfile() {
     const now = Date.now();
 
     container.innerHTML = visibleSubs.map(sub => {
-        // Fallbacks for Supabase column names
         const pkgName = sub.packageName || sub.package_name || 'Vault Package';
         const deposit = Number(sub.depositAmount || sub.amount_locked || 0);
         
-        // Payout calculation (fixed 20% profit tier = 1.2x deposit)
-        const payout = Number(sub.totalPayout || (deposit * 1.2) || 0);
+        // Return multiplier (30% for Executive/VIP/Institutional/Mega, 20% for standard)
+        const isHighTier = deposit >= 1000 || pkgName.includes('Executive') || pkgName.includes('VIP') || pkgName.includes('Institutional') || pkgName.includes('Mega');
+        const returnRate = isHighTier ? 1.30 : 1.20;
+        const payout = Number(sub.totalPayout || (deposit * returnRate) || 0);
 
-        // Fallback for countdown timer (defaults to 24h duration from creation if endTime isn't explicitly set)
+        // Dynamic lockup durations matching HTML specifications
+        let durationDays = 1;
+        if (deposit === 25 || pkgName.includes('Micro Vault')) {
+            durationDays = 3;
+        } else if (deposit === 50 || deposit === 100 || deposit === 500 || 
+                   pkgName.includes('Standard') || pkgName.includes('Starter') || pkgName.includes('Pro Vault')) {
+            durationDays = 15;
+        } else if (deposit === 1000 || deposit === 2500 || 
+                   pkgName.includes('Executive') || pkgName.includes('Apex VIP')) {
+            durationDays = 90;
+        } else if (deposit === 5000 || deposit === 10000 || 
+                   pkgName.includes('Pro VIP') || pkgName.includes('Institutional')) {
+            durationDays = 180;
+        } else if (deposit === 50000 || pkgName.includes('Apex Mega')) {
+            durationDays = 365;
+        }
+
         let endTimeMs = sub.endTime;
         if (!endTimeMs && (sub.created_at || sub.start_date)) {
             const startTime = new Date(sub.created_at || sub.start_date).getTime();
-            endTimeMs = startTime + (24 * 60 * 60 * 1000); 
+            endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000); 
         }
         if (!endTimeMs) endTimeMs = Date.now();
 
@@ -1583,6 +1599,7 @@ async function loadUserProfile() {
         `;
     }).join('');
 }
+
 
 
     async function initDashboard() {

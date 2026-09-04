@@ -2361,9 +2361,24 @@ document.addEventListener('click', async (e) => {
 
     e.preventDefault();
 
-    const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
-    const withdrawalAmount = parseFloat(document.getElementById('withdrawal-amount')?.value || '0');
-    const destinationAddress = document.getElementById('destination-address')?.value || '';
+    // 1. Read directly from your HTML element IDs
+    const networkEl = document.getElementById('payoutNetworkSelect');
+    const amountEl = document.getElementById('payoutAmount');
+    const addressEl = document.getElementById('payoutAddress');
+
+    const selectedNetwork = networkEl?.options ? networkEl.options[networkEl.selectedIndex]?.text : (networkEl?.value || 'BEP-20');
+    const withdrawalAmount = parseFloat(amountEl?.value || '0');
+    const destinationAddress = addressEl?.value?.trim() || '';
+
+    if (!destinationAddress) {
+        alert('Please enter a valid receiving wallet address.');
+        return;
+    }
+
+    if (isNaN(withdrawalAmount) || withdrawalAmount <= 0) {
+        alert('Please enter a valid withdrawal amount.');
+        return;
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
 
@@ -2372,7 +2387,24 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
-    // 1. Log transaction in database
+    // 2. Fetch current profile balance
+    const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('balance')
+        .eq('id', user.id)
+        .single();
+
+    if (profileError || !profile) {
+        alert('Error fetching user account balance.');
+        return;
+    }
+
+    if (profile.balance < withdrawalAmount) {
+        alert('Insufficient balance for this withdrawal request.');
+        return;
+    }
+
+    // 3. Log pending transaction in database
     const { error: txError } = await supabaseClient
         .from('transactions')
         .insert([{
@@ -2389,7 +2421,18 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
-    // 2. Trigger notification email
+    // 4. Deduct balance from user profile so it persists across refreshes
+    const newBalance = profile.balance - withdrawalAmount;
+    const { error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', user.id);
+
+    if (updateError) {
+        console.error('Failed to deduct user balance:', updateError);
+    }
+
+    // 5. Trigger email notification with captured inputs
     const { error: emailError } = await supabaseClient.functions.invoke('send-withdrawal-email', {
         body: {
             userEmail: user.email,
@@ -2408,10 +2451,12 @@ document.addEventListener('click', async (e) => {
 
     alert('Withdrawal request submitted successfully!');
 
+    // 6. Refresh interface state
     if (typeof loadUserDataFromSupabase === 'function') {
         await loadUserDataFromSupabase();
     }
 });
+
 
 
     </script>

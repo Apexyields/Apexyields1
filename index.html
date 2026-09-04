@@ -764,7 +764,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const refParam = urlParams.get('ref');
         if (refParam) {
-            localStorage.setItem('apex_pending_ref', refParam);
+            localStorage.setItem('apex_pending_ref', refParam.trim().toUpperCase());
             const refInput = document.getElementById('loginRefCode');
             if (refInput) {
                 refInput.value = refParam;
@@ -805,21 +805,45 @@
                         .single();
 
                     if (!fetchError && profile && !profile.referred_by) {
-                        // Update Supabase directly so it persists across devices
-                        const { error: updateError } = await supabaseClient
-                            .from('profiles')
-                            .update({ referred_by: pendingRef })
-                            .eq('id', userId);
+                        let referrerUuid = null;
 
-                        if (!updateError) {
-                            console.log('Referral successfully linked to database:', pendingRef);
-                            // Clear local storage copy once successfully saved to backend
-                            localStorage.removeItem('apex_pending_ref');
+                        // Case 1: Short code (e.g., APEX-B3D2F2) -> Resolve to full UUID
+                        if (pendingRef.startsWith('APEX-')) {
+                            const shortCode = pendingRef.replace('APEX-', '').toLowerCase();
+                            const { data: referrers } = await supabaseClient
+                                .from('profiles')
+                                .select('id')
+                                .ilike('id', `${shortCode}%`)
+                                .limit(1);
+
+                            if (referrers && referrers.length > 0) {
+                                referrerUuid = referrers[0].id;
+                            }
+                        } 
+                        // Case 2: Already a valid 36-character UUID
+                        else if (pendingRef.length === 36) {
+                            referrerUuid = pendingRef;
+                        }
+
+                        // Update database with resolved full UUID
+                        if (referrerUuid && referrerUuid !== userId) {
+                            const { error: updateError } = await supabaseClient
+                                .from('profiles')
+                                .update({ referred_by: referrerUuid })
+                                .eq('id', userId);
+
+                            if (!updateError) {
+                                console.log('Referral successfully linked to referrer UUID:', referrerUuid);
+                                localStorage.removeItem('apex_pending_ref');
+                            } else {
+                                console.error('Error saving referral to Supabase:', updateError.message);
+                            }
                         } else {
-                            console.error('Error saving referral to Supabase:', updateError.message);
+                            // Invalid code or self-referral attempt
+                            localStorage.removeItem('apex_pending_ref');
                         }
                     } else {
-                        // User already has a referrer or profile doesn't need updating
+                        // User already has a referrer
                         localStorage.removeItem('apex_pending_ref');
                     }
                 } catch (err) {
@@ -845,6 +869,7 @@
             }
         }
     });
+
 
     // ==========================================
     // 1. AUTHENTICATION (Sign Up & Sign In)

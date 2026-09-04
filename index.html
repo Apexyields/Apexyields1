@@ -2349,6 +2349,63 @@ async function requestPayoutWithdrawal(packageId) {
         await loadUserDataFromSupabase();
     }
 }
+document.addEventListener('DOMContentLoaded', () => {
+  const withdrawalForm = document.getElementById('withdrawal-form');
+  
+  if (withdrawalForm) {
+    withdrawalForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const selectedNetwork = document.getElementById('withdrawal-network').value;
+      const withdrawalAmount = parseFloat(document.getElementById('withdrawal-amount').value);
+      const destinationAddress = document.getElementById('destination-address').value;
+
+      // Get authenticated user
+      const { data: { user } } = await supabaseClient.auth.getUser();
+
+      if (!user) {
+        alert('Please log in to submit a withdrawal request.');
+        return;
+      }
+
+      // 1. Log transaction in database
+      const { data: tx, error: txError } = await supabaseClient
+        .from('transactions')
+        .insert([{
+          user_id: user.id,
+          type: 'withdrawal',
+          amount: withdrawalAmount,
+          network: selectedNetwork,
+          wallet_address: destinationAddress,
+          status: 'pending'
+        }]);
+
+      if (txError) {
+        alert('Error submitting withdrawal: ' + txError.message);
+        return;
+      }
+
+      // 2. Trigger notification email
+      const { data: emailRes, error: emailError } = await supabaseClient.functions.invoke('send-withdrawal-email', {
+        body: {
+          userEmail: user.email,
+          username: user.user_metadata?.username || `User_${user.id.slice(0, 6)}`,
+          packageName: 'Direct Balance Withdrawal',
+          lockedAmount: 0,
+          payoutAmount: withdrawalAmount,
+          walletAddress: destinationAddress,
+          network: selectedNetwork
+        }
+      });
+
+      if (emailError) {
+        console.error('Email trigger warning:', emailError);
+      }
+
+      alert('Withdrawal request submitted successfully!');
+    });
+  }
+});
 
     </script>
 </body>

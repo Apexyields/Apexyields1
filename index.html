@@ -2355,12 +2355,12 @@ async function requestPayoutWithdrawal(packageId) {
         await loadUserDataFromSupabase();
     }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
-    const withdrawalForm = document.getElementById('withdrawal-form');
-    
-    if (withdrawalForm) {
-        withdrawalForm.addEventListener('submit', async (e) => {
+    const submitBtn = Array.from(document.querySelectorAll('button'))
+        .find(btn => btn.textContent.trim().includes('Submit Withdrawal Request'));
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             
             const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
@@ -2375,7 +2375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 1. Log transaction in database
-            const { data: tx, error: txError } = await supabaseClient
+            const { error: txError } = await supabaseClient
                 .from('transactions')
                 .insert([{
                     user_id: user.id,
@@ -2391,7 +2391,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 2. Trigger notification email with wallet & network payload
+            // 2. Trigger notification email
             const { data: emailRes, error: emailError } = await supabaseClient.functions.invoke('send-withdrawal-email', {
                 body: {
                     userEmail: user.email,

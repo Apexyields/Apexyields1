@@ -1037,26 +1037,64 @@ window.handleLogin = handleLogin;
     // ==========================================
 
     async function loadUserProfile() {
-        if (!supabaseClient) return;
+    if (!supabaseClient) return;
 
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return;
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
 
-        const { data, error } = await supabaseClient
-            .from('profiles')
-            .select('username, balance, role')
-            .eq('id', user.id)
-            .single();
+    // 1. Fetch user profile details
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('username, balance, role')
+        .eq('id', user.id)
+        .single();
 
-        if (error) {
-            console.error("Error loading profile:", error.message);
+    if (error) {
+        console.error("Error loading profile:", error.message);
+    } else {
+        const balanceElem = document.getElementById('userActiveBalance');
+        const nameElem = document.getElementById('username-display');
+        if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)} USDT`;
+        if (nameElem) nameElem.innerText = data.username;
+    }
+
+    // 2. Generate dynamic referral link matching user's active UUID (e.g. APEX-59076D)
+    const userRefCode = `APEX-${user.id.substring(0, 6).toUpperCase()}`;
+    const refUrl = `${window.location.origin}${window.location.pathname}?ref=${userRefCode}`;
+
+    const refLinkElem = document.getElementById('referralLinkInput') || document.getElementById('userReferralLink');
+    if (refLinkElem) {
+        if (refLinkElem.tagName === 'INPUT') refLinkElem.value = refUrl;
+        else refLinkElem.innerText = refUrl;
+    }
+
+    // 3. Fetch direct referrals matching active user's UUID
+    const { data: referrals, error: refError } = await supabaseClient
+        .from('profiles')
+        .select('username, created_at')
+        .eq('referred_by', user.id);
+
+    if (refError) {
+        console.error("Error loading referrals:", refError.message);
+        return;
+    }
+
+    // 4. Render referrals into dashboard table
+    const refContainer = document.getElementById('directReferralsList') || document.getElementById('referralsTableBody');
+    if (refContainer) {
+        if (!referrals || referrals.length === 0) {
+            refContainer.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-gray-400">No direct referrals yet.</td></tr>`;
         } else {
-            const balanceElem = document.getElementById('userActiveBalance');
-            const nameElem = document.getElementById('username-display');
-            if (balanceElem) balanceElem.innerText = `$${Number(data.balance).toFixed(2)} USDT`;
-            if (nameElem) nameElem.innerText = data.username;
+            refContainer.innerHTML = referrals.map(ref => `
+                <tr class="border-b border-gray-700">
+                    <td class="p-3 text-white">${ref.username || 'User'}</td>
+                    <td class="p-3 text-gray-400">${new Date(ref.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
         }
     }
+}
+
 
     // ==========================================
     // 3. DEPOSIT & YIELD UPDATE LOGIC

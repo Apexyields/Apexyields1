@@ -851,22 +851,34 @@
                 }
             }
 
-                // 2. Listen for session updates & restore UI view on refresh
+                     // 2. Listen for session updates & restore UI view
         supabaseClient.auth.onAuthStateChange(async (event, session) => {
             if (session) {
-                // Switch visibility from Auth Screen to Dashboard
+                // Instantly switch UI to Dashboard first
                 document.getElementById('authSection')?.classList.add('hidden');
                 document.getElementById('dashboardSection')?.classList.remove('hidden');
 
-                await processPendingReferral(session.user.id);
-                await loadUserDataFromSupabase();
-                loadUserProfile();
+                // Load user data safely without blocking the UI switch
+                try {
+                    if (typeof processPendingReferral === 'function') {
+                        await processPendingReferral(session.user.id);
+                    }
+                    if (typeof loadUserDataFromSupabase === 'function') {
+                        await loadUserDataFromSupabase();
+                    }
+                    if (typeof loadUserProfile === 'function') {
+                        loadUserProfile();
+                    }
+                } catch (err) {
+                    console.error('Data loading warning after sign-in:', err);
+                }
             } else {
-                // Return to Auth Screen when unauthenticated
+                // Return to Auth Screen if logged out
                 document.getElementById('authSection')?.classList.remove('hidden');
                 document.getElementById('dashboardSection')?.classList.add('hidden');
             }
         });
+   
 
 
 

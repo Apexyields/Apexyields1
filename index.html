@@ -2483,9 +2483,9 @@ document.addEventListener('click', async (e) => {
 
     // 6. Refresh interface state
     if (typeof loadUserDataFromSupabase === 'function') {
-        await loadUserDataFromSupabase();
+      await loadUserDataFromSupabase();
     }
-});
+  }
 
 // Run session verification immediately when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {

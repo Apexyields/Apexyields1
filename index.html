@@ -872,13 +872,13 @@
                 } catch (err) {
                     console.error('Data loading warning after sign-in:', err);
                 }
-            } else {
-                // Return to Auth Screen if logged out
-                document.getElementById('authSection')?.classList.remove('hidden');
-                document.getElementById('dashboardSection')?.classList.add('hidden');
-            }
-        });
-   });
+                } else {
+      // Return to Auth Screen if logged out
+      document.getElementById('authSection')?.classList.remove('hidden');
+      document.getElementById('dashboardSection')?.classList.add('hidden');
+    }
+  });
+
 
 
 

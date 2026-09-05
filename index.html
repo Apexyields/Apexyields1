@@ -1092,99 +1092,86 @@ window.handleLogin = handleLogin;
 // ==========================================
 // 2. USER PROFILE & BALANCE DISPLAY
 // ==========================================
-
 async function loadUserProfile() {
-    if (!supabaseClient) return;
+  if (!supabaseClient) return;
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
 
-    console.log("Active logged-in User ID:", user.id);
+  console.log("Active logged-in User ID:", user.id);
 
-    // 1. Fetch user profile details safely using '*'
-    const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+  // 1. Fetch user profile details safely using wildcard
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
 
-    if (error) {
-        console.error("Error loading profile:", error.message);
-    } else if (data) {
-        const balanceElem = document.getElementById('userActiveBalance');
-        const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${Number(data.balance || 0).toFixed(2)} USDT`;
-        if (nameElem) nameElem.innerText = data.username || 'User';
-    }
+  if (error) {
+    console.error("Error loading profile:", error.message);
+  } else if (data) {
+    const balanceElem = document.getElementById('userActiveBalance');
+    const nameElem = document.getElementById('username-display');
+    if (balanceElem) balanceElem.innerText = '$' + Number(data.balance || 0).toFixed(2) + ' USDT';
+    if (nameElem) nameElem.innerText = data.username || 'User';
+  }
 
-    // 2. Display referral code matching user's short UUID
-    const userRefCode = `APEX-${user.id.substring(0, 6).toUpperCase()}`;
-    const refCodeElem = document.getElementById('refCodeDisplay');
-    if (refCodeElem) {
-        refCodeElem.innerText = userRefCode;
-    }
+  // 2. Display referral code matching user short UUID
+  const userRefCode = 'APEX-' + user.id.substring(0, 6).toUpperCase();
+  const refCodeElem = document.getElementById('refCodeDisplay');
+  if (refCodeElem) {
+    refCodeElem.innerText = userRefCode;
+  }
 
-    // 3. Fetch direct referrals safely using '*'
-    const { data: referrals, error: refError } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('referred_by', user.id);
+  // 3. Fetch direct referrals safely using wildcard
+  const { data: referrals, error: refError } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('referred_by', user.id);
 
-    if (refError) {
-        console.error("Error loading referrals:", refError.message);
-        return;
-    }
+  // 4. Render 3-column rows into container with fallbacks
+  const refContainer = document.getElementById('refNetworkTable')
+    || document.getElementById('directReferralsList')
+    || document.getElementById('referralsTableBody');
 
-    console.log("Fetched Referrals Array:", referrals);
+  if (!refContainer) {
+    console.error("Table container element not found in HTML!");
+    return;
+  }
 
-    // 4. Render 3-column rows into container with fallbacks
-    const refContainer = document.getElementById('refNetworkTable') 
-                      || document.getElementById('directReferralsList') 
-                      || document.getElementById('referralsTableBody');
+  if (!referrals || referrals.length === 0) {
+    refContainer.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet</td></tr>';
+  } else {
+    refContainer.innerHTML = referrals.map(function(ref) {
+      const isQualified = (Number(ref.balance) || 0) > 0;
+      const nameStr = ref.username || ('User_' + (ref.id ? ref.id.substring(0, 6) : ''));
+      const statusClass = isQualified ? 'text-emerald-400' : 'text-amber-400';
+      const statusText = isQualified ? 'Verified' : 'Pending Deposit';
 
-    if (!refContainer) {
-        console.error("Table container element not found in HTML!");
-        return;
-    }
-
-    if (!referrals || referrals.length === 0) {
-        refContainer.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>`;
-    } else {
-        refContainer.innerHTML = referrals.map(ref => {
-            const isQualified = (Number(ref.balance) || 0) > 0;
-            return `
-                <tr class="border-b border-slate-800 text-slate-300">
-                    <td class="p-3 font-mono text-slate-200">${ref.username || 'User_' + ref.id.substring(0, 6)}</td>
-                    <td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>
-                    <td class="p-3 font-medium ${isQualified ? 'text-emerald-400' : 'text-amber-400'}">
-                        ${isQualified ? 'Verified' : 'Pending Deposit'}
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
+      return '<tr class="border-b border-slate-800 text-slate-300">' +
+        '<td class="p-3 font-mono text-slate-200">$' + nameStr + '</td>' +
+        '<td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>' +
+        '<td class="p-3 font-medium ' + statusClass + '">' + statusText + '</td>' +
+        '</tr>';
+    }).join('');
+  }
 }
 
+// 5. DEPOSIT & YIELD UPDATE LOGIC
+async function processDeposit(amount) {
+  if (!supabaseClient) return alert("Supabase is not initialized correctly.");
 
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return alert("Please log in first!");
 
+  const { data: profile, error: fetchErr } = await supabaseClient
+    .from('profiles')
+    .select('balance')
+    .eq('id', user.id)
+    .single();
 
-    // ==========================================
-    // 3. DEPOSIT & YIELD UPDATE LOGIC
-    // ==========================================
+  if (fetchErr) return alert("Error reading balance");
 
-    async function processDeposit(amount) {
-        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return alert("Please log in first");
-
-        const { data: profile, error: fetchErr } = await supabaseClient
-            .from('profiles')
-            .select('balance')
-            .eq('id', user.id)
-            .single();
-
-        if (fetchErr) return alert("Error reading balance");
 
         const newBalance = Number(profile.balance) + Number(amount);
 

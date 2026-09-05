@@ -780,7 +780,6 @@
                 if (window.supabase) {
       const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
       const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_21q5LMcp';
-
       // 1. Force explicit localStorage persistence options
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
@@ -792,69 +791,71 @@
       });
     }
   });
-            // Helper function to process any pending referral once logged in
-            async function processPendingReferral(userId) {
-                const pendingRef = localStorage.getItem('apex_pending_ref');
-                if (!pendingRef) return;
 
-                try {
-                    // Check if this user already has a referrer set in Supabase
-                    const { data: profile, error: fetchError } = await supabaseClient
-                        .from('profiles')
-                        .select('referred_by')
-                        .eq('id', userId)
-                        .single();
+  // Helper function to process any pending referral once logged in
+  async function processPendingReferral(userId) {
+    const pendingRef = localStorage.getItem('apex_pending_ref');
+    if (!pendingRef) return;
 
-                    if (!fetchError && profile && !profile.referred_by) {
-                        let referrerUuid = null;
+    try {
+      // Check if this user already has a referrer set in Supabase
+      const { data: profile, error: fetchError } = await supabaseClient
+        .from('profiles')
+        .select('referred_by')
+        .eq('id', userId)
+        .single();
 
-                        // Case 1: Short code (e.g., APEX-B3D2F2) -> Resolve to full UUID
-                        if (pendingRef.startsWith('APEX-')) {
-                            const shortCode = pendingRef.replace('APEX-', '').toLowerCase();
-                            const { data: referrers } = await supabaseClient
-                                .from('profiles')
-                                .select('id')
-                                .ilike('id', `${shortCode}%`)
-                                .limit(1);
+      if (!fetchError && profile && !profile.referred_by) {
+        let referrerUuid = null;
 
-                            if (referrers && referrers.length > 0) {
-                                referrerUuid = referrers[0].id;
-                            }
-                        } 
-                        // Case 2: Already a valid 36-character UUID
-                        else if (pendingRef.length === 36) {
-                            referrerUuid = pendingRef;
-                        }
+        // Case 1: Short code (e.g., APEX-B3D2F2) -> Resolve to full UUID
+        if (pendingRef.startsWith('APEX-')) {
+          const shortCode = pendingRef.replace('APEX-', '').toLowerCase();
+          const { data: referrers } = await supabaseClient
+            .from('profiles')
+            .select('id')
+            .ilike('id', shortCode + '%')
+            .limit(1);
 
-                        // Update database with resolved full UUID
-                        if (referrerUuid && referrerUuid !== userId) {
-                            const { error: updateError } = await supabaseClient
-                                .from('profiles')
-                                .update({ referred_by: referrerUuid })
-                                .eq('id', userId);
+          if (referrers && referrers.length > 0) {
+            referrerUuid = referrers[0].id;
+          }
+        }
+        // Case 2: Already a valid 36-character UUID
+        else if (pendingRef.length === 36) {
+          referrerUuid = pendingRef;
+        }
 
-                            if (!updateError) {
-                                console.log('Referral successfully linked to referrer UUID:', referrerUuid);
-                                localStorage.removeItem('apex_pending_ref');
-                            } else {
-                                console.error('Error saving referral to Supabase:', updateError.message);
-                            }
-                        } else {
-                            // Invalid code or self-referral attempt
-                            localStorage.removeItem('apex_pending_ref');
-                        }
-                    } else {
-                        // User already has a referrer
-                        localStorage.removeItem('apex_pending_ref');
-                    }
-                } catch (err) {
-                    console.error('Failed to process pending referral:', err);
-                }
-            }
+        // Update database with resolved full UUID
+        if (referrerUuid && referrerUuid !== userId) {
+          const { error: updateError } = await supabaseClient
+            .from('profiles')
+            .update({ referred_by: referrerUuid })
+            .eq('id', userId);
 
-                     // 2. Listen for session updates & restore UI view
-        supabaseClient.auth.onAuthStateChange(async (event, session) => {
-            if (session) {
+          if (!updateError) {
+            console.log('Referral successfully linked to referrer UUID:', referrerUuid);
+            localStorage.removeItem('apex_pending_ref');
+          } else {
+            console.error('Error saving referral to Supabase:', updateError.message);
+          }
+        } else {
+          // Invalid code or self-referral attempt
+          localStorage.removeItem('apex_pending_ref');
+        }
+      } else {
+        // User already has a referrer
+        localStorage.removeItem('apex_pending_ref');
+      }
+    } catch (err) {
+      console.error('Failed to process pending referral:', err);
+    }
+  }
+
+  // 2. Listen for session updates & restore UI view
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+
+           if (session) {
                 // Instantly switch UI to Dashboard first
                 document.getElementById('authSection')?.classList.add('hidden');
                 document.getElementById('dashboardSection')?.classList.remove('hidden');

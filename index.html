@@ -777,20 +777,21 @@
             }
         }
 
-        if (window.supabase) {
-            const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
-            const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';
+                if (window.supabase) {
+      const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_21q5LMcp';
 
-            // 1. Force explicit localStorage persistence options
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                auth: {
-                    persistSession: true,
-                    storage: window.localStorage,
-                    autoRefreshToken: true,
-                    detectSessionInUrl: true
-                }
-            });
-
+      // 1. Force explicit localStorage persistence options
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          storage: window.localStorage,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+    }
+  });
             // Helper function to process any pending referral once logged in
             async function processPendingReferral(userId) {
                 const pendingRef = localStorage.getItem('apex_pending_ref');

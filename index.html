@@ -878,7 +878,7 @@
                 document.getElementById('dashboardSection')?.classList.add('hidden');
             }
         });
-   
+   });
 
 
 
@@ -990,19 +990,31 @@
                 password: password
             });
 
-            if (!signInError && signInData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-                
-                loadUserProfile();
-                initDashboard();
+                        if (signInError) {
+                alert('Login failed: ' + signInError.message);
                 return;
             }
+
+            if (signInData && signInData.user) {
+                currentUser = username;
+                localStorage.setItem('currentUser', currentUser);
+                
+                // Safely update DOM elements using optional chaining (?)
+                document.getElementById('adminBtn')?.classList.add('hidden');
+                document.getElementById('adminSettingsBox')?.classList.add('hidden');
+                
+                const roleHeader = document.getElementById('userHeaderRole');
+                if (roleHeader) roleHeader.innerText = 'Standard User';
+                
+                document.getElementById('authSection')?.classList.add('hidden');
+                document.getElementById('dashboardSection')?.classList.remove('hidden');
+                
+                if (typeof loadUserProfile === 'function') loadUserProfile();
+                if (typeof initDashboard === 'function') initDashboard();
+                
+                return;
+            }
+
 
             // 2. Extract referral code from URL or storage BEFORE signing up
             const urlParams = new URLSearchParams(window.location.search);
@@ -1025,48 +1037,53 @@
                 return alert("Authentication error: " + signUpError.message);
             }
 
-            // 4. If signUp succeeded
-            if (signUpData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ 
-                        id: signUpData.user.id, 
-                        username: username, 
-                        balance: 0, 
-                        role: 'user',
-                        referred_by_code: finalRefCode,
-                        referred_by: finalRefCode 
-                    }]);
-
-                if (profileError) console.error("Profile creation error:", profileError.message);
-
-                localStorage.removeItem('apex_pending_ref');
-
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-
-                loadUserProfile();
-                initDashboard();
-                return;
-            }
-        } else {
+                    // 4. If signUp succeeded
+        if (signUpData?.user) {
             currentUser = username;
             localStorage.setItem('currentUser', currentUser);
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
-            initDashboard();
+
+            const { error: profileError } = await supabaseClient
+                .from('profiles')
+                .insert([{ 
+                    id: signUpData.user.id, 
+                    username: username, 
+                    balance: 0, 
+                    role: 'user',
+                    referred_by_code: finalRefCode,
+                    referred_by: finalRefCode 
+                }]);
+
+            if (profileError) console.error("Profile creation error:", profileError.message);
+
+            localStorage.removeItem('apex_pending_ref');
+
+            // Optional chaining prevents null DOM crashes
+            document.getElementById('adminBtn')?.classList.add('hidden');
+            document.getElementById('adminSettingsBox')?.classList.add('hidden');
+            
+            const roleElem = document.getElementById('userHeaderRole');
+            if (roleElem) roleElem.innerText = 'Standard User';
+
+            document.getElementById('authSection')?.classList.add('hidden');
+            document.getElementById('dashboardSection')?.classList.remove('hidden');
+
+            if (typeof loadUserProfile === 'function') loadUserProfile();
+            if (typeof initDashboard === 'function') initDashboard();
+            return;
         }
-    } catch (err) {
-        console.error("Critical login crash:", err);
-        alert("Unexpected error: " + err.message);
+    } else {
+        // Fallback if Supabase client is uninitialized
+        currentUser = username;
+        localStorage.setItem('currentUser', currentUser);
+        document.getElementById('authSection')?.classList.add('hidden');
+        document.getElementById('dashboardSection')?.classList.remove('hidden');
+        if (typeof initDashboard === 'function') initDashboard();
     }
+} catch (err) {
+    console.error("Critical login crash:", err);
+    alert("Unexpected error: " + err.message);
 }
+
 window.handleLogin = handleLogin;
 
 

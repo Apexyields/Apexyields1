@@ -2487,6 +2487,47 @@ document.addEventListener('click', async (e) => {
     }
 });
 
+// Run session verification immediately when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Fetch persistent session stored in localStorage using your client instance
+  const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+  if (session && session.user) {
+    restoreUserSession(session.user);
+  } else {
+    showAuthScreen();
+  }
+
+  // 2. Continuous listener for session updates & token refreshes
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+      restoreUserSession(session.user);
+    } else if (event === 'SIGNED_OUT') {
+      showAuthScreen();
+    }
+  });
+});
+
+async function restoreUserSession(user) {
+  // Hide login screen and display main dashboard
+  document.getElementById('authSection').classList.add('hidden');
+  document.getElementById('dashboardSection').classList.remove('hidden');
+
+  // Populate user-specific dynamic header data
+  if (document.getElementById('usernameDisplay')) {
+    document.getElementById('usernameDisplay').textContent = user.email || user.id;
+  }
+
+  // Fetch balances, packages, and referral data from Supabase
+  if (typeof loadUserDataFromSupabase === 'function') {
+    await loadUserDataFromSupabase();
+  }
+}
+
+function showAuthScreen() {
+  document.getElementById('authSection').classList.remove('hidden');
+  document.getElementById('dashboardSection').classList.add('hidden');
+}
 
 
     </script>

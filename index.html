@@ -851,24 +851,25 @@
                 }
             }
 
-            // 2. Listen for session updates
-            supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                if (session) {
-                    await processPendingReferral(session.user.id);
-                    await loadUserDataFromSupabase();
-                    loadUserProfile();
-                }
-            });
-
-            // 3. Fallback check for session on hard refresh
-            const { data: { session } } = await supabaseClient.auth.getSession();
+                // 2. Listen for session updates & restore UI view on refresh
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
             if (session) {
+                // Switch visibility from Auth Screen to Dashboard
+                document.getElementById('authSection')?.classList.add('hidden');
+                document.getElementById('dashboardSection')?.classList.remove('hidden');
+
                 await processPendingReferral(session.user.id);
                 await loadUserDataFromSupabase();
                 loadUserProfile();
+            } else {
+                // Return to Auth Screen when unauthenticated
+                document.getElementById('authSection')?.classList.remove('hidden');
+                document.getElementById('dashboardSection')?.classList.add('hidden');
             }
-        }
-    });
+        });
+
+
+
 
 
     // ==========================================

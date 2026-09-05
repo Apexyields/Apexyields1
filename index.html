@@ -2485,7 +2485,7 @@ document.addEventListener('click', async (e) => {
     if (typeof loadUserDataFromSupabase === 'function') {
       await loadUserDataFromSupabase();
     }
-  }
+};
 
 // Run session verification immediately when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2528,7 +2528,6 @@ function showAuthScreen() {
   document.getElementById('authSection').classList.remove('hidden');
   document.getElementById('dashboardSection').classList.add('hidden');
 }
-
 
     </script>
 </body>

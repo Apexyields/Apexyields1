@@ -2516,6 +2516,24 @@ function showAuthScreen() {
   document.getElementById('authSection').classList.remove('hidden');
   document.getElementById('dashboardSection').classList.add('hidden');
 }
+window.handleLogin = async function(event) {
+    if (event) event.preventDefault();
+
+    const email = document.getElementById('loginEmail')?.value;
+    const password = document.getElementById('loginPassword')?.value;
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+    });
+
+    if (error) {
+        alert(error.message);
+        return;
+    }
+
+    restoreUserSession(data.user);
+};
 </script>
 </body>
 </html>

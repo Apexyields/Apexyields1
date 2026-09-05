@@ -2373,7 +2373,7 @@ async function requestPayoutWithdrawal(packageId) {
     if (typeof loadUserDataFromSupabase === 'function') {
         await loadUserDataFromSupabase();
     }
-}
+});
 document.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn || !btn.textContent.trim().includes('Submit Withdrawal Request')) return;
@@ -2472,9 +2472,9 @@ document.addEventListener('click', async (e) => {
 
     // 6. Refresh interface state
     if (typeof loadUserDataFromSupabase === 'function') {
-      await loadUserDataFromSupabase();
+        await loadUserDataFromSupabase();
     }
-  }
+});
 
 // Run session verification immediately when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2493,8 +2493,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       restoreUserSession(session.user);
     } else if (event === 'SIGNED_OUT') {
       showAuthScreen();
-    }
-  });
+        }
+    });
 });
 
 async function restoreUserSession(user) {
@@ -2508,20 +2508,14 @@ async function restoreUserSession(user) {
   }
 
   // Fetch balances, packages, and referral data from Supabase
-  if (typeof loadUserDataFromSupabase === 'function') {
-    await loadUserDataFromSupabase();
-  }
+      if (typeof loadUserDataFromSupabase === 'function') {
+        await loadUserDataFromSupabase();
+    }
 }
-
 function showAuthScreen() {
   document.getElementById('authSection').classList.remove('hidden');
   document.getElementById('dashboardSection').classList.add('hidden');
 }
 </script>
-</body>
-</html>
-
-
-    </script>
 </body>
 </html>

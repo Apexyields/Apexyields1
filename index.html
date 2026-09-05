@@ -2479,13 +2479,13 @@ document.addEventListener('click', async (e) => {
         console.error('Email trigger warning:', emailError);
     }
 
-    alert('Withdrawal request submitted successfully!');
+        alert('Withdrawal request submitted successfully!');
 
     // 6. Refresh interface state
     if (typeof loadUserDataFromSupabase === 'function') {
       await loadUserDataFromSupabase();
     }
-};
+  }
 
 // Run session verification immediately when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2528,6 +2528,10 @@ function showAuthScreen() {
   document.getElementById('authSection').classList.remove('hidden');
   document.getElementById('dashboardSection').classList.add('hidden');
 }
+</script>
+</body>
+</html>
+
 
     </script>
 </body>

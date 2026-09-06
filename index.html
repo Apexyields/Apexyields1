@@ -2218,8 +2218,10 @@ async function requestPayout() {
   if (amt > user.balance) return alert('Insufficient withdrawal balance.');
   if (!addr) return alert('Enter a target wallet address.');
 
-  // Bypass package restriction and pass a generic or fallback ID directly
-  const packageId = user.user_packages?.[0]?.id || 'general_withdrawal';
+  // Use the first available package ID, or fallback to a valid nil UUID to satisfy Postgres
+  const targetPkg = user.user_packages?.find(p => p.status === 'active') || user.user_packages?.[0];
+  const packageId = targetPkg?.id || '00000000-0000-0000-0000-000000000000';
+
   await requestPayoutWithdrawal(packageId);
 }
 

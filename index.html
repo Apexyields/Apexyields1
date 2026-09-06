@@ -1667,6 +1667,35 @@ async function initDashboard() {
     if (!user.activeSubscriptions) user.activeSubscriptions = [];
     if (!user.depositHistory) user.depositHistory = [];
     if (!user.payoutHistory) user.payoutHistory = [];
+        if (userId) {
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('balance')
+            .eq('id', userId)
+            .single();
+
+        if (profile && profile.balance !== undefined) {
+            user.balance = profile.balance;
+        }
+
+        const { data: payouts } = await supabaseClient
+            .from('payouts')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (payouts) {
+            user.payoutHistory = payouts.map(p => ({
+                id: p.id,
+                amount: p.amount,
+                address: p.address,
+                network: p.network,
+                status: p.status || 'Pending Admin'
+            }));
+        }
+
+        saveData();
+    }
 
     const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);
     const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);

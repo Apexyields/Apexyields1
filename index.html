@@ -1667,19 +1667,25 @@ async function initDashboard() {
     if (!user.activeSubscriptions) user.activeSubscriptions = [];
     if (!user.depositHistory) user.depositHistory = [];
     if (!user.payoutHistory) user.payoutHistory = [];
-            if (userId) {
-        // 1. Sync live balance from Supabase
+                if (userId) {
+        // 1. Sync live user profile
         const { data: profile } = await supabaseClient
             .from('profiles')
-            .select('balance')
+            .select('balance, claimed_packages, ref_code, referred_by, daily_shares_count, last_share_day, unlocked_bonus')
             .eq('id', userId)
             .single();
 
-        if (profile && profile.balance !== undefined) {
-            user.balance = profile.balance;
+        if (profile) {
+            if (profile.balance !== undefined) user.balance = Number(profile.balance) || 0;
+            if (profile.claimed_packages) user.claimedPackages = profile.claimed_packages;
+            if (profile.ref_code) user.refCode = profile.ref_code;
+            if (profile.referred_by) user.referredBy = profile.referred_by;
+            if (profile.daily_shares_count !== undefined) user.dailySharesCount = profile.daily_shares_count;
+            if (profile.last_share_day) user.lastShareDay = profile.last_share_day;
+            if (profile.unlocked_bonus !== undefined) user.unlockedBonus = Number(profile.unlocked_bonus) || 0;
         }
 
-        // 2. Sync packages from Supabase user_packages table
+        // 2. Sync user active packages with safety fallbacks
         const { data: userPackages } = await supabaseClient
             .from('user_packages')
             .select('*')
@@ -1688,15 +1694,34 @@ async function initDashboard() {
         if (userPackages && userPackages.length > 0) {
             user.activeSubscriptions = userPackages.map(pkg => ({
                 id: pkg.id,
-                name: pkg.package_name || pkg.name,
-                cost: pkg.amount || pkg.cost,
-                payout: pkg.payout,
-                status: pkg.status,
+                name: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
+                pkgName: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
+                deposit: Number(pkg.deposit || pkg.amount || pkg.cost || 0),
+                cost: Number(pkg.deposit || pkg.amount || pkg.cost || 0),
+                payout: Number(pkg.payout || pkg.payout_amount || 0),
+                status: pkg.status || 'Active',
                 createdAt: pkg.created_at
             }));
         }
 
-        // 3. Sync payout history from Supabase payouts table
+        // 3. Sync deposit history
+        const { data: deposits } = await supabaseClient
+            .from('deposits')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (deposits && deposits.length > 0) {
+            user.depositHistory = deposits.map(d => ({
+                id: d.id,
+                amount: Number(d.amount || 0),
+                network: d.network || '',
+                refId: d.ref_id || d.refId || '',
+                status: d.status || 'Pending Admin'
+            }));
+        }
+
+        // 4. Sync payout history
         const { data: payouts } = await supabaseClient
             .from('payouts')
             .select('*')
@@ -1706,9 +1731,9 @@ async function initDashboard() {
         if (payouts && payouts.length > 0) {
             user.payoutHistory = payouts.map(p => ({
                 id: p.id,
-                amount: p.amount,
-                address: p.address,
-                network: p.network,
+                amount: Number(p.amount || 0),
+                address: p.address || '',
+                network: p.network || '',
                 status: p.status || 'Pending Admin'
             }));
         }

@@ -1621,74 +1621,78 @@ async function loadUserProfile() {
     }).join('');
 }
 
-
-
-
-    async function initDashboard() {
-        let userId = null;
-        if (typeof supabase !== 'undefined' && supabaseClient && supabaseClient.auth) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session && session.user) {
-                currentUser = session.user.email ? session.user.email.split('@')[0] : session.user.id;
-                userId = session.user.id;
-            }
+async function initDashboard() {
+    let userId = null;
+    if (typeof supabase !== 'undefined' && supabaseClient && supabaseClient.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            currentUser = session.user.email ? session.user.email.split('@')[0] : session.user.id;
+            userId = session.user.id;
         }
-
-        if (!currentUser) {
-            currentUser = localStorage.getItem('currentUser') || localStorage.getItem('activeUser');
-        }
-
-        if (!currentUser) {
-            return;
-        }
-
-        if (currentUser === 'admin') {
-            renderAdminData();
-            renderDynamicPackageCards(0);
-            updateUniversalPackageCounts();
-            return;
-        }
-
-        if (!usersData[currentUser]) {
-            usersData[currentUser] = {
-                passcode: '', balance: 0, lockedPackages: 0,
-                claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
-                referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: [],
-                dailySharesCount: 0, lastShareDay: ''
-            };
-        }
-
-        const user = usersData[currentUser];
-        if (!user.claimedPackages) user.claimedPackages = [];
-        if (!user.activeSubscriptions) user.activeSubscriptions = [];
-        if (!user.depositHistory) user.depositHistory = [];
-
-        // Fetches async count from Supabase using user ID and ref code
-        const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);
-        const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
-
-        document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
-        document.getElementById('walletWithdrawable').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
-        document.getElementById('walletLocked').innerText = `$${(user.lockedPackages || 0).toFixed(2)} USDT`;
-        document.getElementById('settingsUserId').innerText = currentUser;
-        document.getElementById('settingsUserWallet').innerText = "••••••••";
-        document.getElementById('refCodeDisplay').innerText = user.refCode || 'APEX-000000';
-
-        document.getElementById('userCurrentTierLabel').innerText = tierInfo.tierLabel;
-        document.getElementById('userReferralBadge').innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
-
-        if (document.getElementById('unlockedBonusDisplay')) {
-            document.getElementById('unlockedBonusDisplay').innerText = (user.unlockedBonus || 0).toFixed(2);
-        }
-
-        renderDynamicPackageCards(qualifiedRefs);
-        renderPackageButtons();
-        renderUserActiveSubscriptions();
-        renderReferralHub();
-        renderDepositHistory();
-        renderPayoutHistory();
-        updateUniversalPackageCounts();
     }
+
+    if (!currentUser) {
+        currentUser = localStorage.getItem('currentUser') || localStorage.getItem('activeUser');
+    }
+
+    if (!currentUser) return;
+
+    const savedData = localStorage.getItem('usersData');
+    if (savedData) {
+        try {
+            usersData = JSON.parse(savedData);
+        } catch(e) {
+            console.error("Error parsing saved usersData", e);
+        }
+    }
+
+    if (currentUser === 'admin') {
+        renderAdminData();
+        renderDynamicPackageCards(0);
+        updateUniversalPackageCounts();
+        return;
+    }
+
+    if (!usersData[currentUser]) {
+        usersData[currentUser] = {
+            passcode: '', balance: 0, lockedPackages: 0,
+            claimedPackages: [], activeSubscriptions: [], unlockedBonus: 0,
+            referredBy: null, refCode: generateCode(), payoutHistory: [], depositHistory: [],
+            dailySharesCount: 0, lastShareDay: ''
+        };
+    }
+
+    const user = usersData[currentUser];
+    if (!user.claimedPackages) user.claimedPackages = [];
+    if (!user.activeSubscriptions) user.activeSubscriptions = [];
+    if (!user.depositHistory) user.depositHistory = [];
+    if (!user.payoutHistory) user.payoutHistory = [];
+
+    const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);
+    const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
+
+    document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
+    document.getElementById('walletWithdrawable').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
+    document.getElementById('walletLocked').innerText = `$${(user.lockedPackages || 0).toFixed(2)} USDT`;
+    document.getElementById('settingsUserId').innerText = currentUser;
+    document.getElementById('settingsUserWallet').innerText = "--------";
+    document.getElementById('refCodeDisplay').innerText = user.refCode || "APEX-000000";
+
+    document.getElementById('userCurrentTierLabel').innerText = tierInfo.tierLabel;
+    document.getElementById('userReferralBadge').innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
+
+    if (document.getElementById('unlockedBonusDisplay')) {
+        document.getElementById('unlockedBonusDisplay').innerText = (user.unlockedBonus || 0).toFixed(2);
+    }
+
+    renderDynamicPackageCards(qualifiedRefs);
+    renderPackageButtons();
+    renderUserActiveSubscriptions();
+    renderReferralHub();
+    renderDepositHistory();
+    renderPayoutHistory();
+    updateUniversalPackageCounts();
+}
 
     function renderDynamicPackageCards(referralCount) {
         const packageAmounts = {

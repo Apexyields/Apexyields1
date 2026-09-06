@@ -2051,33 +2051,71 @@ async function renderReferralHub() {
     }
 
     function updateShareUI() {
-        if (!currentUser || !usersData[currentUser]) return;
-        const user = usersData[currentUser];
-        const today = new Date().toDateString();
-        if (user.lastShareDay !== today) {
-            user.dailySharesCount = 0;
-            user.lastShareDay = today;
-        }
-        const badge = document.getElementById('shareCountBadge');
-        if (badge) badge.innerText = `${user.dailySharesCount || 0} / 5 Daily Shares`;
+    if (typeof supabaseClient === 'undefined') return;
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (!session || !session.user) return;
+        supabaseClient
+            .from('profiles')
+            .select('daily_shares')
+            .eq('id', session.user.id)
+            .single()
+            .then(({ data }) => {
+                const badge = document.getElementById('shareCountBadge');
+                if (badge && data) {
+                    badge.innerText = `${data.daily_shares || 0} / 5 Daily Shares`;
+                }
+            });
+    });
+}
+
+async function handleDailyShare() {
+    if (typeof supabaseClient === 'undefined') return;
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session || !session.user) return alert('Please log in first.');
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const { data: profile, error: fetchErr } = await supabaseClient
+        .from('profiles')
+        .select('daily_shares, last_share_date')
+        .eq('id', session.user.id)
+        .single();
+
+    if (fetchErr) {
+        console.error('Error fetching share data:', fetchErr);
+        return;
     }
 
-    function handleDailyShare() {
-        if (!currentUser || !usersData[currentUser]) return alert('Please log in first.');
-        const user = usersData[currentUser];
-        const today = new Date().toDateString();
-        if (user.lastShareDay !== today) {
-            user.dailySharesCount = 0;
-            user.lastShareDay = today;
-        }
-        if ((user.dailySharesCount || 0) >= 5) {
-            return alert('Daily share limit reached (5/5). Come back tomorrow!');
-        }
-        user.dailySharesCount = (user.dailySharesCount || 0) + 1;
-        saveData();
-        updateShareUI();
-        alert(`Shared successfully! (${user.dailySharesCount}/5 daily shares completed)`);
+    let currentShares = profile.daily_shares || 0;
+    let lastDate = profile.last_share_date;
+
+    if (lastDate !== todayStr) {
+        currentShares = 0;
+        lastDate = todayStr;
     }
+
+    if (currentShares >= 5) {
+        return alert('Daily share limit reached (5/5). Come back tomorrow!');
+    }
+
+    currentShares += 1;
+
+    const { error: updateErr } = await supabaseClient
+        .from('profiles')
+        .update({ 
+            daily_shares: currentShares, 
+            last_share_date: lastDate 
+        })
+        .eq('id', session.user.id);
+
+    if (updateErr) {
+        return alert('Failed to save share progress: ' + updateErr.message);
+    }
+
+    updateShareUI();
+    alert(`Shared successfully! (${currentShares}/5 daily shares completed)`);
+}
 
     function openDepositModal() {
         updateDepositAddressDisplay();

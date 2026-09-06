@@ -1696,8 +1696,9 @@ async function initDashboard() {
                 id: pkg.id,
                 name: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
                 pkgName: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
-                deposit: Number(pkg.deposit || pkg.amount || pkg.cost || 0),
-                cost: Number(pkg.deposit || pkg.amount || pkg.cost || 0),
+                deposit: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
+cost: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
+
                 payout: Number(pkg.payout || pkg.payout_amount || 0),
                 status: pkg.status || 'Active',
                 createdAt: pkg.created_at

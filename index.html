@@ -2543,7 +2543,7 @@ async function requestPayoutWithdrawal(packageId) {
         body: {
           payoutId: payout_id,
           userEmail: email,
-          username: currentUser,
+          username: typeof currentUser !== 'undefined' ? currentUser : email,
           packageName: package_name,
           lockedAmount: amount_locked,
           payoutAmount: payout,

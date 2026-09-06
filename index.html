@@ -2536,21 +2536,22 @@ async function requestPayoutWithdrawal(packageId) {
         return;
     }
 
-    const { payout, email, package_name, amount_locked } = data;
+        const { payout_id, payout, email, package_name, amount_locked } = data;
 
     try {
-        await supabaseClient.functions.invoke('send-withdrawal-email', {
-            body: {
-                userEmail: email,
-                username: currentUser,
-                packageName: package_name,
-                lockedAmount: amount_locked,
-                payoutAmount: payout,
-                packageId: packageId,
-                walletAddress: destinationAddress,
-                network: selectedNetwork
-            }
-        });
+      await supabaseClient.functions.invoke('send-withdrawal-email', {
+        body: {
+          payoutId: payout_id,
+          userEmail: email,
+          username: currentUser,
+          packageName: package_name,
+          lockedAmount: amount_locked,
+          payoutAmount: payout,
+          packageId: packageId,
+          walletAddress: destinationAddress,
+          network: selectedNetwork
+        }
+      });
     } catch (err) {
         console.warn('Email trigger warning:', err);
     }

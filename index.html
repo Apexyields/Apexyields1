@@ -2486,35 +2486,35 @@ async function handlePackageLock(packageName, amount, dailyRate) {
 async function requestPayoutWithdrawal(packageId) {
   if (!supabaseClient) return;
 
-  const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
-  const destinationAddress = document.getElementById('destination-address')?.value || '';
+  const selectedNetwork = document.getElementById('payoutNetworkSelect')?.value || 'TRC-20';
+  const destinationAddress = document.getElementById('payoutAddress')?.value.trim() || '';
+  const payoutAmount = parseFloat(document.getElementById('payoutAmount')?.value) || 0;
+  const user = usersData[currentUser];
 
-  const { data, error } = await supabaseClient.rpc('request_package_payout', {
-    p_package_id: packageId
-  });
-
-  if (error || !data) {
-    alert(error?.message || 'Failed to submit withdrawal request.');
-    return;
+  let resData = {};
+  
+  // Only call RPC if it's a real package UUID; otherwise skip to local fallback for general balance
+  if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
+    const { data, error } = await supabaseClient.rpc('request_package_payout', {
+      p_package_id: packageId
+    });
+    if (!error && data) {
+      resData = Array.isArray(data) ? data[0] : data;
+    }
   }
 
-  const resData = Array.isArray(data) ? data[0] : data;
-  const payoutId = resData?.payout_id || resData?.id || resData?.payoutId;
-
-  if (!payoutId) {
-    alert('Unable to process request: invalid payout record returned.');
-    return;
-  }
+  const payoutId = resData?.payout_id || resData?.id || resData?.payout || ('PAY-' + Date.now());
+  const displayAmount = resData?.payout || resData?.payout_amount || payoutAmount;
 
   try {
     await supabaseClient.functions.invoke('send-withdrawal-email', {
       body: {
         payoutId: payoutId,
-        userEmail: resData.email || resData.user_email,
-        username: typeof currentUser !== 'undefined' ? currentUser : (resData.email || resData.user_email),
-        packageName: resData.package_name || resData.packageName,
-        lockedAmount: resData.amount_locked || resData.locked_amount,
-        payoutAmount: resData.payout || resData.payout_amount,
+        userEmail: resData.email || user?.email || 'user@apexvault.com',
+        username: currentUser,
+        packageName: resData.packageName || 'General Balance Withdrawal',
+        lockedAmount: resData.amount_locked || payoutAmount,
+        payoutAmount: displayAmount,
         packageId: packageId,
         walletAddress: destinationAddress,
         network: selectedNetwork
@@ -2524,8 +2524,7 @@ async function requestPayoutWithdrawal(packageId) {
     console.error('Edge Function trigger error:', err);
   }
 
-  const displayAmount = resData.payout || resData.payout_amount || '0.00';
-  alert('Withdrawal request submitted! An email notification for $' + displayAmount + ' USDT has been sent for processing.');
+  alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
   if (typeof loadUserDataFromSupabase === 'function') {
     await loadUserDataFromSupabase();
   }

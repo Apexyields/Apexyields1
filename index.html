@@ -2207,59 +2207,26 @@ async function handleDailyShare() {
             `).join('');
     }
 
-    async function requestPayout() {
-    const amt = parseFloat(document.getElementById('payoutAmount').value);
-    const addr = document.getElementById('payoutAddress').value.trim();
-    const net = document.getElementById('payoutNetworkSelect').value;
-    const user = usersData[currentUser];
+async function requestPayout() {
+  const amt = parseFloat(document.getElementById('payoutAmount')?.value);
+  const addr = document.getElementById('payoutAddress')?.value.trim();
+  const net = document.getElementById('payoutNetworkSelect')?.value;
+  const user = usersData[currentUser];
 
-    // 1. Input & Balance Validation
-    if (!user) return alert('Session user invalid.');
-    if (isNaN(amt) || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
-    if (amt > user.balance) return alert('Insufficient withdrawal balance.');
-    if (!addr) return alert('Enter a target wallet address.');
+  if (!user) return alert('Session user invalid.');
+  if (isNaN(amt) || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
+  if (amt > user.balance) return alert('Insufficient withdrawal balance.');
+  if (!addr) return alert('Enter a target wallet address.');
 
-    // 2. Local State Updates
-    user.balance -= amt;
-    const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
-    
-    if (!user.payoutHistory) user.payoutHistory = [];
-    user.payoutHistory.unshift(payoutObj);
+  // Find the active package ID to pass into the withdrawal RPC/Edge Function flow
+  const activePkg = user.user_packages?.find(p => p.status === 'active');
+  
+  if (activePkg?.id) {
+    await requestPayoutWithdrawal(activePkg.id);
+    return;
+  }
 
-    if (typeof systemData !== 'undefined' && systemData.pendingPayouts) {
-        systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
-    }
-
-    // 3. Supabase Sync (Payout Record + Balance Update)
-    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-            // Insert into payouts table
-            const { error: payoutErr } = await supabaseClient.from('payouts').insert([{
-                user_id: session.user.id,
-                amount: amt,
-                address: addr,
-                network: net,
-                status: 'Pending Admin'
-            }]);
-
-            if (payoutErr) console.error('Supabase payout insert failed:', payoutErr);
-
-            // Update balance in profiles table
-            const { error: profileErr } = await supabaseClient
-                .from('profiles')
-                .update({ balance: user.balance })
-                .eq('id', session.user.id);
-
-            if (profileErr) console.error('Supabase profile balance update failed:', profileErr);
-        }
-    }
-
-    // 4. Save and Re-render UI
-    saveData();
-    if (typeof initDashboard === 'function') await initDashboard();
-    if (typeof renderPayoutHistory === 'function') renderPayoutHistory();
-    alert('Payout request submitted to Master Admin Queue.');
+  alert('No active package found to process withdrawal.');
 }
 
     function renderPayoutHistory() {

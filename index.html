@@ -2218,15 +2218,9 @@ async function requestPayout() {
   if (amt > user.balance) return alert('Insufficient withdrawal balance.');
   if (!addr) return alert('Enter a target wallet address.');
 
-  // Find the active package ID to pass into the withdrawal RPC/Edge Function flow
-  const activePkg = user.user_packages?.find(p => p.status === 'active');
-  
-  if (activePkg?.id) {
-    await requestPayoutWithdrawal(activePkg.id);
-    return;
-  }
-
-  alert('No active package found to process withdrawal.');
+  // Bypass package restriction and pass a generic or fallback ID directly
+  const packageId = user.user_packages?.[0]?.id || 'general_withdrawal';
+  await requestPayoutWithdrawal(packageId);
 }
 
     function renderPayoutHistory() {

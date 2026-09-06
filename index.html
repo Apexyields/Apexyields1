@@ -2538,8 +2538,8 @@ async function requestPayoutWithdrawal(packageId) {
 
         const { payout_id, payout, email, package_name, amount_locked } = data;
 
-    try {
-      await supabaseClient.functions.invoke('send-withdrawal-email', {
+        try {
+      const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('send-withdrawal-email', {
         body: {
           payoutId: payout_id,
           userEmail: email,
@@ -2552,10 +2552,13 @@ async function requestPayoutWithdrawal(packageId) {
           network: selectedNetwork
         }
       });
-    } catch (err) {
-        console.warn('Email trigger warning:', err);
-    }
 
+      if (funcErr) {
+        alert('Edge Function Error: ' + funcErr.message);
+      }
+    } catch (err) {
+      alert('JS Trigger Error: ' + err.message);
+    }
     alert(`Withdrawal request submitted! An email notification for $${payout.toFixed(2)} USDT has been sent for processing.`);
 
     if (typeof loadUserDataFromSupabase === 'function') {

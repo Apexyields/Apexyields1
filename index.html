@@ -1678,13 +1678,13 @@ async function initDashboard() {
             user.balance = profile.balance;
         }
 
-        const { data: payouts } = await supabaseClient
+                const { data: payouts } = await supabaseClient
             .from('payouts')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-        if (payouts) {
+        if (payouts && payouts.length > 0) {
             user.payoutHistory = payouts.map(p => ({
                 id: p.id,
                 amount: p.amount,
@@ -1693,7 +1693,7 @@ async function initDashboard() {
                 status: p.status || 'Pending Admin'
             }));
         }
-
+            
         saveData();
     }
 
@@ -2120,29 +2120,44 @@ async function renderReferralHub() {
         document.getElementById('payoutFeeDisplay').innerText = fees[net];
     }
 
-    function requestPayout() {
-        const amt = parseFloat(document.getElementById('payoutAmount').value);
-        const addr = document.getElementById('payoutAddress').value.trim();
-        const net = document.getElementById('payoutNetworkSelect').value;
-        const user = usersData[currentUser];
+    async function requestPayout() {
+    const amt = parseFloat(document.getElementById('payoutAmount').value);
+    const addr = document.getElementById('payoutAddress').value.trim();
+    const net = document.getElementById('payoutNetworkSelect').value;
+    const user = usersData[currentUser];
 
-        if (!user) return alert('Session user invalid.');
-        if (!amt || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
-        if (amt > user.balance) return alert('Insufficient withdrawable balance.');
-        if (!addr) return alert('Enter a target wallet address.');
+    if (!user) return alert('Session user invalid.');
+    if (isNaN(amt) || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
+    if (amt > user.balance) return alert('Insufficient withdrawable balance.');
+    if (!addr) return alert('Enter a target wallet address.');
 
-        user.balance -= amt;
-        const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
+    user.balance -= amt;
+    const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
 
-        if (!user.payoutHistory) user.payoutHistory = [];
-        user.payoutHistory.unshift(payoutObj);
-        systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
+    if (!user.payoutHistory) user.payoutHistory = [];
+    user.payoutHistory.unshift(payoutObj);
+    systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
 
-        logEvent(currentUser, 'PAYOUT_REQ', `Requested $${amt} USDT payout on [${net}] to ${addr}`);
-        saveData();
-        initDashboard();
-        alert('Payout request submitted to Master Admin Queue.');
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const userId = session.user.id;
+            await supabaseClient.from('payouts').insert([{
+                user_id: userId,
+                amount: amt,
+                address: addr,
+                network: net,
+                status: 'Pending Admin'
+            }]);
+            await supabaseClient.from('profiles').update({ balance: user.balance }).eq('id', userId);
+        }
     }
+
+    logEvent(currentUser, 'PAYOUT_REQ', `Requested $${amt} USDT payout on (${net}) to (${addr})`);
+    saveData();
+    await initDashboard();
+    alert('Payout request submitted to Master Admin Queue.');
+}
 
     function renderPayoutHistory() {
         const user = usersData[currentUser];

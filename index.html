@@ -2521,51 +2521,52 @@ async function handlePackageLock(packageName, amount, dailyRate) {
 }
 
 async function requestPayoutWithdrawal(packageId) {
-    if (!supabaseClient) return;
+  if (!supabaseClient) return;
 
-    // Capture destination wallet address and network from form inputs
-    const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
-    const destinationAddress = document.getElementById('destination-address')?.value || '';
+  const selectedNetwork = document.getElementById('withdrawal-network')?.value || 'USDT';
+  const destinationAddress = document.getElementById('destination-address')?.value || '';
 
-    const { data, error } = await supabaseClient.rpc('request_package_payout', {
-        p_package_id: packageId
-    });
+  const { data, error } = await supabaseClient.rpc('request_package_payout', {
+    p_package_id: packageId
+  });
 
-    if (error || !data?.success) {
-        alert(error?.message || data?.message || 'Failed to submit withdrawal request.');
-        return;
-    }
+  if (error || !data) {
+    alert(error?.message || 'Failed to submit withdrawal request.');
+    return;
+  }
 
-        const { payout_id, payout, email, package_name, amount_locked } = data;
+  const resData = Array.isArray(data) ? data[0] : data;
+  const payoutId = resData?.payout_id || resData?.id || resData?.payoutId;
 
-        try {
-      const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('send-withdrawal-email', {
-        body: {
-          payoutId: payout_id,
-          userEmail: email,
-          username: typeof currentUser !== 'undefined' ? currentUser : email,
-          packageName: package_name,
-          lockedAmount: amount_locked,
-          payoutAmount: payout,
-          packageId: packageId,
-          walletAddress: destinationAddress,
-          network: selectedNetwork
-        }
-      });
+  if (!payoutId) {
+    alert('Unable to process request: invalid payout record returned.');
+    return;
+  }
 
-      if (funcErr) {
-        alert('Edge Function Error: ' + funcErr.message);
+  try {
+    await supabaseClient.functions.invoke('send-withdrawal-email', {
+      body: {
+        payoutId: payoutId,
+        userEmail: resData.email || resData.user_email,
+        username: typeof currentUser !== 'undefined' ? currentUser : (resData.email || resData.user_email),
+        packageName: resData.package_name || resData.packageName,
+        lockedAmount: resData.amount_locked || resData.locked_amount,
+        payoutAmount: resData.payout || resData.payout_amount,
+        packageId: packageId,
+        walletAddress: destinationAddress,
+        network: selectedNetwork
       }
-    } catch (err) {
-      alert('JS Trigger Error: ' + err.message);
-    }
-    alert(`Withdrawal request submitted! An email notification for $${payout.toFixed(2)} USDT has been sent for processing.`);
+    });
+  } catch (err) {
+    console.error('Edge Function trigger error:', err);
+  }
 
-    if (typeof loadUserDataFromSupabase === 'function') {
-        await loadUserDataFromSupabase();
-    }
+  const displayAmount = resData.payout || resData.payout_amount || '0.00';
+  alert('Withdrawal request submitted! An email notification for $' + displayAmount + ' USDT has been sent for processing.');
+  if (typeof loadUserDataFromSupabase === 'function') {
+    await loadUserDataFromSupabase();
+  }
 }
-
     </script>
 </body>
 </html>

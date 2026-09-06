@@ -1637,7 +1637,7 @@ async function initDashboard() {
 
     if (!currentUser) return;
 
-    const savedData = localStorage.getItem('usersData');
+    const savedData = localStorage.getItem('apex_users_data');
     if (savedData) {
         try {
             usersData = JSON.parse(savedData);

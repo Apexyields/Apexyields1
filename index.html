@@ -2159,48 +2159,58 @@ async function renderReferralHub() {
             `).join('');
     }
 
-    function updatePayoutFee() {
-        const fees = { TRC20: "$1.00 USDT", ERC20: "$5.00 USDT", SPL: "$0.20 USDT", BEP20: "$0.50 USDT" };
-        const net = document.getElementById('payoutNetworkSelect').value;
-        document.getElementById('payoutFeeDisplay').innerText = fees[net];
-    }
-
     async function requestPayout() {
     const amt = parseFloat(document.getElementById('payoutAmount').value);
     const addr = document.getElementById('payoutAddress').value.trim();
     const net = document.getElementById('payoutNetworkSelect').value;
     const user = usersData[currentUser];
 
+    // 1. Input & Balance Validation
     if (!user) return alert('Session user invalid.');
     if (isNaN(amt) || amt < 10) return alert('Minimum withdrawal amount is $10 USDT.');
-    if (amt > user.balance) return alert('Insufficient withdrawable balance.');
+    if (amt > user.balance) return alert('Insufficient withdrawal balance.');
     if (!addr) return alert('Enter a target wallet address.');
 
+    // 2. Local State Updates
     user.balance -= amt;
     const payoutObj = { id: 'PAY-' + Date.now(), amount: amt, address: addr, network: net, status: 'Pending Admin' };
-
+    
     if (!user.payoutHistory) user.payoutHistory = [];
     user.payoutHistory.unshift(payoutObj);
-    systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
 
+    if (typeof systemData !== 'undefined' && systemData.pendingPayouts) {
+        systemData.pendingPayouts.push({ id: payoutObj.id, userId: currentUser, amount: amt, address: addr, network: net });
+    }
+
+    // 3. Supabase Sync (Payout Record + Balance Update)
     if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) {
-            const userId = session.user.id;
-            await supabaseClient.from('payouts').insert([{
-                user_id: userId,
+            // Insert into payouts table
+            const { error: payoutErr } = await supabaseClient.from('payouts').insert([{
+                user_id: session.user.id,
                 amount: amt,
                 address: addr,
                 network: net,
                 status: 'Pending Admin'
             }]);
-            await supabaseClient.from('profiles').update({ balance: user.balance }).eq('id', userId);
+
+            if (payoutErr) console.error('Supabase payout insert failed:', payoutErr);
+
+            // Update balance in profiles table
+            const { error: profileErr } = await supabaseClient
+                .from('profiles')
+                .update({ balance: user.balance })
+                .eq('id', session.user.id);
+
+            if (profileErr) console.error('Supabase profile balance update failed:', profileErr);
         }
     }
 
-    logEvent(currentUser, 'PAYOUT_REQ', `Requested $${amt} USDT payout on (${net}) to (${addr})`);
+    // 4. Save and Re-render UI
     saveData();
-    await initDashboard();
+    if (typeof initDashboard === 'function') await initDashboard();
+    if (typeof renderPayoutHistory === 'function') renderPayoutHistory();
     alert('Payout request submitted to Master Admin Queue.');
 }
 
@@ -2448,109 +2458,6 @@ async function requestPayoutWithdrawal(packageId) {
         await loadUserDataFromSupabase();
     }
 }
-document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('button');
-    if (!btn || !btn.textContent.trim().includes('Submit Withdrawal Request')) return;
-
-    e.preventDefault();
-
-    // 1. Read directly from your HTML element IDs
-    const networkEl = document.getElementById('payoutNetworkSelect');
-    const amountEl = document.getElementById('payoutAmount');
-    const addressEl = document.getElementById('payoutAddress');
-
-    const selectedNetwork = networkEl?.options ? networkEl.options[networkEl.selectedIndex]?.text : (networkEl?.value || 'BEP-20');
-    const withdrawalAmount = parseFloat(amountEl?.value || '0');
-    const destinationAddress = addressEl?.value?.trim() || '';
-
-    if (!destinationAddress) {
-        alert('Please enter a valid receiving wallet address.');
-        return;
-    }
-
-    if (isNaN(withdrawalAmount) || withdrawalAmount <= 0) {
-        alert('Please enter a valid withdrawal amount.');
-        return;
-    }
-
-    const { data: { user } } = await supabaseClient.auth.getUser();
-
-    if (!user) {
-        alert('Please log in to submit a withdrawal request.');
-        return;
-    }
-
-    // 2. Fetch current profile balance
-    const { data: profile, error: profileError } = await supabaseClient
-        .from('profiles')
-        .select('balance')
-        .eq('id', user.id)
-        .single();
-
-    if (profileError || !profile) {
-        alert('Error fetching user account balance.');
-        return;
-    }
-
-    if (profile.balance < withdrawalAmount) {
-        alert('Insufficient balance for this withdrawal request.');
-        return;
-    }
-
-    // 3. Log pending transaction in database
-    const { error: txError } = await supabaseClient
-        .from('transactions')
-        .insert([{
-            user_id: user.id,
-            type: 'withdrawal',
-            amount: withdrawalAmount,
-            network: selectedNetwork,
-            wallet_address: destinationAddress,
-            status: 'pending'
-        }]);
-
-    if (txError) {
-        alert('Error submitting withdrawal: ' + txError.message);
-        return;
-    }
-
-    // 4. Deduct balance from user profile so it persists across refreshes
-    const newBalance = profile.balance - withdrawalAmount;
-    const { error: updateError } = await supabaseClient
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', user.id);
-
-    if (updateError) {
-        console.error('Failed to deduct user balance:', updateError);
-    }
-
-    // 5. Trigger email notification with captured inputs
-    const { error: emailError } = await supabaseClient.functions.invoke('send-withdrawal-email', {
-        body: {
-            userEmail: user.email,
-            username: user.user_metadata?.username || currentUser || `User_${user.id.slice(0, 6)}`,
-            packageName: 'Direct Balance Withdrawal',
-            lockedAmount: 0,
-            payoutAmount: withdrawalAmount,
-            walletAddress: destinationAddress,
-            network: selectedNetwork
-        }
-    });
-
-    if (emailError) {
-        console.error('Email trigger warning:', emailError);
-    }
-
-    alert('Withdrawal request submitted successfully!');
-
-    // 6. Refresh interface state
-    if (typeof loadUserDataFromSupabase === 'function') {
-        await loadUserDataFromSupabase();
-    }
-});
-
-
 
     </script>
 </body>

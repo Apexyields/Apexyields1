@@ -1667,7 +1667,8 @@ async function initDashboard() {
     if (!user.activeSubscriptions) user.activeSubscriptions = [];
     if (!user.depositHistory) user.depositHistory = [];
     if (!user.payoutHistory) user.payoutHistory = [];
-        if (userId) {
+            if (userId) {
+        // 1. Sync live balance from Supabase
         const { data: profile } = await supabaseClient
             .from('profiles')
             .select('balance')
@@ -1678,7 +1679,25 @@ async function initDashboard() {
             user.balance = profile.balance;
         }
 
-                const { data: payouts } = await supabaseClient
+        // 2. Sync packages from Supabase user_packages table
+        const { data: userPackages } = await supabaseClient
+            .from('user_packages')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (userPackages && userPackages.length > 0) {
+            user.activeSubscriptions = userPackages.map(pkg => ({
+                id: pkg.id,
+                name: pkg.package_name || pkg.name,
+                cost: pkg.amount || pkg.cost,
+                payout: pkg.payout,
+                status: pkg.status,
+                createdAt: pkg.created_at
+            }));
+        }
+
+        // 3. Sync payout history from Supabase payouts table
+        const { data: payouts } = await supabaseClient
             .from('payouts')
             .select('*')
             .eq('user_id', userId)
@@ -1693,7 +1712,7 @@ async function initDashboard() {
                 status: p.status || 'Pending Admin'
             }));
         }
-            
+
         saveData();
     }
 

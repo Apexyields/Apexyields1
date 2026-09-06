@@ -2108,42 +2108,52 @@ async function renderReferralHub() {
         document.getElementById('depositModal').classList.add('hidden');
     }
 
-    function submitDeposit() {
-        const amt = parseFloat(document.getElementById('depositAmountInput').value);
-        const net = document.getElementById('depositNetworkSelect').value;
+    async function submitDeposit() {
+    const amt = parseFloat(document.getElementById('depositAmountInput').value);
+    const net = document.getElementById('depositNetworkSelect').value;
+    const user = usersData[currentUser];
 
-        if (!amt || amt <= 0) return alert('Enter a valid deposit amount.');
+    if (!user) return alert('Session user invalid.');
+    if (isNaN(amt) || amt <= 0) return alert('Enter a valid deposit amount.');
 
-        const depId = 'DEP-' + Date.now();
-        const user = usersData[currentUser];
+    const depId = 'DEP-' + Date.now();
+    const depObj = { id: depId, amount: amt, network: net, status: 'Pending Review' };
 
-        const depObj = {
-            id: depId,
-            amount: amt,
-            network: net,
-            status: 'Pending Review'
-        };
+    // Update Local UI State
+    if (!user.depositHistory) user.depositHistory = [];
+    user.depositHistory.unshift(depObj);
 
-        if (user) {
-            if (!user.depositHistory) user.depositHistory = [];
-            user.depositHistory.unshift(depObj);
-        }
-
+    if (typeof systemData !== 'undefined' && systemData.pendingDeposits) {
         systemData.pendingDeposits.push({
             id: depId,
             userId: currentUser,
             amount: amt,
             network: net,
-            refCodeUsed: user ? user.referredBy : null,
             submittedAt: Date.now()
         });
-
-        logEvent(currentUser, 'DEPOSIT_REQ', `Submitted $${amt} USDT deposit via [${net}]`);
-        saveData();
-        closeDepositModal();
-        initDashboard();
-        alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting Master Admin approval.`);
     }
+
+    // Direct Supabase Sync
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            const { error: depErr } = await supabaseClient.from('deposits').insert([{
+                user_id: session.user.id,
+                amount: amt,
+                network: net,
+                status: 'Pending Review'
+            }]);
+
+            if (depErr) console.error('Supabase deposit insert failed:', depErr);
+        }
+    }
+
+    saveData();
+    if (typeof closeDepositModal === 'function') closeDepositModal();
+    if (typeof initDashboard === 'function') await initDashboard();
+    if (typeof renderDepositHistory === 'function') renderDepositHistory();
+    alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting Master Admin approval.`);
+}
 
     function renderDepositHistory() {
         const user = usersData[currentUser];
@@ -2271,24 +2281,51 @@ async function renderReferralHub() {
             `).join('');
     }
 
-    function approveDeposit(index) {
-        const dep = systemData.pendingDeposits[index];
-        if (!dep) return;
+    async function approveDeposit(index) {
+    const dep = systemData.pendingDeposits[index];
+    if (!dep) return;
 
-        if (usersData[dep.userId]) {
-            usersData[dep.userId].balance = (usersData[dep.userId].balance || 0) + dep.amount;
-            if (usersData[dep.userId].depositHistory && usersData[dep.userId].depositHistory.length > 0) {
-                const match = usersData[dep.userId].depositHistory.find(d => d.id === dep.id);
-                if (match) match.status = 'Approved';
-            }
-        }
-
-        systemData.pendingDeposits.splice(index, 1);
-        logEvent('admin', 'APPROVE_DEPOSIT', `Approved deposit ${dep.id} of $${dep.amount} for user ${dep.userId}`);
-        saveData();
-        renderAdminPendingDeposits();
-        alert(`Deposit approved successfully for ${dep.userId}.`);
+    const user = usersData[dep.userId];
+    if (user) {
+        user.balance = (user.balance || 0) + dep.amount;
+        const match = user.depositHistory ? user.depositHistory.find(d => d.id === dep.id) : null;
+        if (match) match.status = 'Approved';
     }
+
+    // Sync to Supabase: Update user profile balance
+    if (typeof supabaseClient !== 'undefined') {
+        // Fetch matching profile ID if userId in local state isn't a UUID
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('id, balance')
+            .or(`id.eq.${dep.userId},username.eq.${dep.userId}`)
+            .single();
+
+        if (profile) {
+            const newBal = (Number(profile.balance) || 0) + Number(dep.amount);
+            
+            // 1. Credit Profile Balance
+            await supabaseClient
+                .from('profiles')
+                .update({ balance: newBal })
+                .eq('id', profile.id);
+
+            // 2. Mark Deposit Approved in Supabase
+            await supabaseClient
+                .from('deposits')
+                .update({ status: 'Approved' })
+                .eq('user_id', profile.id)
+                .eq('amount', dep.amount)
+                .eq('status', 'Pending Review');
+        }
+    }
+
+    systemData.pendingDeposits.splice(index, 1);
+    saveData();
+    if (typeof renderAdminData === 'function') renderAdminData();
+    if (typeof initDashboard === 'function') await initDashboard();
+    alert(`Deposit approved successfully for ${dep.userId}!`);
+}
 
     function rejectDeposit(index) {
         const dep = systemData.pendingDeposits[index];
@@ -2401,22 +2438,50 @@ async function renderReferralHub() {
             `).join('');
     }
 
-    // Add to the bottom of script.js
 async function handlePackageLock(packageName, amount, dailyRate) {
-  const { data, error } = await supabase.rpc('lock_package', {
-    p_package_name: packageName,
-    p_amount: amount,
-    p_daily_rate: dailyRate
-  });
+    if (typeof supabaseClient === 'undefined') return;
 
-  if (error) {
-    alert(`Lock failed: ${error.message}`);
-    return;
-  }
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session || !session.user) return alert('Please log in to activate a package.');
 
-  alert(`Successfully locked ${packageName}!`);
-  location.reload();
+    // 1. Check user balance
+    const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('balance')
+        .eq('id', session.user.id)
+        .single();
+
+    if (!profile || profile.balance < amount) {
+        return alert('Insufficient balance to lock this package.');
+    }
+
+    // 2. Deduct balance and insert package
+    const newBalance = profile.balance - amount;
+    
+    const { error: profileErr } = await supabaseClient
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', session.user.id);
+
+    if (profileErr) return alert('Failed to update balance: ' + profileErr.message);
+
+    const { error: pkgErr } = await supabaseClient
+        .from('user_packages')
+        .insert([{
+            user_id: session.user.id,
+            package_name: packageName,
+            amount_locked: amount,
+            daily_rate: dailyRate,
+            status: 'active',
+            matures_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        }]);
+
+    if (pkgErr) return alert('Package activation failed: ' + pkgErr.message);
+
+    alert(`Successfully locked ${packageName}!`);
+    window.location.reload();
 }
+
 async function requestPayoutWithdrawal(packageId) {
     if (!supabaseClient) return;
 

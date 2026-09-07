@@ -2492,8 +2492,7 @@ async function requestPayoutWithdrawal(packageId) {
   const user = usersData[currentUser];
 
   let resData = {};
-  
-  // Only call RPC if it's a real package UUID; otherwise skip to local fallback for general balance
+
   if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
     const { data, error } = await supabaseClient.rpc('request_package_payout', {
       p_package_id: packageId
@@ -2503,11 +2502,9 @@ async function requestPayoutWithdrawal(packageId) {
     }
   }
 
-    // Generate a single reference ID for both DB insertion and email payload
   const payoutRef = resData?.payout_id || resData?.id || ('PAY-' + Date.now());
   const displayAmount = resData?.payout || resData?.payout_amount || payoutAmount;
 
-  // Insert into payouts table if RPC did not process it
   if (!resData?.payout_id && !resData?.id) {
     const activeUserId = user?.id || (typeof session !== 'undefined' ? session?.user?.id : null);
     
@@ -2540,6 +2537,13 @@ async function requestPayoutWithdrawal(packageId) {
   } catch (err) {
     console.error('Edge Function trigger error:', err);
   }
+
+  alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
+  if (typeof loadUserDataFromSupabase === 'function') {
+    await loadUserDataFromSupabase();
+  }
+}
+
     </script>
 </body>
 </html>

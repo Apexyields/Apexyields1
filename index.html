@@ -2553,69 +2553,23 @@ async function requestPayoutWithdrawal(packageId) {
         return alert('User session not found. Please log in again.');
     }
 
-        // =========================================================
-    // 1. PACKAGE MATURITY CLAIM (Internal Balance Credit)
+            // =========================================================
+    // 1. PACKAGE MATURITY CLAIM (Atomic Supabase RPC)
     // =========================================================
     if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
-        // 1. Stop rapid double-clicks dead in their tracks
-        if (window.isClaimingPayout === packageId) return;
-        window.isClaimingPayout = packageId;
-        
-        // Physically freeze the screen to block secondary click events
-        document.body.style.pointerEvents = 'none';
+        const { data, error } = await supabaseClient.rpc('claim_package_payout', {
+            p_package_id: packageId
+        });
 
-        try {
-            // 2. Fetch package details
-            const { data: pkg, error: pkgErr } = await supabaseClient
-                .from('user_packages')
-                .select('*')
-                .eq('id', packageId)
-                .single();
+        if (error) {
+            return alert(error.message);
+        }
 
-            if (pkgErr || !pkg) return alert('Package record not found.');
-            if ((pkg.status || '').toLowerCase() === 'claimed') {
-                return alert('This package payout has already been claimed.');
-            }
+        const payoutAmt = Number(data?.payout_amount || 0);
+        alert(`Payout complete! $${payoutAmt.toFixed(2)} USDT added to your active balance.`);
 
-            const lockedAmt = Number(pkg.amount_locked || 0);
-            const payoutAmt = Number(pkg.payout || (lockedAmt * 1.2));
-
-            // 3. CRITICAL: Lock the package in the DB FIRST. 
-            // If this fails, the code halts. No infinite money glitch.
-            const { error: claimErr } = await supabaseClient
-                .from('user_packages')
-                .update({ status: 'claimed' })
-                .eq('id', packageId);
-
-            if (claimErr) return alert('Failed to secure package claim: ' + claimErr.message);
-
-            // 4. Now that the package is safely locked, get the active balance
-            const { data: profile, error: profErr } = await supabaseClient
-                .from('profiles')
-                .select('balance')
-                .eq('id', activeUserId)
-                .single();
-
-            if (profErr || !profile) return alert('Failed to fetch profile balance.');
-
-            const newBalance = Number(profile.balance || 0) + payoutAmt;
-
-            // 5. Safely add the funds to the balance
-            const { error: updateErr } = await supabaseClient
-                .from('profiles')
-                .update({ balance: newBalance })
-                .eq('id', activeUserId);
-
-            if (updateErr) return alert('Failed to update balance: ' + updateErr.message);
-
-            alert(`Payout complete! $${payoutAmt.toFixed(2)} USDT added to your active balance.`);
-
-            if (typeof initDashboard === 'function') await initDashboard();
-
-        } finally {
-            // 6. Un-freeze the UI regardless of success or error
-            window.isClaimingPayout = null;
-            document.body.style.pointerEvents = 'auto';
+        if (typeof initDashboard === 'function') {
+            await initDashboard();
         }
         return;
     }

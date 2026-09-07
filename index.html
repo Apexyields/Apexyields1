@@ -2503,13 +2503,30 @@ async function requestPayoutWithdrawal(packageId) {
     }
   }
 
-  const payoutId = resData?.payout_id || resData?.id || resData?.payout || ('PAY-' + Date.now());
+    // Generate a single reference ID for both DB insertion and email payload
+  const payoutRef = resData?.payout_id || resData?.id || ('PAY-' + Date.now());
   const displayAmount = resData?.payout || resData?.payout_amount || payoutAmount;
+
+  // Insert into payouts table if RPC did not process it
+  if (!resData?.payout_id && !resData?.id) {
+    const activeUserId = user?.id || (typeof session !== 'undefined' ? session?.user?.id : null);
+    
+    const { error: dbError } = await supabaseClient.from('payouts').insert({
+      user_id: activeUserId,
+      amount: payoutAmount,
+      address: destinationAddress,
+      network: selectedNetwork,
+      status: 'Pending Admin',
+      reference_id: payoutRef
+    });
+
+    if (dbError) console.error('Failed to insert payout record:', dbError);
+  }
 
   try {
     await supabaseClient.functions.invoke('send-withdrawal-email', {
       body: {
-        payoutId: payoutId,
+        payoutId: payoutRef,
         userEmail: resData.email || user?.email || 'user@apexvault.com',
         username: currentUser,
         packageName: resData.packageName || 'General Balance Withdrawal',
@@ -2523,12 +2540,6 @@ async function requestPayoutWithdrawal(packageId) {
   } catch (err) {
     console.error('Edge Function trigger error:', err);
   }
-
-  alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
-  if (typeof loadUserDataFromSupabase === 'function') {
-    await loadUserDataFromSupabase();
-  }
-}
     </script>
 </body>
 </html>

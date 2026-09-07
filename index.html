@@ -2543,30 +2543,8 @@ async function handlePackageLock(packageName, amount, dailyRate) {
 async function requestPayoutWithdrawal(packageId) {
     if (!supabaseClient) return;
 
-    const selectedNetwork = document.getElementById('payoutNetworkSelect')?.value || 'TRC-20';
-    const destinationAddress = document.getElementById('payoutAddress')?.value.trim() || '';
-    const payoutAmount = parseFloat(document.getElementById('payoutAmount')?.value) || 0;
-    const user = usersData[currentUser];
-
-    let resData = {};
-
-    if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
-        const { data, error } = await supabaseClient.rpc('request_package_payout', {
-            p_package_id: packageId
-        });
-
-        if (error) {
-            return alert('Package payout error: ' + error.message);
-        }
-        if (data) {
-            resData = Array.isArray(data) ? data[0] : data;
-        }
-    }
-
-    const payoutRef = resData?.payout_id || resData?.id || (`PAY-` + Date.now());
-    const displayAmount = resData?.payout_amount || payoutAmount;
-        let activeUserId = user?.id;
-    if (!activeUserId && typeof supabaseClient !== 'undefined' && supabaseClient?.auth) {
+    let activeUserId = usersData[currentUser]?.id;
+    if (!activeUserId && supabaseClient?.auth) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         activeUserId = session?.user?.id;
     }
@@ -2575,24 +2553,83 @@ async function requestPayoutWithdrawal(packageId) {
         return alert('User session not found. Please log in again.');
     }
 
-    // 1. Deduct balance from Supabase profile if general withdrawal
-    if (!packageId || packageId === '00000000-0000-0000-0000-000000000000') {
-        const currentBal = Number(user?.balance || 0);
-        if (currentBal < payoutAmount) return alert('Insufficient balance.');
-        
-        const newBalance = currentBal - payoutAmount;
-        const { error: balErr } = await supabaseClient
+    // =========================================================
+    // 1. PACKAGE MATURITY CLAIM (Internal Balance Credit)
+    // =========================================================
+    if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
+        const { data: pkg, error: pkgErr } = await supabaseClient
+            .from('user_packages')
+            .select('*')
+            .eq('id', packageId)
+            .single();
+
+        if (pkgErr || !pkg) return alert('Package record not found.');
+        if (pkg.status === 'claimed') return alert('This package payout has already been claimed.');
+
+        const lockedAmt = Number(pkg.amount_locked || 0);
+        const payoutAmt = Number(pkg.payout || (lockedAmt * 1.2));
+
+        // Fetch current profile balance
+        const { data: profile, error: profErr } = await supabaseClient
+            .from('profiles')
+            .select('balance')
+            .eq('id', activeUserId)
+            .single();
+
+        if (profErr || !profile) return alert('Failed to fetch profile balance.');
+
+        const newBalance = Number(profile.balance || 0) + payoutAmt;
+
+        // Credit balance & mark package as claimed
+        const { error: updateErr } = await supabaseClient
             .from('profiles')
             .update({ balance: newBalance })
             .eq('id', activeUserId);
 
-        if (balErr) return alert('Failed to update balance: ' + balErr.message);
+        if (updateErr) return alert('Failed to update balance: ' + updateErr.message);
+
+        await supabaseClient
+            .from('user_packages')
+            .update({ status: 'claimed' })
+            .eq('id', packageId);
+
+        alert(`Payout complete! $${payoutAmt.toFixed(2)} USDT added to your active balance.`);
+
+        if (typeof initDashboard === 'function') {
+            await initDashboard();
+        }
+        return; // Stop here so no external withdrawal or email logic runs
     }
 
-    // 2. Insert payout record into Supabase
+    // =========================================================
+    // 2. EXTERNAL WALLET WITHDRAWAL (Wallet & Payout Tab)
+    // =========================================================
+    const selectedNetwork = document.getElementById('payoutNetworkSelect')?.value || 'TRC-20';
+    const destinationAddress = document.getElementById('payoutAddress')?.value.trim() || '';
+    const payoutAmount = parseFloat(document.getElementById('payoutAmount')?.value) || 0;
+    const user = usersData[currentUser] || {};
+
+    if (!destinationAddress) return alert('Please enter a valid payout address.');
+    if (payoutAmount <= 0) return alert('Please enter a valid withdrawal amount.');
+
+    const currentBal = Number(user?.balance || 0);
+    if (currentBal < payoutAmount) return alert('Insufficient balance.');
+
+    // 1. Deduct balance from Supabase profile
+    const newBalance = currentBal - payoutAmount;
+    const { error: balErr } = await supabaseClient
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', activeUserId);
+
+    if (balErr) return alert('Failed to update balance: ' + balErr.message);
+
+    const payoutRef = 'PAY-' + Date.now();
+
+    // 2. Insert payout record into Supabase for admin review
     const { error: dbError } = await supabaseClient.from('payouts').insert({
         user_id: activeUserId,
-        amount: displayAmount,
+        amount: payoutAmount,
         address: destinationAddress,
         network: selectedNetwork,
         status: 'Pending Admin',
@@ -2612,10 +2649,10 @@ async function requestPayoutWithdrawal(packageId) {
                 referenceId: payoutRef,
                 userEmail: user?.email || currentUser || 'user@apexvault.com',
                 username: currentUser,
-                packageName: resData?.package_name || 'General Balance Withdrawal',
-                lockedAmount: resData?.amount_locked || payoutAmount,
-                payoutAmount: displayAmount,
-                packageId: packageId,
+                packageName: 'General Balance Withdrawal',
+                lockedAmount: payoutAmount,
+                payoutAmount: payoutAmount,
+                packageId: null,
                 walletAddress: destinationAddress,
                 network: selectedNetwork
             }
@@ -2624,13 +2661,13 @@ async function requestPayoutWithdrawal(packageId) {
         console.error('Edge Function trigger error:', err);
     }
 
-    alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
+    alert(`Withdrawal request submitted! An email notification for $${payoutAmount.toFixed(2)} USDT has been sent for processing.`);
 
-        // 4. Re-sync fresh state and update UI
+    // 4. Re-sync fresh state and update UI
     if (typeof initDashboard === 'function') {
         await initDashboard();
     }
-} // <--- THIS WAS MISSING
+}
 </script>
 </body>
 </html>

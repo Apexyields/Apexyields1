@@ -2491,64 +2491,69 @@ async function handlePackageLock(packageName, amount, dailyRate) {
 }
 
 async function requestPayoutWithdrawal(packageId) {
-  if (!supabaseClient) return;
+    if (!supabaseClient) return;
 
-  const selectedNetwork = document.getElementById('payoutNetworkSelect')?.value || 'TRC-20';
-  const destinationAddress = document.getElementById('payoutAddress')?.value.trim() || '';
-  const payoutAmount = parseFloat(document.getElementById('payoutAmount')?.value) || 0;
-  const user = usersData[currentUser];
+    const selectedNetwork = document.getElementById('payoutNetworkSelect')?.value || 'TRC-20';
+    const destinationAddress = document.getElementById('payoutAddress')?.value.trim() || '';
+    const payoutAmount = parseFloat(document.getElementById('payoutAmount')?.value) || 0;
+    const user = usersData[currentUser];
 
-  let resData = {};
+    let resData = {};
 
-  if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
-    const { data, error } = await supabaseClient.rpc('request_package_payout', {
-      p_package_id: packageId
-    });
-    if (!error && data) {
-      resData = Array.isArray(data) ? data[0] : data;
+    if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
+        const { data, error } = await supabaseClient.rpc('request_package_payout', {
+            p_package_id: packageId
+        });
+
+        if (error) {
+            return alert('Package payout error: ' + error.message);
+        }
+        if (data) {
+            resData = Array.isArray(data) ? data[0] : data;
+        }
     }
-  }
 
-  const payoutRef = resData?.payout_id || resData?.id || ('PAY-' + Date.now());
-  const displayAmount = resData?.payout || resData?.payout_amount || payoutAmount;
+    const payoutRef = resData?.payout_id || resData?.id || (`PAY-` + Date.now());
+    const displayAmount = resData?.payout_amount || payoutAmount;
+    const activeUserId = user?.id || (typeof session !== 'undefined' ? session?.user?.id : null);
 
-          if (!resData?.payout_id && !resData?.id) {
-          const activeUserId = user?.id || (typeof session !== 'undefined' ? session?.user?.id : null);
+    if (!activeUserId) {
+        return alert('User session not found. Please log in again.');
+    }
 
-          // 1. Deduct balance from Supabase profile if general withdrawal
-          if (!packageId || packageId === '00000000-0000-0000-0000-000000000000') {
-            const currentBal = Number(user?.balance || 0);
-            if (currentBal < payoutAmount) return alert('Insufficient balance.');
-            
-            const newBalance = currentBal - payoutAmount;
-            const { error: balErr } = await supabaseClient
-              .from('profiles')
-              .update({ balance: newBalance })
-              .eq('id', activeUserId);
+    // 1. Deduct balance from Supabase profile if general withdrawal
+    if (!packageId || packageId === '00000000-0000-0000-0000-000000000000') {
+        const currentBal = Number(user?.balance || 0);
+        if (currentBal < payoutAmount) return alert('Insufficient balance.');
+        
+        const newBalance = currentBal - payoutAmount;
+        const { error: balErr } = await supabaseClient
+            .from('profiles')
+            .update({ balance: newBalance })
+            .eq('id', activeUserId);
 
-            if (balErr) return alert('Failed to update balance: ' + balErr.message);
-          }
+        if (balErr) return alert('Failed to update balance: ' + balErr.message);
+    }
 
-          // 2. Insert payout record into Supabase
-          const { error: dbError } = await supabaseClient.from('payouts').insert({
-            user_id: activeUserId,
-            amount: payoutAmount,
-            address: destinationAddress,
-            network: selectedNetwork,
-            status: 'Pending Admin',
-            reference_id: payoutRef
-          });
+    // 2. Insert payout record into Supabase
+    const { error: dbError } = await supabaseClient.from('payouts').insert({
+        user_id: activeUserId,
+        amount: displayAmount,
+        address: destinationAddress,
+        network: selectedNetwork,
+        status: 'Pending Admin',
+        reference_id: payoutRef
+    });
 
-          // 3. STOP if database insertion fails
-          if (dbError) {
-            console.error("Failed to insert payout record: ", dbError);
-            return alert("Failed to submit payout record: " + dbError.message);
-          }
+    if (dbError) {
+        console.error("Failed to insert payout record:", dbError);
+        return alert("Failed to submit payout record: " + dbError.message);
+    }
 
-          // 4. Trigger email notification
-          try {
-            await supabaseClient.functions.invoke('send-withdrawal-email', {
-              body: {
+    // 3. Trigger email notification
+    try {
+        await supabaseClient.functions.invoke('send-withdrawal-email', {
+            body: {
                 payoutId: payoutRef,
                 referenceId: payoutRef,
                 userEmail: user?.email || session?.user?.email || 'user@apexvault.com',
@@ -2559,20 +2564,18 @@ async function requestPayoutWithdrawal(packageId) {
                 packageId: packageId,
                 walletAddress: destinationAddress,
                 network: selectedNetwork
-              }
-            });
-          } catch (err) {
-            console.error('Edge Function trigger error:', err);
-          }
+            }
+        });
+    } catch (err) {
+        console.error('Edge Function trigger error:', err);
+    }
 
-          alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
+    alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
 
-          // 5. Re-sync fresh state and update UI
-          if (typeof initDashboard === 'function') {
-            await initDashboard();
-          }
-        }
-
-    </script>
+    // 4. Re-sync fresh state and update UI
+    if (typeof initDashboard === 'function') {
+        await initDashboard();
+    }
+</script>
 </body>
 </html>

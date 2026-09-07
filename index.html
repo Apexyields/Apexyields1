@@ -2532,7 +2532,11 @@ async function requestPayoutWithdrawal(packageId) {
 
     const payoutRef = resData?.payout_id || resData?.id || (`PAY-` + Date.now());
     const displayAmount = resData?.payout_amount || payoutAmount;
-    const activeUserId = user?.id || (typeof session !== 'undefined' ? session?.user?.id : null);
+        let activeUserId = user?.id;
+    if (!activeUserId && typeof supabaseClient !== 'undefined' && supabaseClient?.auth) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        activeUserId = session?.user?.id;
+    }
 
     if (!activeUserId) {
         return alert('User session not found. Please log in again.');

@@ -1516,12 +1516,12 @@ async function loadUserProfile() {
         }
     }
 
-    function renderUserActiveSubscriptions() {
+function renderUserActiveSubscriptions() {
     const container = document.getElementById('userActiveSubscriptionsList');
     if (!container || !currentUser || !usersData[currentUser]) return;
 
     const user = usersData[currentUser];
-    const subs = user.activeSubscriptions || [];
+    const subs = user.activeSubscriptions || user.user_packages || [];
     
     // Include active, pending, and withdrawal_pending packages
     const visibleSubs = subs.filter(s => {
@@ -1538,13 +1538,13 @@ async function loadUserProfile() {
 
     container.innerHTML = visibleSubs.map(sub => {
         const pkgName = sub.packageName || sub.package_name || 'Vault Package';
-        const deposit = Number(sub.depositAmount || sub.amount_locked || 0);
+        const deposit = Number(sub.amount_locked || sub.depositAmount || 0);
         
         const isHighTier = deposit >= 1000 || pkgName.includes('Executive') || pkgName.includes('VIP') || pkgName.includes('Institutional') || pkgName.includes('Mega');
         const returnRate = isHighTier ? 1.30 : 1.20;
-        const payout = Number(sub.totalPayout || (deposit * returnRate) || 0);
+        const payout = Number(sub.payout || sub.totalPayout || (deposit * returnRate) || 0);
 
-        let durationDays = 1;
+        let durationDays = 30;
         if (deposit === 25 || pkgName.includes('Micro Vault')) {
             durationDays = 3;
         } else if (deposit === 50 || deposit === 100 || deposit === 500 || 
@@ -1560,12 +1560,33 @@ async function loadUserProfile() {
             durationDays = 365;
         }
 
-        let endTimeMs = sub.endTime;
-        if (!endTimeMs && (sub.created_at || sub.start_date)) {
-            const startTime = new Date(sub.created_at || sub.start_date).getTime();
-            endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000); 
+        // --- SAFE SUPABASE & MOBILE DATE PARSER ---
+        let endTimeMs = 0;
+
+        // 1. Prioritize direct Supabase maturity field (matures_at)
+        const rawMaturity = sub.matures_at || sub.expires_at || sub.endTime;
+        if (rawMaturity) {
+            if (typeof rawMaturity === 'number') {
+                endTimeMs = rawMaturity;
+            } else {
+                const cleanMatStr = String(rawMaturity).replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+                endTimeMs = new Date(cleanMatStr).getTime();
+            }
         }
-        if (!endTimeMs) endTimeMs = Date.now();
+
+        // 2. Fallback calculation if matures_at is missing/invalid
+        if (!endTimeMs || isNaN(endTimeMs)) {
+            const rawStart = sub.start_date || sub.created_at;
+            if (rawStart) {
+                const cleanStartStr = String(rawStart).replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+                const startTime = new Date(cleanStartStr).getTime();
+                if (!isNaN(startTime)) {
+                    endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000);
+                }
+            }
+        }
+
+        if (isNaN(endTimeMs)) endTimeMs = 0;
 
         const statusUpper = (sub.status || '').toUpperCase();
 
@@ -1609,7 +1630,7 @@ async function loadUserProfile() {
 
         const timeString = `${days}d ${hours}h ${mins}m ${secs}s`;
 
-        const actionHTML = remainingMs > 0 
+        const actionHTML = (endTimeMs > now && remainingMs > 0) 
             ? `<div class="text-right">
                 <span class="text-[10px] text-slate-400 block">Remaining Time</span>
                 <span class="font-bold text-amber-400">${timeString}</span>

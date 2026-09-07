@@ -1254,19 +1254,27 @@ async function loadUserProfile() {
     if (profile) {
         currentUser = profile.username;
 
-        // 2. Fetch active packages from Supabase
+                // 2. Fetch active packages from Supabase
         const { data: userPackages } = await supabaseClient
-            .from('user_packages')
-            .select('*')
-            .eq('user_id', userId);
+          .from('user_packages')
+          .select('*')
+          .eq('user_id', userId);
+
+        // 3. Fetch payout history from Supabase
+        const { data: userPayouts } = await supabaseClient
+          .from('payouts')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
 
         const activePkgs = userPackages || [];
 
         usersData[currentUser] = {
-            balance: profile.balance || 0,
-            dailySharesCount: profile.daily_shares_count || 0,
-            lastShareDay: profile.last_share_day || '',
-            activeSubscriptions: activePkgs
+          balance: profile.balance || 0,
+          dailySharesCount: profile.daily_shares_count || 0,
+          lastShareDay: profile.last_share_day || '',
+          activeSubscriptions: activePkgs,
+          payoutHistory: userPayouts || []
         };
 
         // 3. Lock $25 and $50 buttons if already owned
@@ -1294,6 +1302,7 @@ async function loadUserProfile() {
         // Ensure activeSubscriptions persist and render after initDashboard runs
         usersData[currentUser].activeSubscriptions = activePkgs;
         if (typeof renderUserActiveSubscriptions === 'function') renderUserActiveSubscriptions();
+              if (typeof renderPayoutHistory === 'function') renderPayoutHistory();
     }
 }
 
@@ -2225,19 +2234,24 @@ async function requestPayout() {
   await requestPayoutWithdrawal(packageId);
 }
 
-    function renderPayoutHistory() {
+        function renderPayoutHistory() {
         const user = usersData[currentUser];
         if (!user) return;
         const tbody = document.getElementById('payoutHistoryTable');
         tbody.innerHTML = (!user.payoutHistory || user.payoutHistory.length === 0) ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>` :
-            user.payoutHistory.map(p => `
+            user.payoutHistory.map(p => {
+                const refId = p.reference_id || p.referenceId || '';
+                return `
                 <tr>
-                    <td class="p-3 font-mono font-bold text-blue-400">${p.network}</td>
-                    <td class="p-3 font-bold text-slate-200">$${p.amount.toFixed(2)}</td>
+                    <td class="p-3 font-mono font-bold text-blue-400">
+                        ${p.network}
+                        ${refId ? `<div class="text-[10px] text-slate-400 font-normal font-mono tracking-wider">${refId}</div>` : ''}
+                    </td>
+                    <td class="p-3 font-bold text-slate-200">$${(p.amount || 0).toFixed(2)}</td>
                     <td class="p-3 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
                     <td class="p-3"><span class="${p.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${p.status}</span></td>
                 </tr>
-            `).join('');
+            `}).join('');
     }
 
     function toggleAdminPanel() {

@@ -1747,19 +1747,29 @@ cost: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
     const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);
     const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
 
-    document.getElementById('userActiveBalance').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
-    document.getElementById('walletWithdrawable').innerText = `$${(user.balance || 0).toFixed(2)} USDT`;
-    document.getElementById('walletLocked').innerText = `$${(user.lockedPackages || 0).toFixed(2)} USDT`;
-    document.getElementById('settingsUserId').innerText = currentUser;
-    document.getElementById('settingsUserWallet').innerText = "--------";
-    document.getElementById('refCodeDisplay').innerText = user.refCode || "APEX-000000";
+    const activeBal = document.getElementById('userActiveBalance');
+if (activeBal) activeBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
 
-    document.getElementById('userCurrentTierLabel').innerText = tierInfo.tierLabel;
-    document.getElementById('userReferralBadge').innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
+const withdrawBal = document.getElementById('userWithdrawal');
+if (withdrawBal) withdrawBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
 
-    if (document.getElementById('unlockedBonusDisplay')) {
-        document.getElementById('unlockedBonusDisplay').innerText = (user.unlockedBonus || 0).toFixed(2);
-    }
+const lockedBal = document.getElementById('walletLocked');
+if (lockedBal) lockedBal.innerText = '$' + (user.lockedPackages || 0).toFixed(2) + ' USDT';
+
+const settingsId = document.getElementById('settingsUserId');
+if (settingsId) settingsId.innerText = currentUser;
+
+const settingsWallet = document.getElementById('settingsUserWallet');
+if (settingsWallet) settingsWallet.innerText = '-------';
+
+const refDisplay = document.getElementById('refCodeDisplay');
+if (refDisplay) refDisplay.innerText = user.refCode || 'APEX-000000';
+
+const tierLabel = document.getElementById('userCurrentTierLabel');
+if (tierLabel) tierLabel.innerText = tierInfo.tierLabel;
+
+const refBadge = document.getElementById('userReferralBadge');
+if (refBadge) refBadge.innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
 
     renderDynamicPackageCards(qualifiedRefs);
     renderPackageButtons();
@@ -2228,24 +2238,27 @@ async function requestPayout() {
 }
 
         function renderPayoutHistory() {
-        const user = usersData[currentUser];
-        if (!user) return;
-        const tbody = document.getElementById('payoutHistoryTable');
-        tbody.innerHTML = (!user.payoutHistory || user.payoutHistory.length === 0) ? `<tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>` :
-            user.payoutHistory.map(p => {
-                const refId = p.reference_id || p.referenceId || '';
-                return `
+    const user = usersData[currentUser];
+    if (!user) return;
+    const tbody = document.getElementById('payoutHistoryTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = (!user.payoutHistory || user.payoutHistory.length === 0) 
+        ? '<tr><td colspan="4" class="p-3 text-center text-slate-400">No payout history available</td></tr>'
+        : user.payoutHistory.map(p => {
+            const refId = p.reference_id || p.referenceId || '';
+            return `
                 <tr>
-                    <td class="p-3 font-mono font-bold text-blue-400">
-                        ${p.network}
-                        ${refId ? `<div class="text-[10px] text-slate-400 font-normal font-mono tracking-wider">${refId}</div>` : ''}
+                    <td class="p-3 font-mono font-bold text-blue-400">${p.network}
+                        ${refId ? `<div class="text-[10px] text-slate-400 font-normal font-mono tracking-tight">${refId}</div>` : ''}
                     </td>
                     <td class="p-3 font-bold text-slate-200">$${(p.amount || 0).toFixed(2)}</td>
-                    <td class="p-3 font-mono text-slate-400 truncate max-w-[100px]">${p.address}</td>
-                    <td class="p-3"><span class="${p.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${p.status}</span></td>
+                    <td class="p-3 text-slate-400 truncate max-w-[100px]">${p.address}</td>
+                    <td class="p-3"><span class="${p.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}">${p.status}</span></td>
                 </tr>
-            `}).join('');
-    }
+            `;
+        }).join('');
+}
 
     function toggleAdminPanel() {
         const modal = document.getElementById('adminPanelModal');
@@ -2572,10 +2585,11 @@ async function requestPayoutWithdrawal(packageId) {
 
     alert(`Withdrawal request submitted! An email notification for $${displayAmount} USDT has been sent for processing.`);
 
-    // 4. Re-sync fresh state and update UI
+        // 4. Re-sync fresh state and update UI
     if (typeof initDashboard === 'function') {
         await initDashboard();
     }
+} // <--- THIS WAS MISSING
 </script>
 </body>
 </html>

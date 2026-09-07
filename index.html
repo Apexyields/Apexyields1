@@ -1663,20 +1663,40 @@ async function initDashboard() {
         };
     }
 
-    const user = usersData[currentUser];
-    if (!user.claimedPackages) user.claimedPackages = [];
-    if (!user.activeSubscriptions) user.activeSubscriptions = [];
-    if (!user.depositHistory) user.depositHistory = [];
-    if (!user.payoutHistory) user.payoutHistory = [];
-                if (userId) {
-        // 1. Sync live user profile
+        let user = usersData[currentUser];
+
+    if (user) {
+        if (!user.claimedPackages) user.claimedPackages = [];
+        if (!user.activeSubscriptions) user.activeSubscriptions = [];
+        if (!user.depositHistory) user.depositHistory = [];
+        if (!user.payoutHistory) user.payoutHistory = [];
+    }
+
+    if (userId) {
+        // 1. Sync live user profile (includes username)
         const { data: profile } = await supabaseClient
             .from('profiles')
-            .select('balance, claimed_packages, ref_code, referred_by, daily_shares_count, last_share_day, unlocked_bonus')
+            .select('username, balance, claimed_packages, ref_code, referred_by, daily_shares_count, last_share_day, unlocked_bonus')
             .eq('id', userId)
             .single();
 
         if (profile) {
+            if (profile.username) currentUser = profile.username;
+
+            // Ensure active currentUser object exists
+            if (!usersData[currentUser]) {
+                usersData[currentUser] = {
+                    balance: 0,
+                    lockedPackages: 0,
+                    activeSubscriptions: [],
+                    payoutHistory: [],
+                    depositHistory: []
+                };
+            }
+
+            // Point active user variable to the freshly updated key
+            user = usersData[currentUser];
+
             if (profile.balance !== undefined) user.balance = Number(profile.balance) || 0;
             if (profile.claimed_packages) user.claimedPackages = profile.claimed_packages;
             if (profile.ref_code) user.refCode = profile.ref_code;
@@ -1685,6 +1705,7 @@ async function initDashboard() {
             if (profile.last_share_day) user.lastShareDay = profile.last_share_day;
             if (profile.unlocked_bonus !== undefined) user.unlockedBonus = Number(profile.unlocked_bonus) || 0;
         }
+    }
 
         // 2. Sync user active packages with safety fallbacks
         const { data: userPackages } = await supabaseClient

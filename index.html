@@ -1754,7 +1754,7 @@ cost: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
     const activeBal = document.getElementById('userActiveBalance');
 if (activeBal) activeBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
 
-const withdrawBal = document.getElementById('userWithdrawal');
+const withdrawBal = document.getElementById('walletWithdrawable');
 if (withdrawBal) withdrawBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
 
 const lockedBal = document.getElementById('walletLocked');

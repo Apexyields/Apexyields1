@@ -1645,15 +1645,7 @@ async function initDashboard() {
     }
 
     if (!currentUser) return;
-
-    const savedData = localStorage.getItem('apex_users_data');
-    if (savedData) {
-        try {
-            usersData = JSON.parse(savedData);
-        } catch(e) {
-            console.error("Error parsing saved usersData", e);
-        }
-    }
+    
 
     if (currentUser === 'admin') {
         renderAdminData();
@@ -1738,12 +1730,13 @@ cost: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-        if (payouts && payouts.length > 0) {
+                if (payouts && payouts.length > 0) {
             user.payoutHistory = payouts.map(p => ({
                 id: p.id,
                 amount: Number(p.amount || 0),
                 address: p.address || '',
                 network: p.network || '',
+                reference_id: p.reference_id || p.ref_id || '',
                 status: p.status || 'Pending Admin'
             }));
         }

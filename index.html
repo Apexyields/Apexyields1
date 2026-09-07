@@ -2480,9 +2480,14 @@ async function handlePackageLock(packageName, amount, dailyRate) {
         return alert('Insufficient balance to lock this package.');
     }
 
-    // 2. Deduct balance and insert package
+    // 2. Determine duration dynamically (15 days for Starter, 30 days for others)
+    const durationDays = packageName.toLowerCase().includes('starter') ? 15 : 30;
+    const now = new Date();
+    const maturesAtDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // 3. Deduct balance and insert package
     const newBalance = profile.balance - amount;
-    
+
     const { error: profileErr } = await supabaseClient
         .from('profiles')
         .update({ balance: newBalance })
@@ -2498,7 +2503,8 @@ async function handlePackageLock(packageName, amount, dailyRate) {
             amount_locked: amount,
             daily_rate: dailyRate,
             status: 'active',
-            matures_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            start_date: now.toISOString(),
+            matures_at: maturesAtDate
         }]);
 
     if (pkgErr) return alert('Package activation failed: ' + pkgErr.message);

@@ -2553,52 +2553,70 @@ async function requestPayoutWithdrawal(packageId) {
         return alert('User session not found. Please log in again.');
     }
 
-    // =========================================================
+     // =========================================================
     // 1. PACKAGE MATURITY CLAIM (Internal Balance Credit)
     // =========================================================
     if (packageId && packageId !== '00000000-0000-0000-0000-000000000000') {
-        const { data: pkg, error: pkgErr } = await supabaseClient
-            .from('user_packages')
-            .select('*')
-            .eq('id', packageId)
-            .single();
+        // Prevent rapid double-click execution
+        if (window.isClaimingPayout) return;
+        window.isClaimingPayout = true;
 
-        if (pkgErr || !pkg) return alert('Package record not found.');
-        if (pkg.status === 'claimed') return alert('This package payout has already been claimed.');
+        try {
+            // 1. Fetch package details
+            const { data: pkg, error: pkgErr } = await supabaseClient
+                .from('user_packages')
+                .select('*')
+                .eq('id', packageId)
+                .single();
 
-        const lockedAmt = Number(pkg.amount_locked || 0);
-        const payoutAmt = Number(pkg.payout || (lockedAmt * 1.2));
+            if (pkgErr || !pkg) return alert('Package record not found.');
+            if ((pkg.status || '').toLowerCase() === 'claimed') {
+                return alert('This package payout has already been claimed.');
+            }
 
-        // Fetch current profile balance
-        const { data: profile, error: profErr } = await supabaseClient
-            .from('profiles')
-            .select('balance')
-            .eq('id', activeUserId)
-            .single();
+            const lockedAmt = Number(pkg.amount_locked || 0);
+            const payoutAmt = Number(pkg.payout || (lockedAmt * 1.2));
 
-        if (profErr || !profile) return alert('Failed to fetch profile balance.');
+            // 2. ATOMIC LOCK: Flip status to 'claimed' FIRST.
+            // .neq('status', 'claimed') ensures only ONE request can succeed if clicked rapidly.
+            const { data: updatedPkg, error: claimErr } = await supabaseClient
+                .from('user_packages')
+                .update({ status: 'claimed' })
+                .eq('id', packageId)
+                .neq('status', 'claimed')
+                .select();
 
-        const newBalance = Number(profile.balance || 0) + payoutAmt;
+            if (claimErr || !updatedPkg || updatedPkg.length === 0) {
+                return alert('This payout has already been claimed.');
+            }
 
-        // Credit balance & mark package as claimed
-        const { error: updateErr } = await supabaseClient
-            .from('profiles')
-            .update({ balance: newBalance })
-            .eq('id', activeUserId);
+            // 3. Status successfully locked! Now credit profile balance safely.
+            const { data: profile, error: profErr } = await supabaseClient
+                .from('profiles')
+                .select('balance')
+                .eq('id', activeUserId)
+                .single();
 
-        if (updateErr) return alert('Failed to update balance: ' + updateErr.message);
+            if (profErr || !profile) return alert('Failed to fetch profile balance.');
 
-        await supabaseClient
-            .from('user_packages')
-            .update({ status: 'claimed' })
-            .eq('id', packageId);
+            const newBalance = Number(profile.balance || 0) + payoutAmt;
 
-        alert(`Payout complete! $${payoutAmt.toFixed(2)} USDT added to your active balance.`);
+            const { error: updateErr } = await supabaseClient
+                .from('profiles')
+                .update({ balance: newBalance })
+                .eq('id', activeUserId);
 
-        if (typeof initDashboard === 'function') {
-            await initDashboard();
+            if (updateErr) return alert('Failed to update balance: ' + updateErr.message);
+
+            alert(`Payout complete! $${payoutAmt.toFixed(2)} USDT added to your active balance.`);
+
+            if (typeof initDashboard === 'function') {
+                await initDashboard();
+            }
+        } finally {
+            window.isClaimingPayout = false;
         }
-        return; // Stop here so no external withdrawal or email logic runs
+        return;
     }
 
     // =========================================================

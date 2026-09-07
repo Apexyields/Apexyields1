@@ -2577,7 +2577,7 @@ async function requestPayoutWithdrawal(packageId) {
             body: {
                 payoutId: payoutRef,
                 referenceId: payoutRef,
-                userEmail: user?.email || session?.user?.email || 'user@apexvault.com',
+                userEmail: user?.email || currentUser || 'user@apexvault.com',
                 username: currentUser,
                 packageName: resData?.package_name || 'General Balance Withdrawal',
                 lockedAmount: resData?.amount_locked || payoutAmount,

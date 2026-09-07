@@ -2528,19 +2528,20 @@ async function requestPayoutWithdrawal(packageId) {
   }
 
   try {
-    await supabaseClient.functions.invoke('send-withdrawal-email', {
-      body: {
-        payoutId: payoutRef,
-        userEmail: resData.email || user?.email || 'user@apexvault.com',
-        username: currentUser,
-        packageName: resData.packageName || 'General Balance Withdrawal',
-        lockedAmount: resData.amount_locked || payoutAmount,
-        payoutAmount: displayAmount,
-        packageId: packageId,
-        walletAddress: destinationAddress,
-        network: selectedNetwork
-      }
-    });
+            await supabaseClient.functions.invoke('send-withdrawal-email', {
+            body: {
+                payoutId: payoutRef,
+                referenceId: payoutRef, 
+                userEmail: resData.email || user?.email || 'user@apexvault.com',
+                username: currentUser,
+                packageName: resData.package_name || 'General Balance Withdrawal',
+                lockedAmount: resData.amount_locked || payoutAmount,
+                payoutAmount: displayAmount,
+                packageId: packageId,
+                walletAddress: destinationAddress,
+                network: selectedNetwork
+            }
+        });
   } catch (err) {
     console.error('Edge Function trigger error:', err);
   }

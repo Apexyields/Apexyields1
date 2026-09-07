@@ -1717,18 +1717,24 @@ async function initDashboard() {
             .select('*')
             .eq('user_id', userId);
 
-        if (userPackages && userPackages.length > 0) {
+                if (userPackages && userPackages.length > 0) {
             user.activeSubscriptions = userPackages.map(pkg => ({
                 id: pkg.id,
                 name: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
                 pkgName: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
+                packageName: pkg.package_name || pkg.name || pkg.pkgName || 'Vault',
                 deposit: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
-cost: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
-
+                cost: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
+                amount_locked: Number(pkg.amount_locked || pkg.deposit || pkg.amount || pkg.cost || 0),
                 payout: Number(pkg.payout || pkg.payout_amount || 0),
                 status: pkg.status || 'Active',
-                createdAt: pkg.created_at
+                createdAt: pkg.created_at,
+                created_at: pkg.created_at,
+                start_date: pkg.start_date || pkg.created_at,
+                matures_at: pkg.matures_at // <--- CRITICAL FIX: MUST INHERIT MATURES_AT
             }));
+        } else {
+            user.activeSubscriptions = [];
         }
 
         // 3. Sync deposit history

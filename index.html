@@ -1639,24 +1639,30 @@ const actionHTML = (endTimeMs > now && remainingMs > 0)
         `;
     }).join('');
 }
-// Global Handler for Payout Claims with full error trapping
+// Global Handler for Payout Claims with targeted client resolution
 async function handleClaimPayout(packageId) {
     try {
-        // 1. Guard against missing/invalid package IDs
         if (!packageId || packageId === 'undefined' || packageId === 'null') {
-            alert('Claim Error: Invalid or missing Package ID (' + packageId + ')');
+            alert('Claim Error: Invalid or missing Package ID.');
             return;
         }
 
-        // 2. Resolve active Supabase client instance (handles supabase vs supabaseClient)
-        const client = (typeof supabase !== 'undefined') ? supabase : (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+        // 1. Target the initialized Supabase client instance
+        let client = null;
+        if (typeof supabaseClient !== 'undefined' && typeof supabaseClient.rpc === 'function') {
+            client = supabaseClient;
+        } else if (typeof supabase !== 'undefined' && typeof supabase.rpc === 'function') {
+            client = supabase;
+        } else if (window.supabaseClient && typeof window.supabaseClient.rpc === 'function') {
+            client = window.supabaseClient;
+        }
 
         if (!client) {
-            alert('Claim Error: Supabase client instance not found.');
+            alert('Claim Error: Active Supabase client instance with .rpc() not found.');
             return;
         }
 
-        // 3. Execute RPC function
+        // 2. Execute RPC function
         const { data, error } = await client.rpc('claim_package_payout', {
             p_package_id: packageId
         });
@@ -1666,7 +1672,7 @@ async function handleClaimPayout(packageId) {
             return;
         }
 
-        // 4. Handle response payload
+        // 3. Handle settlement response
         if (data && data.success) {
             alert(data.message);
             if (typeof fetchUserData === 'function') await fetchUserData();

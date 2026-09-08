@@ -1544,24 +1544,23 @@ function renderUserActiveSubscriptions() {
         const returnRate = isHighTier ? 1.30 : 1.20;
         const payout = Number(sub.payout || sub.totalPayout || (deposit * returnRate) || 0);
 
-                        // 1. Prioritize duration_days column directly from Supabase
-                let durationDays = Number(sub.duration_days);
+                        let durationDays = Number(sub.duration_days);
 
-                if (!durationDays || isNaN(durationDays)) {
-                    if (deposit === 25 || pkgName.includes('Micro Vault')) {
-                        durationDays = 3;
-                    } else if (deposit === 50 || deposit === 100 || deposit === 500 || pkgName.includes('Standard') || pkgName.includes('Starter') || pkgName.includes('Pro')) {
-                        durationDays = 15;
-                    } else if (deposit === 1000 || deposit === 2500 || pkgName.includes('Executive') || pkgName.includes('Apex VIP')) {
-                        durationDays = 90;
-                    } else if (deposit === 5000 || deposit === 10000 || pkgName.includes('Pro VIP') || pkgName.includes('Institutional')) {
-                        durationDays = 180;
-                    } else if (deposit === 50000 || pkgName.includes('Apex Mega')) {
-                        durationDays = 365;
-                    } else {
-                        durationDays = 30;
-                    }
-                }
+if (!durationDays || isNaN(durationDays)) {
+    if (deposit === 25 || pkgName === 'Micro Vault') {
+        durationDays = 3;
+    } else if ([50, 100, 500].includes(deposit) || ['Standard Vault', 'Starter Vault', 'Pro Vault'].includes(pkgName)) {
+        durationDays = 15;
+    } else if ([1000, 2500].includes(deposit) || ['Executive Vault', 'Apex VIP Vault'].includes(pkgName)) {
+        durationDays = 90;
+    } else if ([5000, 10000].includes(deposit) || ['Pro VIP Vault', 'Institutional Vault'].includes(pkgName)) {
+        durationDays = 180;
+    } else if (deposit === 50000 || pkgName === 'Apex Mega Vault') {
+        durationDays = 365;
+    } else {
+        durationDays = 30;
+    }
+}
 
                 // 2. Calculate accurate end time using created_at + durationDays
                 let endTimeMs = 0;

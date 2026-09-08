@@ -2677,6 +2677,40 @@ document.getElementById('btn-simulate-deposit')?.addEventListener('click', async
   const userId = 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
   await triggerSimulatedDeposit(userId, 50.00);
 });
+
+async function buyPackage(packageName, amount, dailyRoi) {
+  try {
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+      alert('Session expired or user not logged in.');
+      return;
+    }
+
+    const { error } = await supabaseClient.rpc('purchase_package', {
+      p_user_id: user.id,
+      p_package_name: packageName,
+      p_amount: amount,
+      p_daily_roi: dailyRoi
+    });
+
+    if (error) {
+      alert(`Purchase failed: ${error.message}`);
+      return;
+    }
+
+    alert(`Successfully activated ${packageName}!`);
+    
+    if (typeof initDashboard === 'function') {
+      await initDashboard();
+    }
+
+  } catch (err) {
+    console.error('Unexpected error during purchase:', err);
+    alert('An unexpected error occurred. Please try again.');
+  }
+}
+
 </script>
 </body>
 </html>

@@ -1622,9 +1622,9 @@ if (!durationDays || isNaN(durationDays)) {
                 <span class="text-[10px] text-slate-400 block">Remaining Time</span>
                 <span class="font-bold text-amber-400">${timeString}</span>
                </div>`
-            : `<button onclick="requestPayoutWithdrawal('${sub.id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 animate-pulse">
-                Request $${payout.toFixed(2)} Payout
-               </button>`;
+            : `<button onclick="handleClaimPayout('${sub.id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 animate-pulse">
+    Claim $${payout.toFixed(2)} USDT
+   </button>`
 
         return `
             <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center font-mono">
@@ -1636,6 +1636,27 @@ if (!durationDays || isNaN(durationDays)) {
             </div>
         `;
     }).join('');
+}
+        // Step 2: Global Handler for Payout Claims
+async function handleClaimPayout(packageId) {
+    if (!packageId) return;
+
+    const { data, error } = await supabase.rpc('claim_package_payout', {
+        p_package_id: packageId
+    });
+
+    if (error) {
+        alert('Claim Error: ' + error.message);
+        return;
+    }
+
+    if (data.success) {
+        alert(data.message);
+        if (typeof fetchUserData === 'function') await fetchUserData();
+        if (typeof renderUserActiveSubscriptions === 'function') renderUserActiveSubscriptions();
+    } else {
+        alert('Notice: ' + data.message);
+    }
 }
 
 async function initDashboard() {

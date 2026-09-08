@@ -1672,13 +1672,14 @@ async function handleClaimPayout(packageId) {
             return;
         }
 
-        // 3. Handle settlement response
-                        if (data && data.success) {
+                // 3. Handle settlement response
+        if (data && data.success) {
             alert(data.message);
             if (typeof fetchUserData === 'function') await fetchUserData();
             if (typeof initDashboard === 'function') await initDashboard();
         } else {
             alert('Notice: ' + (data ? data.message : 'Claim failed without response message.'));
+        }
     } catch (err) {
         alert('Execution Exception: ' + err.message);
     }

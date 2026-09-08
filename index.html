@@ -1544,48 +1544,36 @@ function renderUserActiveSubscriptions() {
         const returnRate = isHighTier ? 1.30 : 1.20;
         const payout = Number(sub.payout || sub.totalPayout || (deposit * returnRate) || 0);
 
-        let durationDays = 30;
-        if (deposit === 25 || pkgName.includes('Micro Vault')) {
-            durationDays = 3;
-        } else if (deposit === 50 || deposit === 100 || deposit === 500 || 
-                   pkgName.includes('Standard') || pkgName.includes('Starter') || pkgName.includes('Pro Vault')) {
-            durationDays = 15;
-        } else if (deposit === 1000 || deposit === 2500 || 
-                   pkgName.includes('Executive') || pkgName.includes('Apex VIP')) {
-            durationDays = 90;
-        } else if (deposit === 5000 || deposit === 10000 || 
-                   pkgName.includes('Pro VIP') || pkgName.includes('Institutional')) {
-            durationDays = 180;
-        } else if (deposit === 50000 || pkgName.includes('Apex Mega')) {
-            durationDays = 365;
-        }
+                        // 1. Prioritize duration_days column directly from Supabase
+                let durationDays = Number(sub.duration_days);
 
-        // --- SAFE SUPABASE & MOBILE DATE PARSER ---
-        let endTimeMs = 0;
-
-        // 1. Prioritize direct Supabase maturity field (matures_at)
-        const rawMaturity = sub.matures_at || sub.expires_at || sub.endTime;
-        if (rawMaturity) {
-            if (typeof rawMaturity === 'number') {
-                endTimeMs = rawMaturity;
-            } else {
-                const cleanMatStr = String(rawMaturity).replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
-                endTimeMs = new Date(cleanMatStr).getTime();
-            }
-        }
-
-        // 2. Fallback calculation if matures_at is missing/invalid
-        if (!endTimeMs || isNaN(endTimeMs)) {
-            const rawStart = sub.start_date || sub.created_at;
-            if (rawStart) {
-                const cleanStartStr = String(rawStart).replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
-                const startTime = new Date(cleanStartStr).getTime();
-                if (!isNaN(startTime)) {
-                    endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000);
+                if (!durationDays || isNaN(durationDays)) {
+                    if (deposit === 25 || pkgName.includes('Micro Vault')) {
+                        durationDays = 3;
+                    } else if (deposit === 50 || deposit === 100 || deposit === 500 || pkgName.includes('Standard') || pkgName.includes('Starter') || pkgName.includes('Pro')) {
+                        durationDays = 15;
+                    } else if (deposit === 1000 || deposit === 2500 || pkgName.includes('Executive') || pkgName.includes('Apex VIP')) {
+                        durationDays = 90;
+                    } else if (deposit === 5000 || deposit === 10000 || pkgName.includes('Pro VIP') || pkgName.includes('Institutional')) {
+                        durationDays = 180;
+                    } else if (deposit === 50000 || pkgName.includes('Apex Mega')) {
+                        durationDays = 365;
+                    } else {
+                        durationDays = 30;
+                    }
                 }
-            }
-        }
 
+                // 2. Calculate accurate end time using created_at + durationDays
+                let endTimeMs = 0;
+                const rawStart = sub.created_at || sub.start_date;
+
+                if (rawStart) {
+                    const cleanStartStr = String(rawStart).replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+                    const startTime = new Date(cleanStartStr).getTime();
+                    if (!isNaN(startTime)) {
+                        endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000);
+                    }
+                }
         if (isNaN(endTimeMs)) endTimeMs = 0;
 
         const statusUpper = (sub.status || '').toUpperCase();

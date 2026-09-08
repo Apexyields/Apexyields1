@@ -2035,37 +2035,47 @@ async function renderReferralHub() {
     }
 
     async function confirmInvestment() {
-    if (!selectedPackage) return;
+  if (!selectedPackage) return;
 
-    const { name, cost } = selectedPackage;
-    const dailyRate = 0.0125;
+  const { name, cost } = selectedPackage;
 
-    closeInvestmentModal();
+  closeInvestmentModal();
 
-    // Call rpc on the initialized client instance
-    const { data, error } = await supabaseClient.rpc('lock_package', {
-        p_package_name: name,
-        p_amount: cost,
-        p_daily_rate: dailyRate
+  try {
+    // 1. Fetch current user ID
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      alert('Session expired or user not logged in.');
+      return;
+    }
+
+    // 2. Execute new 9-tier purchase_package RPC
+    const { error } = await supabaseClient.rpc('purchase_package', {
+      p_user_id: user.id,
+      p_package_name: name,
+      p_amount: cost
     });
 
     if (error) {
-        alert(`Lock failed: ${error.message}`);
-        return;
+      alert(`Lock Failed: ${error.message}`);
+      return;
     }
 
     alert(`Successfully locked ${name}!`);
 
-    // Re-fetch UI data in place without page refresh
-    await loadUserDataFromSupabase();
-    if (typeof loadUserProfile === 'function') {
-        loadUserProfile();
+    // 3. Refresh UI
+    if (typeof loadUserDataFromSupabase === 'function') {
+      await loadUserDataFromSupabase();
     }
+    if (typeof loadUserProfile === 'function') {
+      loadUserProfile();
+    }
+
+  } catch (err) {
+    console.error('Investment error:', err);
+    alert('An unexpected error occurred during package activation.');
+  }
 }
-
-
-
-
     function copyRefCode() {
         const code = document.getElementById('refCodeDisplay').innerText;
         const baseUrl = window.location.origin.includes('github.io') 

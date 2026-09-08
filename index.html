@@ -1639,27 +1639,46 @@ const actionHTML = (endTimeMs > now && remainingMs > 0)
         `;
     }).join('');
 }
-        // Step 2: Global Handler for Payout Claims
+// Global Handler for Payout Claims with full error trapping
 async function handleClaimPayout(packageId) {
-    if (!packageId) return;
+    try {
+        // 1. Guard against missing/invalid package IDs
+        if (!packageId || packageId === 'undefined' || packageId === 'null') {
+            alert('Claim Error: Invalid or missing Package ID (' + packageId + ')');
+            return;
+        }
 
-    const { data, error } = await supabase.rpc('claim_package_payout', {
-        p_package_id: packageId
-    });
+        // 2. Resolve active Supabase client instance (handles supabase vs supabaseClient)
+        const client = (typeof supabase !== 'undefined') ? supabase : (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
 
-    if (error) {
-        alert('Claim Error: ' + error.message);
-        return;
-    }
+        if (!client) {
+            alert('Claim Error: Supabase client instance not found.');
+            return;
+        }
 
-    if (data.success) {
-        alert(data.message);
-        if (typeof fetchUserData === 'function') await fetchUserData();
-        if (typeof renderUserActiveSubscriptions === 'function') renderUserActiveSubscriptions();
-    } else {
-        alert('Notice: ' + data.message);
+        // 3. Execute RPC function
+        const { data, error } = await client.rpc('claim_package_payout', {
+            p_package_id: packageId
+        });
+
+        if (error) {
+            alert('Database RPC Error: ' + error.message);
+            return;
+        }
+
+        // 4. Handle response payload
+        if (data && data.success) {
+            alert(data.message);
+            if (typeof fetchUserData === 'function') await fetchUserData();
+            if (typeof renderUserActiveSubscriptions === 'function') renderUserActiveSubscriptions();
+        } else {
+            alert('Notice: ' + (data ? data.message : 'Claim failed without response message.'));
+        }
+    } catch (err) {
+        alert('Execution Exception: ' + err.message);
     }
 }
+
 window.handleClaimPayout = handleClaimPayout;
         
 async function initDashboard() {

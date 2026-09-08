@@ -2641,6 +2641,42 @@ async function requestPayoutWithdrawal(packageId) {
         await initDashboard();
     }
 }
+        /**
+ * Triggers the simulate_deposit RPC function on Supabase
+ * @param {string} userId - UUID of the user
+ * @param {number} amount - Deposit amount (e.g., 50.00)
+ */
+async function triggerSimulatedDeposit(userId, amount) {
+  try {
+    // 1. Execute the database RPC function
+    const { error } = await supabaseClient.rpc('simulate_deposit', {
+      p_user_id: userId,
+      p_amount: amount
+    });
+
+    if (error) {
+      console.error('RPC Error:', error.message);
+      alert(`Deposit failed: ${error.message}`);
+      return false;
+    }
+
+    // 2. Refresh local UI views after successful database update
+    if (typeof fetchUserProfile === 'function') await fetchUserProfile();
+    if (typeof fetchDepositHistory === 'function') await fetchDepositHistory();
+
+    console.log(`Successfully added $${amount} deposit for user ${userId}`);
+    return true;
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    return false;
+  }
+}
+
+// Example usage attached to a button listener:
+document.getElementById('btn-simulate-deposit')?.addEventListener('click', async () => {
+  const userId = 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+  await triggerSimulatedDeposit(userId, 50.00);
+});
 </script>
 </body>
 </html>

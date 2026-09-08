@@ -1622,7 +1622,7 @@ if (!durationDays || isNaN(durationDays)) {
                 <span class="text-[10px] text-slate-400 block">Remaining Time</span>
                 <span class="font-bold text-amber-400">${timeString}</span>
                </div>`
-            : `<button onclick="handleClaimPayout('${sub.id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 animate-pulse">
+            : `<button onclick="window.handleClaimPayout('${sub.id}')" class="cursor-pointer pointer-events-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 animate-pulse">
     Claim $${payout.toFixed(2)} USDT
    </button>`
 
@@ -1658,7 +1658,8 @@ async function handleClaimPayout(packageId) {
         alert('Notice: ' + data.message);
     }
 }
-
+window.handleClaimPayout = handleClaimPayout;
+        
 async function initDashboard() {
     let userId = null;
     if (typeof supabase !== 'undefined' && supabaseClient && supabaseClient.auth) {

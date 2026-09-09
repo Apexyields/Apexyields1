@@ -2109,8 +2109,43 @@ async function renderReferralHub() {
       return;
     }
 
-    // Launch NOWPayments deposit modal with package cost
-    openDepositModal(cost, 'usdttrc20');
+    // Fetch internal active balance from profile
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('active_balance')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error checking balance:', profileError);
+      alert('Unable to check account balance.');
+      return;
+    }
+
+    const userBalance = profile?.active_balance || 0;
+
+    // 1. Pay with internal balance if funds are available
+    if (userBalance >= cost) {
+      const { error: rpcError } = await supabaseClient.rpc('purchase_package', {
+        p_user_id: user.id,
+        p_package_name: name,
+        p_amount: cost
+      });
+
+      if (rpcError) {
+        alert(`Lock failed: ${rpcError.message}`);
+        return;
+      }
+
+      alert(`Successfully locked ${name} using internal balance!`);
+
+      if (typeof loadUserDataFromSupabase === 'function') await loadUserDataFromSupabase();
+      if (typeof loadUserProfile === 'function') loadUserProfile();
+
+    // 2. Otherwise open external NOWPayments deposit modal
+    } else {
+      openDepositModal(cost, 'usdttrc20');
+    }
 
   } catch (err) {
     console.error('Investment error:', err);

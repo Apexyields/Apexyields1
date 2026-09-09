@@ -2112,7 +2112,7 @@ async function renderReferralHub() {
     // Fetch internal active balance from profile
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
-      .select('active_balance')
+      .select('balance')
       .eq('id', user.id)
       .single();
 
@@ -2122,7 +2122,7 @@ async function renderReferralHub() {
       return;
     }
 
-    const userBalance = profile?.active_balance || 0;
+    const userBalance = profile?.balance || 0;
 
     // 1. Pay with internal balance if funds are available
     if (userBalance >= cost) {

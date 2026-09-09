@@ -2098,46 +2098,26 @@ async function renderReferralHub() {
 
     async function confirmInvestment() {
   if (!selectedPackage) return;
-
   const { name, cost } = selectedPackage;
 
   closeInvestmentModal();
 
   try {
-    // 1. Fetch current user ID
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
       alert('Session expired or user not logged in.');
       return;
     }
 
-    // 2. Execute new 9-tier purchase_package RPC
-    const { error } = await supabaseClient.rpc('purchase_package', {
-      p_user_id: user.id,
-      p_package_name: name,
-      p_amount: cost
-    });
-
-    if (error) {
-      alert(`Lock Failed: ${error.message}`);
-      return;
-    }
-
-    alert(`Successfully locked ${name}!`);
-
-    // 3. Refresh UI
-    if (typeof loadUserDataFromSupabase === 'function') {
-      await loadUserDataFromSupabase();
-    }
-    if (typeof loadUserProfile === 'function') {
-      loadUserProfile();
-    }
+    // Launch NOWPayments deposit modal with package cost
+    openDepositModal(cost, 'usdttrc20');
 
   } catch (err) {
     console.error('Investment error:', err);
     alert('An unexpected error occurred during package activation.');
   }
 }
+        
     function copyRefCode() {
         const code = document.getElementById('refCodeDisplay').innerText;
         const baseUrl = window.location.origin.includes('github.io') 

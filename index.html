@@ -15,6 +15,32 @@
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-24">
+    <!-- Deposit Modal -->
+<div id="depositModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 max-w-sm w-full text-center text-white relative">
+    <button onclick="closeDepositModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white">✕</button>
+    
+    <h3 class="text-xl font-bold mb-1">Complete Deposit</h3>
+    <p id="depositAmountText" class="text-gray-400 text-sm mb-4">Send USDT to activate package</p>
+
+    <!-- Loading Spinner -->
+    <div id="modalLoading" class="py-8">Generating invoice...</div>
+
+    <!-- Payment Content -->
+    <div id="modalContent" class="hidden flex-col items-center">
+      <img id="qrCodeImg" src="" alt="QR Code" class="w-44 h-44 rounded-lg bg-white p-2 mb-4">
+      
+      <p class="text-xs text-gray-400 mb-1">Send exact amount to address:</p>
+      <div class="bg-gray-800 p-2.5 rounded-lg text-xs font-mono break-all w-full mb-3 border border-gray-700" id="depositAddress">
+        ---
+      </div>
+
+      <button onclick="copyDepositAddress()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 font-semibold rounded-lg text-sm transition">
+        Copy Address
+      </button>
+    </div>
+  </div>
+</div>
 
     <!-- SYSTEM ANNOUNCEMENT POP-UP MODAL -->
     <div id="announcementModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -2733,30 +2759,65 @@ async function buyPackage(packageName, amount, dailyRoi) {
       return;
     }
 
-    const { error } = await supabaseClient.rpc('purchase_package', {
-      p_user_id: user.id,
-      p_package_name: packageName,
-      p_amount: amount,
-      p_daily_roi: dailyRoi
-    });
-
-    if (error) {
-      alert(`Purchase failed: ${error.message}`);
-      return;
-    }
-
-    alert(`Successfully activated ${packageName}!`);
-    
-    if (typeof initDashboard === 'function') {
-      await initDashboard();
-    }
+    openDepositModal(amount, 'usdttrc20');
 
   } catch (err) {
     console.error('Unexpected error during purchase:', err);
     alert('An unexpected error occurred. Please try again.');
   }
 }
+        
+  const SUPABASE_URL = "https://pnwtyvkptnfjxjznywop.supabase.co";
+  const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBud3R5dmtwdG5manhqem55d29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNzkxNjAsImV4cCI6MjEwMjc1NTE2MH0.48sxWSeIMoTGkPtr4pGS2QT3366RbyR1rktTLR6-s1I";
 
+  async function openDepositModal(amountUSD, network = 'usdttrc20') {
+    const modal = document.getElementById('depositModal');
+    const loading = document.getElementById('modalLoading');
+    const content = document.getElementById('modalContent');
+    
+    modal.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    content.classList.add('hidden');
+    document.getElementById('depositAmountText').innerText = `Send $${amountUSD} USDT (${network.toUpperCase()})`;
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-nowpayments-invoice`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${ANON_KEY}`
+        },
+        body: JSON.stringify({
+          price_amount: amountUSD,
+          pay_currency: network,
+          order_id: `user_${Date.now()}`
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      document.getElementById('depositAddress').innerText = data.pay_address;
+      document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${data.pay_address}`;
+
+      loading.classList.add('hidden');
+      content.classList.remove('hidden');
+    } catch (err) {
+      alert("Deposit error: " + err.message);
+      closeDepositModal();
+    }
+  }
+
+  function closeDepositModal() {
+    document.getElementById('depositModal').classList.add('hidden');
+  }
+
+  function copyDepositAddress() {
+    const address = document.getElementById('depositAddress').innerText;
+    navigator.clipboard.writeText(address);
+    alert("Address copied to clipboard!");
+  }
 </script>
 </body>
 </html>

@@ -369,85 +369,170 @@
             </div>
 
             <!-- TAB 2: WALLET & PAYOUT -->
-            <div id="view-wallet" class="tab-view hidden space-y-6">
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                        <div>
-                            <span class="text-xs text-slate-400">Available Withdrawable Balance</span>
-                            <div id="walletWithdrawable" class="text-2xl font-bold text-emerald-400">$0.00 USDT</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-slate-400">Active Locked Packages</span>
-                            <div id="walletLocked" class="text-lg font-bold text-slate-200">$0.00 USDT</div>
-                        </div>
-                    </div>
+<div id="view-wallet" class="tab-view hidden space-y-6">
+  <!-- Balance Header -->
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <div>
+        <span class="text-xs text-slate-400">Available Withdrawable Balance</span>
+        <div id="walletWithdrawable" class="text-2xl font-bold text-emerald-400">$0.00 USDT</div>
+      </div>
+      <div class="text-right">
+        <span class="text-xs text-slate-400">Active Locked Packages</span>
+        <div id="walletLocked" class="text-lg font-bold text-slate-200">$0.00 USDT</div>
+      </div>
+    </div>
+  </div>
 
-                    <!-- PAYOUT REQUEST FORM -->
-                    <div class="space-y-3">
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">Request Withdrawal / Payout</h4>
-                        <div class="space-y-2">
-                            <div>
-                                <label class="text-[11px] text-slate-400">Select Withdrawal Network</label>
-                                <select id="payoutNetworkSelect" onchange="updatePayoutFee()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                                    <option value="TRC20">TRON (TRC-20) - $1.00 Fee</option>
-                                    <option value="ERC20">Ethereum (ERC-20) - $5.00 Fee</option>
-                                    <option value="SPL">Solana (SPL) - $0.20 Fee</option>
-                                    <option value="BEP20">BNB Smart Chain (BEP-20) - $0.50 Fee</option>
-                                </select>
-                            </div>
-                            <input type="number" id="payoutAmount" placeholder="Amount in USDT (Min $10)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                            <input type="text" id="payoutAddress" placeholder="Destination Wallet Address" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-                            <div class="flex justify-between items-center text-xs text-slate-400 px-1">
-                                <span>Network Fee: <strong id="payoutFeeDisplay" class="text-slate-200">$1.00 USDT</strong></span>
-                                <span>Est. Arrival: <strong class="text-slate-200">Instant after Admin Review</strong></span>
-                            </div>
-                            <button onclick="requestPayout()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-lg transition shadow-md">
-                                Submit Withdrawal Request
-                            </button>
-                        </div>
-                    </div>
-                </div>
+  <!-- Segmented Sub-Tab Toggle -->
+  <div class="flex border-b border-slate-800 mb-4">
+    <button id="tabWithdrawBtn" type="button" onclick="switchWalletSubTab('withdraw')" class="flex-1 py-2.5 text-center font-bold text-slate-400 border-b-2 border-transparent hover:text-white transition text-sm">
+      Withdraw
+    </button>
+    <button id="tabDepositBtn" type="button" onclick="switchWalletSubTab('deposit')" class="flex-1 py-2.5 text-center font-bold text-emerald-400 border-b-2 border-emerald-400 transition text-sm">
+      Deposit
+    </button>
+  </div>
 
-                <!-- DEPOSIT HISTORY TABLE -->
-                <div class="space-y-2">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Deposit History & Verification Status</h4>
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-                                <tr>
-                                    <th class="p-3">Ref ID / Net</th>
-                                    <th class="p-3">Amount</th>
-                                    <th class="p-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="depositHistoryTable" class="divide-y divide-slate-800">
-                                <tr><td colspan="3" class="p-3 text-center text-slate-500">No deposit records found.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+  <!-- SUB-TAB 1: WITHDRAW -->
+  <div id="subTabWithdraw" class="hidden space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Request Withdrawal / Payout</h4>
+      <div class="space-y-3">
+        <div>
+          <label class="text-[11px] text-slate-400">Select Withdrawal Network</label>
+          <select id="payoutNetworkSelect" onchange="updatePayoutFee()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
+            <option value="TRC20">TRON (TRC-20) - $1.00 Fee</option>
+            <option value="ERC20">Ethereum (ERC-20) - $5.00 Fee</option>
+            <option value="SPL">Solana (SPL) - $0.20 Fee</option>
+            <option value="BEP20">BNB Smart Chain (BEP-20) - $0.50 Fee</option>
+          </select>
+        </div>
+        <input type="number" id="payoutAmount" placeholder="Amount in USDT (Min $10)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
+        <input type="text" id="payoutAddress" placeholder="Destination Wallet Address" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
+        <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+          <span>Network Fee: <strong id="payoutFeeDisplay" class="text-slate-200">$1.00 USDT</strong></span>
+          <span>Est. Arrival: <strong class="text-slate-200">Instant after Admin Review</strong></span>
+        </div>
+        <button type="button" onclick="requestPayout()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-lg transition">
+          Submit Withdrawal Request
+        </button>
+      </div>
+    </div>
 
-                <!-- PAYOUT HISTORY TABLE -->
-                <div class="space-y-2">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Payout Transaction History</h4>
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-                                <tr>
-                                    <th class="p-3">Network</th>
-                                    <th class="p-3">Amount</th>
-                                    <th class="p-3">Address</th>
-                                    <th class="p-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="payoutHistoryTable" class="divide-y divide-slate-800">
-                                <tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+    <!-- Payout History Table -->
+    <div class="space-y-2">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Payout Transaction History</h4>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
+        <table class="w-full text-left">
+          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-3">Network</th>
+              <th class="p-3">Amount</th>
+              <th class="p-3">Address</th>
+              <th class="p-3">Status</th>
+            </tr>
+          </thead>
+          <tbody id="payoutHistoryTable" class="divide-y divide-slate-800">
+            <tr><td colspan="4" class="p-3 text-center text-slate-500">No payout history found.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
+  <!-- SUB-TAB 2: DEPOSIT -->
+  <div id="subTabDeposit" class="space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Deposit Funds</h4>
+      
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Deposit Amount ($ USD)</label>
+        <input type="number" id="customDepositAmount" placeholder="Enter custom amount..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-2">Package Quick Select</label>
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" onclick="selectQuickAmount(25)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800">$25</button>
+          <button type="button" onclick="selectQuickAmount(50)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800">$50</button>
+          <button type="button" onclick="selectQuickAmount(100)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800">$100</button>
+          <button type="button" onclick="selectQuickAmount(250)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800">$250</button>
+          <button type="button" onclick="selectQuickAmount(500)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800">$500</button>
+          <button type="button" onclick="selectQuickAmount(1000)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800">$1,000</button>
+          <button type="button" onclick="selectQuickAmount(2500)" class="bg-slate-950 hover:bg-slate-800 text-slate-200 py-2 rounded text-xs font-semibold border border-slate-800 col-span-2">$2,500</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-2">Network Protocol</label>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center space-x-2 cursor-pointer text-xs text-slate-200">
+            <input type="radio" name="depositNetwork" value="usdttrc20" checked class="text-emerald-500 focus:ring-0">
+            <span>USDT (TRC-20)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-xs text-slate-200">
+            <input type="radio" name="depositNetwork" value="usdtbsc" class="text-emerald-500 focus:ring-0">
+            <span>USDT (BEP-20)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-xs text-slate-200">
+            <input type="radio" name="depositNetwork" value="usdterc20" class="text-emerald-500 focus:ring-0">
+            <span>USDT (ERC-20)</span>
+          </label>
+        </div>
+      </div>
+
+      <button id="btnGenerateInvoice" type="button" onclick="generateInlineDepositInvoice()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition text-xs">
+        [ Generate Deposit Invoice ]
+      </button>
+
+      <!-- INLINE INVOICE CARD -->
+      <div id="inlineInvoiceCard" class="hidden border border-slate-800 rounded-xl p-4 bg-slate-950 space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span id="invoiceNumberText" class="text-[10px] font-mono text-slate-400">[ INVOICE #DEP---- ]</span>
+          <span id="invoiceStatusBadge" class="text-xs font-semibold text-amber-400 flex items-center gap-1">
+            🟡 Waiting for Transfer
+          </span>
+        </div>
+        <div>
+          <label id="depositAddressLabel" class="block text-[10px] text-slate-400 mb-1">USDT Deposit Address</label>
+          <div class="flex gap-2">
+            <input type="text" id="inlineDepositAddress" readonly class="w-full bg-slate-900 border border-slate-800 rounded p-2 font-mono text-[11px] text-emerald-400 text-center">
+            <button type="button" onclick="copyInlineAddress()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap border border-slate-700">
+              📋 Copy
+            </button>
+          </div>
+        </div>
+        <div class="flex justify-between items-center text-xs bg-slate-900 p-2.5 rounded border border-slate-800">
+          <span class="text-slate-400">Exact Transfer Amount:</span>
+          <span id="inlineExactAmount" class="font-bold text-slate-200">$0.00 USDT</span>
+        </div>
+        <div class="flex justify-center pt-1">
+          <img id="inlineQrCodeImg" src="" alt="Deposit QR Code" class="w-36 h-36 bg-white p-2 rounded-lg">
+        </div>
+      </div>
+    </div>
+
+    <!-- Deposit History Table -->
+    <div class="space-y-2">
+      <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Deposit History & Verification Status</h4>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden text-xs">
+        <table class="w-full text-left">
+          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-3">Ref ID / Net</th>
+              <th class="p-3">Amount</th>
+              <th class="p-3">Status</th>
+            </tr>
+          </thead>
+          <tbody id="depositHistoryTable" class="divide-y divide-slate-800">
+            <tr><td colspan="3" class="p-3 text-center text-slate-500">No deposit records found.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
             <!-- TAB 3: REFERRAL HUB -->
             <div id="view-referral" class="tab-view hidden space-y-6">
 
@@ -2858,6 +2943,96 @@ async function buyPackage(packageName, amount, dailyRoi) {
     navigator.clipboard.writeText(address);
     alert("Address copied to clipboard!");
   }
+        // Switch Sub-Tabs (Withdraw / Deposit)
+function switchWalletSubTab(tab) {
+  const withdrawTab = document.getElementById('subTabWithdraw');
+  const depositTab = document.getElementById('subTabDeposit');
+  const withdrawBtn = document.getElementById('tabWithdrawBtn');
+  const depositBtn = document.getElementById('tabDepositBtn');
+
+  if (tab === 'withdraw') {
+    withdrawTab.classList.remove('hidden');
+    depositTab.classList.add('hidden');
+    withdrawBtn.classList.add('text-blue-500', 'border-blue-500');
+    withdrawBtn.classList.remove('text-gray-400', 'border-transparent');
+    depositBtn.classList.remove('text-blue-500', 'border-blue-500');
+    depositBtn.classList.add('text-gray-400', 'border-transparent');
+  } else {
+    depositTab.classList.remove('hidden');
+    withdrawTab.classList.add('hidden');
+    depositBtn.classList.add('text-blue-500', 'border-blue-500');
+    depositBtn.classList.remove('text-gray-400', 'border-transparent');
+    withdrawBtn.classList.remove('text-blue-500', 'border-blue-500');
+    withdrawBtn.classList.add('text-gray-400', 'border-transparent');
+  }
+}
+
+// Quick Select Buttons Handler
+function selectQuickAmount(amount) {
+  document.getElementById('customDepositAmount').value = amount;
+}
+
+// Generate Inline Deposit Invoice via NOWPayments
+async function generateInlineDepositInvoice() {
+  const amountInput = document.getElementById('customDepositAmount').value;
+  const amount = parseFloat(amountInput);
+
+  if (!amount || amount <= 0) {
+    alert('Please enter a valid deposit amount.');
+    return;
+  }
+
+  const selectedNetwork = document.querySelector('input[name="depositNetwork"]:checked')?.value || 'usdttrc20';
+  const btn = document.getElementById('btnGenerateInvoice');
+  const card = document.getElementById('inlineInvoiceCard');
+
+  btn.disabled = true;
+  btn.innerText = 'Generating Invoice...';
+
+  try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const userId = user?.id || 'guest';
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/create-nowpayments-invoice`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': ANON_KEY,
+        'Authorization': `Bearer ${ANON_KEY}`
+      },
+      body: JSON.stringify({
+        price_amount: amount,
+        pay_currency: selectedNetwork,
+        order_id: `${userId}_${Date.now()}`
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+
+    // Populate Inline Invoice Card
+    document.getElementById('invoiceNumberText').innerText = `[ INVOICE #DEP-${data.payment_id || Date.now().toString().slice(-6)} ]`;
+    document.getElementById('depositAddressLabel').innerText = `USDT Deposit Address (${selectedNetwork.replace('usdt', '').toUpperCase()})`;
+    document.getElementById('inlineDepositAddress').value = data.pay_address;
+    document.getElementById('inlineExactAmount').innerText = `$${amount.toFixed(2)} USDT`;
+    document.getElementById('inlineQrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${data.pay_address}`;
+
+    card.classList.remove('hidden');
+  } catch (err) {
+    alert('Deposit error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = '[ Generate Deposit Invoice ]';
+  }
+}
+
+// Copy Deposit Address Helper
+function copyInlineAddress() {
+  const addr = document.getElementById('inlineDepositAddress').value;
+  if (!addr) return;
+  navigator.clipboard.writeText(addr);
+  alert('Deposit address copied to clipboard!');
+}
 </script>
 </body>
 </html>

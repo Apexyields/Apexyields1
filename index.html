@@ -2786,16 +2786,39 @@ async function buyPackage(packageName, amount, dailyRoi) {
   const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBud3R5dmtwdG5manhqem55d29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNzkxNjAsImV4cCI6MjEwMjc1NTE2MH0.48sxWSeIMoTGkPtr4pGS2QT3366RbyR1rktTLR6-s1I";
 
   async function openDepositModal(amountUSD, network = 'usdttrc20') {
-    const modal = document.getElementById('depositModal');
-    const loading = document.getElementById('modalLoading');
-    const content = document.getElementById('modalContent');
-    
-    modal.classList.remove('hidden');
-    loading.classList.remove('hidden');
-    content.classList.add('hidden');
-    document.getElementById('depositAmountText').innerText = `Send $${amountUSD} USDT (${network.toUpperCase()})`;
+  const modal = document.getElementById('depositModal');
+  const loading = document.getElementById('modalLoading');
+  const content = document.getElementById('modalContent');
 
-      try {
+  // Dynamically inject Network Dropdown into the modal
+  let selectEl = document.getElementById('depositNetworkSelect');
+  if (!selectEl && content) {
+    const selectContainer = document.createElement('div');
+    selectContainer.className = 'mb-4 text-left';
+    selectContainer.innerHTML = `
+      <label class="block text-sm font-medium text-gray-300 mb-1">Select Deposit Network:</label>
+      <select id="depositNetworkSelect" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+        <option value="usdttrc20">USDT (TRC20 - TRON)</option>
+        <option value="usdtbsc">USDT (BEP20 - BNB Smart Chain)</option>
+        <option value="usdterc20">USDT (ERC20 - Ethereum)</option>
+      </select>
+    `;
+    content.prepend(selectContainer);
+    selectEl = document.getElementById('depositNetworkSelect');
+
+    selectEl.addEventListener('change', (e) => {
+      openDepositModal(amountUSD, e.target.value);
+    });
+  }
+
+  const selectedNetwork = selectEl ? selectEl.value : network;
+
+  modal.classList.remove('hidden');
+  loading.classList.remove('hidden');
+  content.classList.add('hidden');
+  document.getElementById('depositAmountText').innerText = `Send $${amountUSD} USDT (${selectedNetwork.toUpperCase()})`;
+
+  try {
     const { data: { user } } = await supabaseClient.auth.getUser();
     const userId = user?.id || 'guest';
 
@@ -2808,25 +2831,24 @@ async function buyPackage(packageName, amount, dailyRoi) {
       },
       body: JSON.stringify({
         price_amount: amountUSD,
-        pay_currency: network,
+        pay_currency: selectedNetwork,
         order_id: `${userId}_${Date.now()}`
       })
     });
 
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
 
-      document.getElementById('depositAddress').innerText = data.pay_address;
-      document.getElementById('qrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${data.pay_address}`;
+    document.getElementById('depositAddress').innerText = data.pay_address;
+    document.getElementById('qrcodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${data.pay_address}`;
 
-      loading.classList.add('hidden');
-      content.classList.remove('hidden');
-    } catch (err) {
-      alert("Deposit error: " + err.message);
-      closeDepositModal();
-    }
+    loading.classList.add('hidden');
+    content.classList.remove('hidden');
+  } catch (err) {
+    alert('Deposit error: ' + err.message);
+    closeDepositModal();
   }
-
+}
   function closeDepositModal() {
     document.getElementById('depositModal').classList.add('hidden');
   }

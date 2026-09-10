@@ -2795,20 +2795,23 @@ async function buyPackage(packageName, amount, dailyRoi) {
     content.classList.add('hidden');
     document.getElementById('depositAmountText').innerText = `Send $${amountUSD} USDT (${network.toUpperCase()})`;
 
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-nowpayments-invoice`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': ANON_KEY,
-          'Authorization': `Bearer ${ANON_KEY}`
-        },
-        body: JSON.stringify({
-          price_amount: amountUSD,
-          pay_currency: network,
-          order_id: `user_${Date.now()}`
-        })
-      });
+      try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const userId = user?.id || 'guest';
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/create-nowpayments-invoice`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': ANON_KEY,
+        'Authorization': `Bearer ${ANON_KEY}`
+      },
+      body: JSON.stringify({
+        price_amount: amountUSD,
+        pay_currency: network,
+        order_id: `${userId}_${Date.now()}`
+      })
+    });
 
       const data = await response.json();
       if (data.error) throw new Error(data.error);

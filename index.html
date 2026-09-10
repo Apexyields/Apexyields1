@@ -3010,7 +3010,7 @@ async function generateInlineDepositInvoice() {
     const data = await response.json();
     if (data.error) throw new Error(data.error);
 
-    // Populate Inline Invoice Card
+      // Populate Inline Invoice Card
     document.getElementById('invoiceNumberText').innerText = `[ INVOICE #DEP-${data.payment_id || Date.now().toString().slice(-6)} ]`;
     document.getElementById('depositAddressLabel').innerText = `USDT Deposit Address (${selectedNetwork.replace('usdt', '').toUpperCase()})`;
     document.getElementById('inlineDepositAddress').value = data.pay_address;
@@ -3018,6 +3018,11 @@ async function generateInlineDepositInvoice() {
     document.getElementById('inlineQrCodeImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${data.pay_address}`;
 
     card.classList.remove('hidden');
+
+    // Start auto-polling NOWPayments status every 10s
+    if (data.payment_id) {
+      startInvoicePolling(data.payment_id);
+    }
   } catch (err) {
     alert('Deposit error: ' + err.message);
   } finally {
@@ -3032,6 +3037,52 @@ function copyInlineAddress() {
   if (!addr) return;
   navigator.clipboard.writeText(addr);
   alert('Deposit address copied to clipboard!');
+}
+        let depositPollInterval = null;
+
+// Function to start checking payment status
+function startInvoicePolling(paymentId) {
+  // Clear any existing polling loop
+  if (depositPollInterval) clearInterval(depositPollInterval);
+
+  depositPollInterval = setInterval(async () => {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/check-nowpayments-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': ANON_KEY,
+          'Authorization': `Bearer ${ANON_KEY}`
+        },
+        body: JSON.stringify({ payment_id: paymentId })
+      });
+
+      const data = await response.json();
+      const status = data.payment_status; // 'waiting', 'confirming', 'confirmed', 'sending', 'finished', 'failed', 'expired'
+
+      const statusBadge = document.getElementById('invoiceStatusBadge');
+
+      if (status === 'confirming' || status === 'sending') {
+        statusBadge.className = 'text-xs font-semibold text-blue-400 flex items-center gap-1';
+        statusBadge.innerText = '🔵 Confirming On-Chain...';
+      } else if (status === 'confirmed' || status === 'finished') {
+        statusBadge.className = 'text-xs font-semibold text-emerald-400 flex items-center gap-1';
+        statusBadge.innerText = '🟢 Payment Approved!';
+        
+        // Stop polling on completion
+        clearInterval(depositPollInterval);
+        
+        // Optionally trigger wallet balance refresh
+        if (typeof fetchUserData === 'function') fetchUserData();
+      } else if (status === 'failed' || status === 'expired') {
+        statusBadge.className = 'text-xs font-semibold text-red-400 flex items-center gap-1';
+        statusBadge.innerText = '🔴 Payment Expired / Failed';
+        clearInterval(depositPollInterval);
+      }
+    } catch (err) {
+      console.warn('Polling check error:', err);
+    }
+  }, 10000); // Check every 10 seconds
 }
 </script>
 </body>

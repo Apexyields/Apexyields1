@@ -1208,7 +1208,41 @@
     }
 }
 window.handleLogin = handleLogin;
+        // AUTO-RESTORE SESSION ON REFRESH
+async function checkPersistedSession() {
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) return;
 
+    currentUser = savedUser;
+
+    // Restore UI visibility based on user role
+    if (savedUser === 'admin') {
+        document.getElementById('adminBtn')?.classList.remove('hidden');
+        document.getElementById('adminSettingsBox')?.classList.remove('hidden');
+        const roleText = document.getElementById('userHeaderRole');
+        if (roleText) roleText.innerText = 'Administrator';
+    } else {
+        document.getElementById('adminBtn')?.classList.add('hidden');
+        document.getElementById('adminSettingsBox')?.classList.add('hidden');
+        const roleText = document.getElementById('userHeaderRole');
+        if (roleText) roleText.innerText = 'Standard User';
+    }
+
+    // Bypasses auth screen immediately
+    document.getElementById('authSection')?.classList.add('hidden');
+    document.getElementById('dashboardSection')?.classList.remove('hidden');
+
+    // Trigger profile & dashboard setup
+    if (typeof loadUserProfile === 'function') await loadUserProfile();
+    if (typeof initDashboard === 'function') initDashboard();
+}
+
+// Fire on script execution or DOM load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkPersistedSession);
+} else {
+    checkPersistedSession();
+}
 
 // ==========================================
 // 2. USER PROFILE & BALANCE DISPLAY

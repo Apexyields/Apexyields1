@@ -114,7 +114,7 @@
         <div id="dashboardSection" class="hidden space-y-6">
 
             <!-- TAB 1: PACKAGES -->
-            <div id="view-packages" class="tab-view space-y-4">
+            <div id="view-packages" class="tab-view transition-all duration-200 ease-out space-y-4">
                 <div class="bg-gradient-to-r from-blue-900/40 to-slate-900 border border-blue-500/20 rounded-2xl p-4 flex justify-between items-center">
                     <div>
                         <span class="text-xs text-blue-300 font-semibold uppercase tracking-wider">Active Balance</span>
@@ -636,26 +636,26 @@
         </div> <!-- Closes log out button container -->
     </div> <!-- CLOSES view-settings (REQUIRED) -->
 
-    <!-- PERSISTENT BOTTOM NAVIGATION -->
+        <!-- PERSISTENT BOTTOM NAVIGATION -->
     <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-slate-900/90 border-t border-slate-800 backdrop-blur-md z-40 flex justify-around items-center py-2 px-1 text-slate-400">
-        <button onclick="switchTab('packages')" id="tab-packages" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 active-tab">
-            <span class="text-base">📦</span>
+        <button onclick="switchTab('packages')" id="tab-packages" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400 active-tab">
+            <span class="text-base transition-transform duration-200">📦</span>
             <span class="text-[10px] font-medium">Packages</span>
         </button>
-        <button onclick="switchTab('market')" id="tab-market" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
-            <span class="text-base">📈</span>
+        <button onclick="switchTab('market')" id="tab-market" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
+            <span class="text-base transition-transform duration-200">📈</span>
             <span class="text-[10px] font-medium">Market</span>
         </button>
-        <button onclick="switchTab('wallet')" id="tab-wallet" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
-            <span class="text-base">💳</span>
+        <button onclick="switchTab('wallet')" id="tab-wallet" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
+            <span class="text-base transition-transform duration-200">💳</span>
             <span class="text-[10px] font-medium leading-none">Wallet</span>
         </button>
-        <button onclick="switchTab('referral')" id="tab-referral" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
-            <span class="text-base">🎁</span>
+        <button onclick="switchTab('referral')" id="tab-referral" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
+            <span class="text-base transition-transform duration-200">🎁</span>
             <span class="text-[10px] font-medium leading-none">Referral</span>
         </button>
-        <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
-            <span class="text-base">⚙️</span>
+        <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
+            <span class="text-base transition-transform duration-200">⚙️</span>
             <span class="text-[10px] font-medium">Settings</span>
         </button>
     </nav>
@@ -1625,25 +1625,41 @@ lastShareDay: profile.last_share_date || '',
     }
 
     function switchTab(tabName) {
-        ['packages', 'wallet', 'referral', 'settings', 'market'].forEach(t => {
-            const viewEl = document.getElementById(`view-${t}`);
-            const tabEl = document.getElementById(`tab-${t}`);
-            if (viewEl) viewEl.classList.add('hidden');
-            if (tabEl) tabEl.classList.remove('active-tab');
+    // 1. Hide all tab views and reset dock icons
+    document.querySelectorAll('.tab-view').forEach(view => {
+        view.classList.add('hidden', 'opacity-0', 'translate-y-2');
+        view.classList.remove('opacity-100', 'translate-y-0');
+    });
+    document.querySelectorAll('nav button').forEach(btn => {
+        btn.classList.remove('active-tab', 'text-blue-400', 'scale-105');
+        btn.classList.add('text-slate-400');
+    });
+
+    // 2. Show & animate active tab view
+    const targetView = document.getElementById(`view-${tabName}`);
+    if (targetView) {
+        targetView.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            targetView.classList.add('opacity-100', 'translate-y-0');
+            targetView.classList.remove('opacity-0', 'translate-y-2');
         });
-
-        const targetView = document.getElementById(`view-${tabName}`);
-        const targetTab = document.getElementById(`tab-${tabName}`);
-        if (targetView) targetView.classList.remove('hidden');
-        if (targetTab) targetTab.classList.add('active-tab');
-
-        if (tabName === 'referral') {
-            renderReferralHub();
-        } else if (tabName === 'market') {
-            renderCoinTable();
-            updateShareUI();
-        }
     }
+
+    // 3. Highlight active dock button
+    const activeBtn = document.getElementById(`tab-${tabName}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400');
+        activeBtn.classList.add('active-tab', 'text-blue-400', 'scale-105');
+    }
+
+    // 4. Trigger tab-specific data rendering
+    if (tabName === 'referral') {
+        renderReferralHub();
+    } else if (tabName === 'market') {
+        renderCoinTable();
+        updateShareUI();
+    }
+}
 
 function renderUserActiveSubscriptions() {
     const container = document.getElementById('userActiveSubscriptionsList');

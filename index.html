@@ -95,6 +95,8 @@
     </div>
 </header>
 
+    <main class="max-w-2xl mx-auto p-4 space-y-6 pb-20">
+
         <!-- AUTH SCREEN -->
         <section id="authSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4 max-w-sm mx-auto">
             <div class="text-3xl">🔐</div>
@@ -863,8 +865,31 @@
                 </div>
             </div>
         </div>
+</main>
 
-    </main>
+<!-- PERSISTENT BOTTOM NAVIGATION -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-slate-900/90 border-t border-slate-800 backdrop-blur-md z-40 flex justify-around items-center py-2 px-1 text-slate-400">
+    <button onclick="switchTab('packages')" id="tab-packages" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 active-tab">
+        <span class="text-base">📦</span>
+        <span class="text-[10px] font-medium">Packages</span>
+    </button>
+    <button onclick="switchTab('market')" id="tab-market" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
+        <span class="text-base">📈</span>
+        <span class="text-[10px] font-medium">Market</span>
+    </button>
+    <button onclick="switchTab('wallet')" id="tab-wallet" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
+        <span class="text-base">💳</span>
+        <span class="text-[10px] font-medium leading-none">Wallet</span>
+    </button>
+    <button onclick="switchTab('referral')" id="tab-referral" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
+        <span class="text-base">🎁</span>
+        <span class="text-[10px] font-medium leading-none">Referral</span>
+    </button>
+    <button onclick="switchTab('settings')" id="tab-settings" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5">
+        <span class="text-base">⚙️</span>
+        <span class="text-[10px] font-medium">Settings</span>
+    </button>
+</nav>
 
     <script>
     // Initialize Supabase Client

@@ -1382,8 +1382,8 @@ async function loadUserProfile() {
 
         usersData[currentUser] = {
           balance: profile.balance || 0,
-          dailySharesCount: profile.daily_shares_count || 0,
-          lastShareDay: profile.last_share_day || '',
+dailySharesCount: profile.daily_shares || 0,
+lastShareDay: profile.last_share_date || '',
           activeSubscriptions: activePkgs,
           payoutHistory: userPayouts || []
         };
@@ -2266,21 +2266,26 @@ async function renderReferralHub() {
     }
 
     function updateShareUI() {
-    if (typeof supabaseClient === 'undefined') return;
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-        if (!session || !session.user) return;
-        supabaseClient
-            .from('profiles')
-            .select('daily_shares')
-            .eq('id', session.user.id)
-            .single()
-            .then(({ data }) => {
-                const badge = document.getElementById('shareCountBadge');
-                if (badge && data) {
-                    badge.innerText = `${data.daily_shares || 0} / 5 Daily Shares`;
-                }
-            });
-    });
+  if (typeof supabaseClient === 'undefined') return;
+  supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    if (!session || !session.user) return;
+    supabaseClient
+      .from('profiles')
+      .select('daily_shares, last_share_date')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          const badge = document.getElementById('shareCountBadge');
+          if (badge) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            // Show 0 if last share was on a previous day
+            const activeShares = (data.last_share_date === todayStr) ? (data.daily_shares || 0) : 0;
+            badge.innerText = `${activeShares} / 5 Daily Shares`;
+          }
+        }
+      });
+  });
 }
 
 async function handleDailyShare() {

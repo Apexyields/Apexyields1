@@ -1787,9 +1787,12 @@ function renderUserActiveSubscriptions() {
         const pkgName = sub.packageName || sub.package_name || 'Vault Package';
         const deposit = Number(sub.amount_locked || sub.depositAmount || 0);
         
-        const refCount = Number(user.referrals_count || user.referrals || 0);
-const { payoutFormatted, ratePercent, isBoosted } = formatActiveVaultPayout(deposit, refCount);
-const payout = payoutFormatted;
+        const refCount = Number(user?.referrals_count || user?.referrals || 0);
+const yieldData = typeof calculateAffiliateYield === 'function' 
+    ? calculateAffiliateYield(deposit, refCount) 
+    : { totalPayout: deposit * 1.2, effectiveRate: 20 };
+
+const payout = Number(yieldData.totalPayout || 0);
                         let durationDays = Number(sub.duration_days);
 
 if (!durationDays || isNaN(durationDays)) {

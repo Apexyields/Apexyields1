@@ -3464,6 +3464,8 @@ async function settleVaultPayout(vault) {
         function updateAffiliateCapUI(activeRefs) {
     const currentCapDisplay = document.getElementById('currentCapDisplay');
     const refTierBadge = document.getElementById('refTierBadge');
+    const refProgressText = document.getElementById('refProgressText');
+    const refProgressBar = document.getElementById('refProgressBar');
 
     let capPercent = "30";
     let badgeText = "30% CAP (0)";
@@ -3479,15 +3481,29 @@ async function settleVaultPayout(vault) {
         badgeColorClass = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
     }
 
-    if (currentCapDisplay) {
-        currentCapDisplay.innerText = capPercent;
-    }
-
+    if (currentCapDisplay) currentCapDisplay.innerText = capPercent;
     if (refTierBadge) {
         refTierBadge.innerText = badgeText;
         refTierBadge.className = `text-xs px-2.5 py-1 rounded ${badgeColorClass}`;
     }
+
+    // Live update line count text (e.g., "25 / 25")
+    if (refProgressText) {
+        refProgressText.innerText = `${activeRefs} / 25`;
+    }
+
+    // Live update progress bar width (clamped at 100%)
+    if (refProgressBar) {
+        const percentage = Math.min((activeRefs / 25) * 100, 100);
+        refProgressBar.style.width = `${percentage}%`;
+    }
 }
+        // Add at the very bottom of your script file
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof renderPackageButtons === 'function') {
+        await renderPackageButtons();
+    }
+});
 </script>
 </body>
 </html>

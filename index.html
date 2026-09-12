@@ -3230,13 +3230,44 @@ function initVaultCountdownLoop(activeVaults = []) {
 
     window.vaultTimerInterval = setInterval(() => {
         const now = Date.now();
-        
+
         activeVaults.forEach(vault => {
-            const timerElem = document.getElementById(`timer-${vault.id}`);
+            const vaultId = vault.id || vault.package_id;
+            const timerElem = document.getElementById(`timer-${vaultId}`);
             if (!timerElem) return;
 
-            const expiresAt = new Date(vault.expires_at || vault.expiresAt).getTime();
-            const diff = expiresAt - now;
+            let expireAt = 0;
+
+            if (vault.expires_at) {
+                const cleanStr = String(vault.expires_at).replace(' ', 'T').replace(/\.(\d{3})\d+/, '.$1');
+                expireAt = new Date(cleanStr).getTime();
+            } else {
+                const rawStart = vault.created_at || vault.start_date;
+                if (rawStart) {
+                    const cleanStartStr = String(rawStart).replace(' ', 'T').replace(/\.(\d{3})\d+/, '.$1');
+                    const startTime = new Date(cleanStartStr).getTime();
+
+                    let durationDays = Number(vault.duration_days);
+                    if (!durationDays || isNaN(durationDays)) {
+                        const deposit = Number(vault.amount_locked || vault.depositAmount || vault.amount || 0);
+                        const pkgName = vault.packageName || vault.package_name || '';
+
+                        if (deposit === 25 || pkgName === 'Micro Vault') durationDays = 3;
+                        else if ([1000, 2500].includes(deposit) || pkgName.includes('Executive') || pkgName.includes('VIP')) durationDays = 90;
+                        else if ([5000, 10000].includes(deposit)) durationDays = 180;
+                        else if (deposit === 50000 || pkgName === 'Apex Mega Vault') durationDays = 365;
+                        else durationDays = 30;
+                    }
+
+                    if (!isNaN(startTime)) {
+                        expireAt = startTime + (durationDays * 24 * 60 * 60 * 1000);
+                    }
+                }
+            }
+
+            if (!expireAt || isNaN(expireAt)) return;
+
+            const diff = expireAt - now;
 
             if (diff <= 0) {
                 timerElem.innerHTML = `<span class="text-emerald-400 font-bold font-mono">Settled</span>`;
@@ -3249,7 +3280,6 @@ function initVaultCountdownLoop(activeVaults = []) {
         });
     }, 1000);
 }
-
         // VAULT SETTLEMENT & PAYOUT EXECUTION
 async function settleVaultPayout(vault) {
     vault.status = 'completed'; // Guard against duplicate payouts in loop

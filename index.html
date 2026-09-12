@@ -2172,23 +2172,60 @@ if (refBadge) refBadge.innerText = `${qualifiedRefs} Active Refs (${tierInfo.cap
         }).join('');
     }
 
-    function renderPackageButtons() {
-        const user = usersData[currentUser];
-        if (!user) return;
+    async function renderPackageButtons() {
+    const activeUserId = (await supabaseClient.auth.getUser()).data.user?.id;
+    if (!activeUserId) return;
 
-        const limitedPackages = ['Micro Vault', 'Standard Vault'];
-
-        limitedPackages.forEach(pkgName => {
-            const btn = document.getElementById(`btn-${pkgName}`);
-            if (btn) {
-if (user.claimedPackages && user.claimedPackages.includes(pkgName)) {
-    btn.innerText = 'Unlock / Re-Activate';
-    btn.disabled = false;
-    btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer transition";
-}
-            }
-        });
+    // Fetch total qualified active referrals from Supabase
+    let totalActiveRefs = 0;
+    if (typeof countQualifiedReferrals === 'function') {
+        totalActiveRefs = await countQualifiedReferrals(activeUserId);
     }
+
+    // Fetch user profile baseline data
+    const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('micro_ref_baseline, standard_ref_baseline')
+        .eq('id', activeUserId)
+        .single();
+
+    const baselines = {
+        'Micro Vault': profile?.micro_ref_baseline || 0,
+        'Standard Vault': profile?.standard_ref_baseline || 0
+    };
+
+    const limitedPackages = ['Micro Vault', 'Standard Vault'];
+
+    limitedPackages.forEach(pkgName => {
+        const btn = document.getElementById(`btn-${pkgName}`);
+        const badge = document.getElementById(`badge-${pkgName}`);
+        const countSpan = document.getElementById(`ref-count-${pkgName}`);
+
+        const baseline = baselines[pkgName];
+        const progress = Math.max(0, totalActiveRefs - baseline);
+        const displayCount = Math.min(progress, 3);
+
+        // Update progress badge (0/3, 1/3, 2/3, 3/3)
+        if (badge && countSpan) {
+            badge.classList.remove('hidden');
+            countSpan.innerText = displayCount;
+        }
+
+        if (btn) {
+            if (progress >= 3 || baseline === 0) {
+                // Unlocked / Clickable
+                btn.disabled = false;
+                btn.innerText = baseline === 0 ? `Lock $${pkgName === 'Micro Vault' ? '25' : '50'} Package` : 'Re-Activate Package';
+                btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition cursor-pointer";
+            } else {
+                // Locked until +3 active referrals reached
+                btn.disabled = true;
+                btn.innerText = `Locked (${displayCount}/3 Refs Needed)`;
+                btn.className = "mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-lg transition cursor-not-allowed opacity-60";
+            }
+        }
+    });
+}
 
    async function claimBonus() {
     const user = usersData[currentUser] || { refCode: 'APEX-000000' };

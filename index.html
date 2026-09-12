@@ -2078,6 +2078,8 @@ async function initDashboard() {
         }
 
         saveData();
+            // Trigger dynamic package button and referral badge updates
+    if (typeof renderPackageButtons === 'function') renderPackageButtons();
     }
 
     const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);

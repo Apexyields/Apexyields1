@@ -1704,6 +1704,17 @@ lastShareDay: profile.last_share_date || '',
             isCapped: deposit >= 1000
         };
     }
+        function formatActiveVaultPayout(deposit, refCount) {
+    const yieldData = typeof calculateAffiliateYield === 'function' 
+        ? calculateAffiliateYield(deposit, refCount) 
+        : { totalPayout: deposit * 1.2, effectiveRate: 20 };
+
+    return {
+        payoutFormatted: yieldData.totalPayout.toFixed(2),
+        ratePercent: yieldData.effectiveRate,
+        isBoosted: deposit >= 1000 && refCount >= 10
+    };
+}
 
     function handleLogout() {
         currentUser = null;
@@ -3280,39 +3291,48 @@ function initVaultCountdownLoop(activeVaults = []) {
         });
     }, 1000);
 }
-        // VAULT SETTLEMENT & PAYOUT EXECUTION
+// VAULT SETTLEMENT & PAYOUT EXECUTION
 async function settleVaultPayout(vault) {
-    vault.status = 'completed'; // Guard against duplicate payouts in loop
+    vault.status = 'completed'; // Guard against duplicate execution
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            // 1. Determine payout amount (deposit + yield or fallback to 1.2x multiplier)
-            const deposit = Number(vault.amount_locked || vault.depositAmount || vault.amount || 0);
-            const payoutAmount = Number(vault.payout || vault.totalPayout || (deposit * 1.2));
-
-            // 2. Identify target user
             const { data: { user } } = await supabaseClient.auth.getUser();
             const targetUserId = vault.user_id || user?.id;
 
-            if (targetUserId && payoutAmount > 0) {
-                // 3. Fetch current user balance
+            if (targetUserId) {
+                // 1. Fetch current balance and referral count
                 const { data: profile } = await supabaseClient
                     .from('profiles')
-                    .select('balance')
+                    .select('balance, referrals_count')
                     .eq('id', targetUserId)
                     .single();
 
+                const deposit = Number(vault.amount_locked || vault.depositAmount || vault.amount || 0);
+                const refCount = Number(profile?.referrals_count || 0);
+
+                // 2. Compute dynamic payout using calculateAffiliateYield
+                let payoutAmount = 0;
+                if (typeof calculateAffiliateYield === 'function') {
+                    const yieldData = calculateAffiliateYield(deposit, refCount);
+                    payoutAmount = Number(yieldData.totalPayout || 0);
+                } else {
+                    const capRate = refCount >= 25 ? 0.50 : (refCount >= 10 ? 0.40 : 0.30);
+                    const rate = deposit < 1000 ? 0.20 : capRate;
+                    payoutAmount = deposit * (1 + rate);
+                }
+
+                // 3. Credit payout to user balance
                 const currentBalance = Number(profile?.balance || 0);
                 const newBalance = currentBalance + payoutAmount;
 
-                // 4. Credit payout to profile balance
                 await supabaseClient
                     .from('profiles')
                     .update({ balance: newBalance })
                     .eq('id', targetUserId);
             }
 
-            // 5. Mark package as completed in user_packages
+            // 4. Update package status in database
             const { error } = await supabaseClient
                 .from('user_packages')
                 .update({ status: 'completed' })
@@ -3321,7 +3341,7 @@ async function settleVaultPayout(vault) {
             if (error) throw error;
         }
 
-        // 6. Refresh UI to display new balance
+        // 5. Refresh profile UI
         if (typeof loadUserProfile === 'function') {
             await loadUserProfile();
         }

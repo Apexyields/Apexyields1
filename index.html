@@ -1507,23 +1507,10 @@ lastShareDay: profile.last_share_date || '',
           payoutHistory: userPayouts || []
         };
 
-        // 3. Lock $25 and $50 buttons if already owned
-        const hasMicroVault = activePkgs.some(pkg => pkg.package_name === 'Micro Vault' || pkg.amount_locked == 25);
-        const hasStandardVault = activePkgs.some(pkg => pkg.package_name === 'Standard Vault' || pkg.amount_locked == 50);
-
-        const microBtn = document.getElementById('btn-Micro Vault');
-        if (microBtn && hasMicroVault) {
-            microBtn.disabled = true;
-            microBtn.innerText = 'Claimed (1 Max)';
-            microBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-
-        const standardBtn = document.getElementById('btn-Standard Vault');
-        if (standardBtn && hasStandardVault) {
-            standardBtn.disabled = true;
-            standardBtn.innerText = 'Claimed (1 Max)';
-            standardBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
+        // REPLACE LINES 1510 - 1526 WITH THIS:
+if (typeof renderPackageButtons === 'function') {
+    renderPackageButtons();
+}
 
         // 4. Initialize dashboard and trigger UI renderers
         if (typeof initDashboard === 'function') initDashboard();

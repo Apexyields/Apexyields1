@@ -1787,10 +1787,9 @@ function renderUserActiveSubscriptions() {
         const pkgName = sub.packageName || sub.package_name || 'Vault Package';
         const deposit = Number(sub.amount_locked || sub.depositAmount || 0);
         
-        const isHighTier = deposit >= 1000 || pkgName.includes('Executive') || pkgName.includes('VIP') || pkgName.includes('Institutional') || pkgName.includes('Mega');
-        const returnRate = isHighTier ? 1.30 : 1.20;
-        const payout = Number(sub.payout || sub.totalPayout || (deposit * returnRate) || 0);
-
+        const refCount = Number(user.referrals_count || user.referrals || 0);
+const { payoutFormatted, ratePercent, isBoosted } = formatActiveVaultPayout(deposit, refCount);
+const payout = payoutFormatted;
                         let durationDays = Number(sub.duration_days);
 
 if (!durationDays || isNaN(durationDays)) {

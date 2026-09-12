@@ -1769,26 +1769,26 @@ async function renderUserActiveSubscriptions() {
 
     const user = usersData[currentUser];
     const subs = user.activeSubscriptions || user.user_packages || [];
-        let refCount = 0;
+
+    // Safely derive referral count using local currentUser fallback
+    let refCount = Number(user?.referrals_count || user?.referrals || 0);
     try {
-        const activeId = (typeof supabaseClient !== 'undefined' && supabaseClient.auth) 
-            ? (await supabaseClient.auth.getUser())?.data?.user?.id 
-            : currentUser;
+        const activeId = (user && user.id) ? user.id : currentUser;
         if (typeof countQualifiedReferrals === 'function' && activeId) {
-            refCount = await countQualifiedReferrals(activeId);
+            const count = await countQualifiedReferrals(activeId);
+            if (typeof count === 'number' && !isNaN(count)) refCount = count;
         }
     } catch (e) {
-        refCount = Number(user?.referrals_count || user?.referrals || 0);
+        console.warn("Non-fatal referral fetch warning:", e);
     }
-    
-    // Include active, pending, and withdrawal_pending packages
+
     const visibleSubs = subs.filter(s => {
-        const st = (s.status || '').toUpperCase();
+        const st = (s?.status || '').toUpperCase();
         return st === 'ACTIVE' || st === 'PENDING_VERIFICATION' || st === 'WITHDRAWAL_PENDING';
     });
 
     if (visibleSubs.length === 0) {
-        container.innerHTML = `<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>`;
+        container.innerHTML = '<p class="text-slate-500 text-center py-2 text-xs">No active or pending packages.</p>';
         return;
     }
 
@@ -1796,14 +1796,13 @@ async function renderUserActiveSubscriptions() {
 
     container.innerHTML = visibleSubs.map(sub => {
         const pkgName = sub.packageName || sub.package_name || 'Vault Package';
-        const deposit = Number(sub.amount_locked || sub.depositAmount || 0);
-        
-    const activeRefCount = refCount || Number(user?.referrals_count || user?.referrals || 0);
-const yieldData = typeof calculateAffiliateYield === 'function' 
-    calculateAffiliateYield(deposit, activeRefCount)
-    : { totalPayout: deposit * 1.2, effectiveRate: 20 };
+        const deposit = Number(sub.amount_locked || sub.depositAmount || sub.amount || 0);
 
-const payout = Number(yieldData.totalPayout || 0);
+        const yieldData = typeof calculateAffiliateYield === 'function' 
+            ? calculateAffiliateYield(deposit, refCount) 
+            : { totalPayout: deposit * 1.2, effectiveRate: 20 };
+
+        const payout = Number(yieldData.totalPayout || 0);
                         let durationDays = Number(sub.duration_days);
 
 if (!durationDays || isNaN(durationDays)) {

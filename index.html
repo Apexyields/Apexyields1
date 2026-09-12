@@ -2338,28 +2338,54 @@ async function renderReferralHub() {
 
     
 
-    function promptInvestPackage(name, cost, duration) {
-        selectedPackage = { name, cost, duration };
-        const user = usersData[currentUser] || { refCode: '' };
-        const refs = countQualifiedReferrals(user.refCode);
-        const yieldData = calculateAffiliateYield(cost, refs);
+async function promptInvestPackage(pkgName, price, duration) {
+    const activeUserId = (await supabaseClient.auth.getUser()).data.user?.id;
+    if (!activeUserId) return alert("Please log in first.");
 
-        document.getElementById('modalPackageName').innerText = name;
-        document.getElementById('modalCost').innerText = `$${cost.toFixed(2)} USDT`;
-        document.getElementById('modalActiveUsers').innerText = getPackageActiveUsers(name);
-        document.getElementById('modalRate').innerText = `+${yieldData.effectiveRate.toFixed(0)}%`;
-        document.getElementById('modalProfit').innerText = `+$${yieldData.finalYield.toFixed(2)} USDT`;
-        document.getElementById('modalDuration').innerText = duration;
-        document.getElementById('modalTotalPayout').innerText = `$${yieldData.totalPayout.toFixed(2)} USDT`;
+    const restrictedTiers = ['Micro Vault', 'Standard Vault'];
 
-        const capNotice = document.getElementById('modalCapNotice');
-        if (capNotice) {
-            if (cost >= 1000) capNotice.classList.remove('hidden');
-            else capNotice.classList.add('hidden');
+    if (restrictedTiers.includes(pkgName)) {
+        let totalActiveRefs = 0;
+        if (typeof countQualifiedReferrals === 'function') {
+            totalActiveRefs = await countQualifiedReferrals(activeUserId);
         }
 
-        document.getElementById('investmentModal').classList.remove('hidden');
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('micro_ref_baseline, standard_ref_baseline')
+            .eq('id', activeUserId)
+            .single();
+
+        const baselineCol = pkgName === 'Micro Vault' ? 'micro_ref_baseline' : 'standard_ref_baseline';
+        const currentBaseline = profile?.[baselineCol] || 0;
+        const progress = totalActiveRefs - currentBaseline;
+
+        // Check if locked
+        if (currentBaseline > 0 && progress < 3) {
+            return alert(`Unlock required: You need 3 new active referrals to buy another ${pkgName} slot (${progress}/3 completed).`);
+        }
+
+        // Process purchase via Supabase RPC
+        const { data, error } = await supabaseClient.rpc('process_tier_deposit', {
+            p_user_id: activeUserId,
+            p_package_name: pkgName,
+            p_amount: price
+        });
+
+        if (error) return alert("Transaction failed: " + error.message);
+
+        // Update baseline upon successful purchase
+        const newBaseline = currentBaseline === 0 ? totalActiveRefs : currentBaseline + 3;
+        await supabaseClient
+            .from('profiles')
+            .update({ [baselineCol]: newBaseline })
+            .eq('id', activeUserId);
     }
+
+    alert(`Successfully locked ${pkgName}!`);
+    renderPackageButtons();
+    initDashboard();
+}
 
     function closeInvestmentModal() {
         document.getElementById('investmentModal').classList.add('hidden');

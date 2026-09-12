@@ -1858,7 +1858,7 @@ if (!durationDays || isNaN(durationDays)) {
 const actionHTML = (endTimeMs > now && remainingMs > 0)
     ? `<div class="text-right">
         <span class="text-[10px] text-slate-400 block">Remaining Time</span>
-        <span class="font-bold text-amber-400">${timeString}</span>
+        <span id="timer-${packageId}" class="font-bold text-amber-400">${timeString}</span>
        </div>`
     : `<button type="button" onclick="window.handleClaimPayout('${packageId}')" class="cursor-pointer pointer-events-auto z-10 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 animate-pulse active:scale-95">
         Claim $${payout.toFixed(2)} USDT

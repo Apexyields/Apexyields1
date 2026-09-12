@@ -3286,7 +3286,33 @@ async function settleVaultPayout(vault) {
 
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            // Mark package completed in DB
+            // 1. Determine payout amount (deposit + yield or fallback to 1.2x multiplier)
+            const deposit = Number(vault.amount_locked || vault.depositAmount || vault.amount || 0);
+            const payoutAmount = Number(vault.payout || vault.totalPayout || (deposit * 1.2));
+
+            // 2. Identify target user
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const targetUserId = vault.user_id || user?.id;
+
+            if (targetUserId && payoutAmount > 0) {
+                // 3. Fetch current user balance
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('balance')
+                    .eq('id', targetUserId)
+                    .single();
+
+                const currentBalance = Number(profile?.balance || 0);
+                const newBalance = currentBalance + payoutAmount;
+
+                // 4. Credit payout to profile balance
+                await supabaseClient
+                    .from('profiles')
+                    .update({ balance: newBalance })
+                    .eq('id', targetUserId);
+            }
+
+            // 5. Mark package as completed in user_packages
             const { error } = await supabaseClient
                 .from('user_packages')
                 .update({ status: 'completed' })
@@ -3295,7 +3321,7 @@ async function settleVaultPayout(vault) {
             if (error) throw error;
         }
 
-        // Trigger balance re-fetch to reflect credited yield
+        // 6. Refresh UI to display new balance
         if (typeof loadUserProfile === 'function') {
             await loadUserProfile();
         }

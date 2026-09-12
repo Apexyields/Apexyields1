@@ -1763,12 +1763,23 @@ lastShareDay: profile.last_share_date || '',
     }
 }
 
-function renderUserActiveSubscriptions() {
+async function renderUserActiveSubscriptions() {
     const container = document.getElementById('userActiveSubscriptionsList');
     if (!container || !currentUser || !usersData[currentUser]) return;
 
     const user = usersData[currentUser];
     const subs = user.activeSubscriptions || user.user_packages || [];
+        let refCount = 0;
+    try {
+        const activeId = (typeof supabaseClient !== 'undefined' && supabaseClient.auth) 
+            ? (await supabaseClient.auth.getUser())?.data?.user?.id 
+            : currentUser;
+        if (typeof countQualifiedReferrals === 'function' && activeId) {
+            refCount = await countQualifiedReferrals(activeId);
+        }
+    } catch (e) {
+        refCount = Number(user?.referrals_count || user?.referrals || 0);
+    }
     
     // Include active, pending, and withdrawal_pending packages
     const visibleSubs = subs.filter(s => {
@@ -1787,9 +1798,9 @@ function renderUserActiveSubscriptions() {
         const pkgName = sub.packageName || sub.package_name || 'Vault Package';
         const deposit = Number(sub.amount_locked || sub.depositAmount || 0);
         
-        const refCount = Number(user?.referrals_count || user?.referrals || 0);
+    const activeRefCount = refCount || Number(user?.referrals_count || user?.referrals || 0);
 const yieldData = typeof calculateAffiliateYield === 'function' 
-    ? calculateAffiliateYield(deposit, refCount) 
+    calculateAffiliateYield(deposit, activeRefCount)
     : { totalPayout: deposit * 1.2, effectiveRate: 20 };
 
 const payout = Number(yieldData.totalPayout || 0);

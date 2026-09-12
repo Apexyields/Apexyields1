@@ -1247,6 +1247,30 @@ if (document.readyState === 'loading') {
 // ==========================================
 // 2. USER PROFILE & BALANCE DISPLAY
 // ==========================================
+        function renderUserPackages(packages) {
+    const container = document.getElementById('activeVaultsList') || document.getElementById('activePackagesContainer');
+    if (!container) return;
+
+    if (!packages || packages.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-slate-500 text-sm">No active vaults running.</div>`;
+        return;
+    }
+
+    container.innerHTML = packages.map(vault => `
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl flex justify-between items-center mb-3">
+            <div>
+                <p class="text-white font-semibold text-sm">${vault.package_name || 'Active Vault'}</p>
+                <p class="text-xs text-slate-400">Amount: $${Number(vault.amount || 0).toFixed(2)} USDT</p>
+            </div>
+            <div class="text-right">
+                <span class="text-xs text-slate-500 block mb-1">Time Remaining</span>
+                <div id="timer-${vault.id}" class="text-sm font-mono text-amber-400 font-bold">
+                    Calculating...
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
 
 async function loadUserProfile() {
     if (!supabaseClient) return;

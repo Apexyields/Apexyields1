@@ -2182,11 +2182,11 @@ if (refBadge) refBadge.innerText = `${qualifiedRefs} Active Refs (${tierInfo.cap
         limitedPackages.forEach(pkgName => {
             const btn = document.getElementById(`btn-${pkgName}`);
             if (btn) {
-                if (user.claimedPackages && user.claimedPackages.includes(pkgName)) {
-                    btn.innerText = '🔒 Claimed (Limit Reached)';
-                    btn.disabled = true;
-                    btn.className = "mt-4 w-full bg-slate-800/50 text-slate-500 text-xs font-bold py-2 rounded-lg cursor-not-allowed border border-slate-800";
-                }
+if (user.claimedPackages && user.claimedPackages.includes(pkgName)) {
+    btn.innerText = 'Unlock / Re-Activate';
+    btn.disabled = false;
+    btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer transition";
+}
             }
         });
     }
@@ -2359,16 +2359,20 @@ async function renderReferralHub() {
 
     // 1. Pay with internal balance if funds are available
     if (userBalance >= cost) {
-      const { error: rpcError } = await supabaseClient.rpc('purchase_package', {
-        p_user_id: user.id,
-        p_package_name: name,
-        p_amount: cost
-      });
+     const { data: rpcData, error: rpcError } = await supabaseClient.rpc('process_tier_deposit', {
+  p_user_id: user.id,
+  p_amount: cost
+});
 
-      if (rpcError) {
-        alert(`Lock failed: ${rpcError.message}`);
-        return;
-      }
+if (rpcError) {
+  alert('Lock failed: ' + rpcError.message);
+  return;
+}
+
+if (rpcData && !rpcData.success) {
+  alert(rpcData.message);
+  return;
+}
 
       alert(`Successfully locked ${name} using internal balance!`);
 

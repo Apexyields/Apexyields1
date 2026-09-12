@@ -2181,6 +2181,7 @@ async function renderPackageButtons() {
     if (typeof countQualifiedReferrals === 'function') {
         totalActiveRefs = await countQualifiedReferrals(activeUserId);
     }
+    updateAffiliateCapUI(totalActiveRefs);
 
     // Fetch baseline values from user profile
     const { data: profile } = await supabaseClient
@@ -3455,6 +3456,30 @@ async function settleVaultPayout(vault) {
         }
     } catch (err) {
         console.error('Vault settlement error:', err);
+    }
+}
+        function updateAffiliateCapUI(activeRefs) {
+    const tierLabel = document.getElementById('userCurrentTierLabel');
+    const refBadge = document.getElementById('userReferralBadge');
+
+    let labelText = "Base Tier (30% Cap)";
+    let badgeColor = "text-indigo-400";
+
+    if (activeRefs >= 25) {
+        labelText = "Tier 2 Unlocked: 25+ Refs (50% Cap)";
+        badgeColor = "text-emerald-400";
+    } else if (activeRefs >= 10) {
+        labelText = "Tier 1 Unlocked: 10+ Refs (40% Cap)";
+        badgeColor = "text-amber-400";
+    }
+
+    if (tierLabel) {
+        tierLabel.innerText = labelText;
+        tierLabel.className = `font-bold ${badgeColor}`;
+    }
+
+    if (refBadge) {
+        refBadge.innerText = `${activeRefs} Active Ref${activeRefs === 1 ? '' : 's'}`;
     }
 }
 </script>

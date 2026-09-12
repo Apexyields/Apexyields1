@@ -1285,10 +1285,10 @@ async function loadUserProfile() {
         .select('*')
         .eq('referred_by', user.id);
 
-        if (refError) {
+         if (refError) {
         console.error("Error loading referrals:", refError.message);
         return;
-    } // <-- Added missing closing brace
+    }
 
     // 3.5 Fetch active user packages for live countdown timers
     const { data: userPackages } = await supabaseClient

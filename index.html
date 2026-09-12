@@ -1750,6 +1750,9 @@ if (typeof renderPackageButtons === 'function') {
         activeBtn.classList.remove('text-slate-400');
         activeBtn.classList.add('active-tab', 'text-blue-400', 'scale-105');
     }
+        if (tabName === 'referral' && typeof renderPackageButtons === 'function') {
+        renderPackageButtons();
+    }
 
     // 4. Trigger tab-specific data rendering
     if (tabName === 'referral') {
@@ -3459,27 +3462,30 @@ async function settleVaultPayout(vault) {
     }
 }
         function updateAffiliateCapUI(activeRefs) {
-    const tierLabel = document.getElementById('userCurrentTierLabel');
-    const refBadge = document.getElementById('userReferralBadge');
+    const currentCapDisplay = document.getElementById('currentCapDisplay');
+    const refTierBadge = document.getElementById('refTierBadge');
 
-    let labelText = "Base Tier (30% Cap)";
-    let badgeColor = "text-indigo-400";
+    let capPercent = "30";
+    let badgeText = "30% CAP (0)";
+    let badgeColorClass = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
 
     if (activeRefs >= 25) {
-        labelText = "Tier 2 Unlocked: 25+ Refs (50% Cap)";
-        badgeColor = "text-emerald-400";
+        capPercent = "50";
+        badgeText = "50% CAP UNLOCKED";
+        badgeColorClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
     } else if (activeRefs >= 10) {
-        labelText = "Tier 1 Unlocked: 10+ Refs (40% Cap)";
-        badgeColor = "text-amber-400";
+        capPercent = "40";
+        badgeText = "40% CAP UNLOCKED";
+        badgeColorClass = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
     }
 
-    if (tierLabel) {
-        tierLabel.innerText = labelText;
-        tierLabel.className = `font-bold ${badgeColor}`;
+    if (currentCapDisplay) {
+        currentCapDisplay.innerText = capPercent;
     }
 
-    if (refBadge) {
-        refBadge.innerText = `${activeRefs} Active Ref${activeRefs === 1 ? '' : 's'}`;
+    if (refTierBadge) {
+        refTierBadge.innerText = badgeText;
+        refTierBadge.className = `text-xs px-2.5 py-1 rounded ${badgeColorClass}`;
     }
 }
 </script>

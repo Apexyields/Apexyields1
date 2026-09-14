@@ -1439,13 +1439,7 @@ async function loadUserProfile() {
     };
 
     let systemData = JSON.parse(localStorage.getItem('apex_system_data')) || {
-        addresses: {
-            TRC20: "TGF9M6LZERPtkqr6bLpUAFrnJwrHs5n4tn",
-            ERC20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7",
-            SPL: "CrhVTDhKCkP2m2g568rJCYmJMGXE2ASpfJfrcCCffCjg",
-            BEP20: "0x3813Fc6c38AC3508cc4d6B60CcBE3Bd5450Fc7B7"
-        },
-        devEmail: "yieldsapex@gmail.com",
+        addresses: {},
         pendingDeposits: [],
         pendingPayouts: [],
         auditLogs: []
@@ -2881,23 +2875,16 @@ async function requestPayout() {
     }
 
     function saveAdminSettings() {
-        systemData.addresses.TRC20 = document.getElementById('adminTRC20Input').value.trim();
-        systemData.addresses.ERC20 = document.getElementById('adminERC20Input').value.trim();
-        systemData.addresses.SPL = document.getElementById('adminSPLInput').value.trim();
-        systemData.addresses.BEP20 = document.getElementById('adminBEP20Input').value.trim();
-        saveData();
-        alert('Receiving addresses updated successfully.');
-    }
+    alert('Payment processing is managed automatically via NowPayments webhooks.');
+}
 
-    function saveDevEmailSetting() {
-        systemData.devEmail = document.getElementById('adminDevEmailInput').value.trim();
-        saveData();
-        alert('Developer log email updated successfully.');
-    }
+function saveDevEmailSetting() {
+    alert('Email logging is handled via server-side API webhooks.');
+}
 
-    function triggerDevEmailLog() {
-        alert(`Audit log dispatch simulated to ${systemData.devEmail || 'developer email'}.`);
-    }
+function triggerDevEmailLog() {
+    alert('System events are logged directly in Supabase.');
+}
 
     function renderAuditLogs() {
         const tbody = document.getElementById('adminAuditLogTable');

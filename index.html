@@ -916,6 +916,49 @@
                 </div>
             </div>
         </div>
+    <!-- Login Onboarding Modal -->
+<div id="welcomeOverviewModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-200 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div class="text-center mb-5">
+            <h3 class="text-xl font-bold text-white flex items-center justify-center gap-2">
+                🚀 Platform Overview
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Quick summary of system rules & features</p>
+        </div>
+        
+        <div class="space-y-3 text-sm">
+            <!-- Referral System -->
+            <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                <span class="font-bold text-emerald-400 block mb-1">🎁 Referral Tiers</span>
+                <p class="text-xs text-slate-300">Earn automated commissions on user deposits based on direct referrals:</p>
+                <ul class="list-disc list-inside mt-1 text-[11px] text-slate-400 space-y-0.5">
+                    <li><strong class="text-slate-200">Base Tier (0–9 refs):</strong> 30% commission</li>
+                    <li><strong class="text-slate-200">Tier 1 (10–24 refs):</strong> 40% commission</li>
+                    <li><strong class="text-slate-200">Tier 2 (25+ refs):</strong> 50% commission</li>
+                </ul>
+            </div>
+
+            <!-- Vault Packages -->
+            <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                <span class="font-bold text-blue-400 block mb-1">📦 Vault Packages</span>
+                <p class="text-xs text-slate-300">Lock your account balance into daily yield vaults. Daily earnings automatically credit to your main balance upon package maturity.</p>
+            </div>
+
+            <!-- Deposits & Withdrawals -->
+            <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                <span class="font-bold text-amber-400 block mb-1">💳 Deposits & Payouts</span>
+                <ul class="list-disc list-inside text-xs text-slate-300 space-y-1">
+                    <li><strong>Deposits:</strong> Instant automated verification.</li>
+                    <li><strong>Withdrawals:</strong> Request payouts directly to your wallet via the Wallet tab.</li>
+                </ul>
+            </div>
+        </div>
+
+        <button onclick="closeWelcomeModal()" class="mt-5 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]">
+            Got It
+        </button>
+    </div>
+</div>
 </main>
 
     <script>
@@ -1151,6 +1194,7 @@
                 
                 loadUserProfile();
                 initDashboard();
+                checkAndShowWelcomeModal();
                 return;
             }
 
@@ -3491,6 +3535,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         await renderPackageButtons();
     }
 });
+        // Call this function right after successful login or session recovery
+function checkAndShowWelcomeModal() {
+    const hasSeenModal = sessionStorage.getItem('apex_seen_welcome_modal');
+    if (!hasSeenModal) {
+        const modal = document.getElementById('welcomeOverviewModal');
+        if (modal) modal.classList.remove('hidden');
+    }
+}
+
+// Dismiss modal and record session flag
+function closeWelcomeModal() {
+    sessionStorage.setItem('apex_seen_welcome_modal', 'true');
+    const modal = document.getElementById('welcomeOverviewModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// Clear session flag during logout so it triggers on next login
+function handleLogout() {
+    sessionStorage.removeItem('apex_seen_welcome_modal');
+    // ... existing Supabase auth sign-out logic ...
+}
 </script>
 </body>
 </html>

@@ -349,97 +349,46 @@
                 </div>
             </div>
             
-<!-- TAB: PAPER TRADING -->
-<div id="view-market" class="tab-view transition-all duration-200 ease-out hidden opacity-0 translate-y-2 space-y-4">
-    <!-- Header Badge & Portfolio Summary -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <div class="flex justify-between items-center">
-            <div>
-                <h3 class="text-base font-bold text-white flex items-center gap-2">
-                    📊 Paper Trading
-                </h3>
-                <p class="text-xs text-slate-400">Simulate crypto trades with zero financial risk.</p>
-            </div>
-            <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-full font-semibold">
-                DEMO MODE
-            </span>
-        </div>
+            <!-- TAB: MARKET VIEW -->
+            <div id="view-market" class="tab-view transition-all duration-200 ease-out hidden opacity-0 translate-y-2 space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-200">Crypto Market Trends</h3>
+                        <p class="text-xs text-slate-400">Share individual coin performance to earn progress. (Limit 5 daily shares)</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="shareCountBadge" class="text-xs bg-slate-800 border border-slate-700 text-amber-400 font-bold px-3 py-1.5 rounded-lg">
+                            0 / 5 Daily Shares
+                        </span>
+                        <button id="shareBtn" onclick="handleDailyShare()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all">
+                            🔗 Share Platform
+                        </button>
+                    </div>
+                </div>
 
-        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50">
-                <p class="text-[11px] text-slate-400">Paper USD Balance</p>
-                <p id="tradeUsdBalance" class="text-base font-bold text-emerald-400">$0.00</p>
-            </div>
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 text-right">
-                <p class="text-[11px] text-slate-400">BTC Holdings</p>
-                <p id="tradeBtcHolding" class="text-base font-bold text-amber-400">0.0000 BTC</p>
-            </div>
-        </div>
-    </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="text-slate-500 border-b border-slate-800 pb-2">
+                                <th class="p-2">Asset</th>
+                                <th class="p-2">Symbol</th>
+                                <th class="p-2 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketCoinList" class="divide-y divide-slate-800/50 text-slate-300">
+                        </tbody>
+                    </table>
+                </div>
 
-    <!-- Order Execution Box -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
-        <div class="flex justify-between items-center pb-2 border-b border-slate-800/80">
-            <div class="flex items-center gap-2">
-                <span class="text-lg">₿</span>
-                <span class="font-bold text-sm text-white">BTC / USD</span>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden" style="height: 450px;">
+                    <iframe src="https://s.tradingview.com/embed-widget/market-overview/?locale=en#%7B%22colorTheme%22%3A%22dark%22%2C%22dateRange%22%3A%221D%22%2C%22showChart%22%3Atrue%2C%22largeChartUrl%22%3A%22%22%2C%22isTransparent%22%3Atrue%2C%22showSymbolLogo%22%3Atrue%2C%22showFloatingTooltip%22%3Atrue%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%2C%22tabs%22%3A%5B%7B%22title%22%3A%22Crypto%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22BINANCE%3ABTCUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3AETHUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3ASOLUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3ABNBUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3AXRPUSDT%22%7D%5D%7D%5D%7D" 
+                            width="100%" 
+                            height="100%" 
+                            style="border:none;" 
+                            scrolling="no">
+                    </iframe>
+                </div>
             </div>
-            <div class="text-right">
-                <span class="text-[10px] text-slate-400 block">MARKET PRICE</span>
-                <span id="btcPriceDisplay" class="text-xs font-bold text-emerald-400">$65,000.00</span>
-            </div>
-        </div>
-
-        <div>
-            <label class="text-[11px] text-slate-400 mb-1 block">Trade Amount ($)</label>
-            <input type="number" id="tradeAmountInput" placeholder="e.g. 100" 
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
-            
-            <!-- Quick-Amount Percentage Buttons -->
-            <div class="grid grid-cols-3 gap-2 mt-2">
-                <button type="button" onclick="setTradePercent(25)" class="py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700/50 transition-all">25%</button>
-                <button type="button" onclick="setTradePercent(50)" class="py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700/50 transition-all">50%</button>
-                <button type="button" onclick="setTradePercent(100)" class="py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700/50 transition-all">MAX</button>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 pt-1">
-            <button type="button" onclick="executePaperTrade('BUY')" class="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs rounded-xl transition-all active:scale-[0.98]">
-                Buy BTC
-            </button>
-            <button type="button" onclick="executePaperTrade('SELL')" class="py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-all active:scale-[0.98]">
-                Sell BTC
-            </button>
-        </div>
-    </div>
-
-    <!-- Trade History Log Card -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg">
-        <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800/80">
-            <h4 class="text-xs font-bold text-slate-300">Order History</h4>
-            <button type="button" onclick="clearPaperTradeHistory()" class="text-[10px] text-slate-500 hover:text-rose-400">Clear Log</button>
-        </div>
-        <div id="paperTradeHistory" class="space-y-2 max-h-36 overflow-y-auto text-xs text-slate-400 pr-1">
-            <p class="text-slate-500 italic text-center py-2">No virtual trades executed yet.</p>
-        </div>
-    </div>
-    <!-- Live Market Chart -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 overflow-hidden" style="height: 350px;">
-        <iframe src="https://s.tradingview.com/embed-widget/market-overview/?locale=en#%7B%22colorTheme%22%3A%22dark%22%2C%22dateRange%22%3A%221D%22%2C%22showChart%22%3Atrue%2C%22largeChartUrl%22%3A%22%22%2C%22isTransparent%22%3Atrue%2C%22showSymbolLogo%22%3Atrue%2C%22showFloatingTooltip%22%3Atrue%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%2C%22tabs%22%3A%5B%7B%22title%22%3A%22Crypto%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22BINANCE%3ABTCUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3AETHUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3ASOLUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3ABNBUSDT%22%7D%2C%7B%22s%22%3A%22BINANCE%3AXRPUSDT%22%7D%5D%7D%5D%7D" 
-                width="100%" 
-                height="100%" 
-                style="border:none;" 
-                scrolling="no">
-        </iframe>
-    </div>
-
-    <!-- Invisible Legacy Compatibility Hooks (Prevents Login JS Null Crash) -->
-    <div class="hidden" style="display: none;">
-        <span id="shareCountBadge"></span>
-        <button id="shareBtn"></button>
-        <table><tbody id="marketCoinList"></tbody></table>
-    </div>
-</div>
 
             <!-- TAB 2: WALLET & PAYOUT -->
 <div id="view-wallet" class="tab-view transition-all duration-200 ease-out hidden opacity-0 translate-y-2 space-y-4">
@@ -728,9 +677,9 @@
             <span class="text-[10px] font-medium">Packages</span>
         </button>
         <button onclick="switchTab('market')" id="tab-market" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
-    <span class="text-base transition-transform duration-200">📈</span>
-    <span class="text-[10px] font-medium">Paper Trade</span>
-</button>
+            <span class="text-base transition-transform duration-200">📈</span>
+            <span class="text-[10px] font-medium">Market</span>
+        </button>
         <button onclick="switchTab('wallet')" id="tab-wallet" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
             <span class="text-base transition-transform duration-200">💳</span>
             <span class="text-[10px] font-medium leading-none">Wallet</span>
@@ -3606,200 +3555,6 @@ function closeWelcomeModal() {
 function handleLogout() {
     sessionStorage.removeItem('apex_seen_welcome_modal');
     // ... existing Supabase auth sign-out logic ...
-}
-        let currentBtcPrice = 65000.00; // Can be linked to CoinGecko API later
-
-function updateTradingUI() {
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
-
-    document.getElementById('tradeUsdBalance').innerText = `$${userBalance.toFixed(2)}`;
-    document.getElementById('tradeBtcHolding').innerText = `${btcHoldings.toFixed(4)} BTC`;
-    document.getElementById('btcPriceDisplay').innerText = `$${currentBtcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-}
-
-function executePaperTrade(type) {
-    const amountInput = document.getElementById('tradeAmountInput');
-    const usdAmount = parseFloat(amountInput.value);
-
-    if (!usdAmount || usdAmount <= 0) {
-        alert('Please enter a valid amount.');
-        return;
-    }
-
-    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    let btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
-    const btcUnits = usdAmount / currentBtcPrice;
-
-    if (type === 'BUY') {
-        if (usdAmount > userBalance) {
-            alert('Insufficient USD balance.');
-            return;
-        }
-        userBalance -= usdAmount;
-        btcHoldings += btcUnits;
-        alert(`Bought ${btcUnits.toFixed(4)} BTC!`);
-    } else if (type === 'SELL') {
-        if (btcUnits > btcHoldings) {
-            alert('Insufficient BTC holdings.');
-            return;
-        }
-        userBalance += usdAmount;
-        btcHoldings -= btcUnits;
-        alert(`Sold ${btcUnits.toFixed(4)} BTC!`);
-    }
-
-    localStorage.setItem('user_balance', userBalance.toFixed(2));
-    localStorage.setItem('user_btc', btcHoldings.toFixed(6));
-
-    amountInput.value = '';
-    updateTradingUI();
-}
-        // Paper Trading State
-let currentBtcPrice = 65000.00;
-
-// Render Paper Trading UI & History Log
-function updateTradingUI() {
-    // Default starting demo balance ($1,000) if none exists
-    if (localStorage.getItem('user_balance') === null) {
-        localStorage.setItem('user_balance', '1000.00');
-    }
-
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
-
-    const usdElem = document.getElementById('tradeUsdBalance');
-    const btcElem = document.getElementById('tradeBtcHolding');
-    const priceElem = document.getElementById('btcPriceDisplay');
-
-    if (usdElem) usdElem.innerText = `$${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (btcElem) btcElem.innerText = `${btcHoldings.toFixed(4)} BTC`;
-    if (priceElem) priceElem.innerText = `$${currentBtcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-
-    renderTradeHistory();
-}
-
-// Quick-Amount Percentage Handler
-function setTradePercent(percent) {
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
-    const inputElem = document.getElementById('tradeAmountInput');
-    if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
-}
-// ==========================================
-// PAPER TRADING SYSTEM
-// ==========================================
-let currentBtcPrice = 65000.00;
-
-function updateTradingUI() {
-    if (localStorage.getItem('user_balance') === null) {
-        localStorage.setItem('user_balance', '1000.00');
-    }
-
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
-
-    const usdElem = document.getElementById('tradeUsdBalance');
-    const btcElem = document.getElementById('tradeBtcHolding');
-    const priceElem = document.getElementById('btcPriceDisplay');
-
-    if (usdElem) usdElem.innerText = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (btcElem) btcElem.innerText = btcHoldings.toFixed(4) + ' BTC';
-    if (priceElem) priceElem.innerText = '$' + currentBtcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 });
-
-    renderTradeHistory();
-}
-
-function setTradePercent(percent) {
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
-    const inputElem = document.getElementById('tradeAmountInput');
-    if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
-}
-
-function executePaperTrade(type) {
-    const amountInput = document.getElementById('tradeAmountInput');
-    if (!amountInput) return;
-    const usdAmount = parseFloat(amountInput.value);
-
-    if (!usdAmount || usdAmount <= 0) {
-        alert('Please enter a valid trade amount.');
-        return;
-    }
-
-    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    let btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
-    const btcUnits = usdAmount / currentBtcPrice;
-
-    if (type === 'BUY') {
-        if (usdAmount > userBalance) {
-            alert('Insufficient USD balance.');
-            return;
-        }
-        userBalance -= usdAmount;
-        btcHoldings += btcUnits;
-        saveTradeLog('BUY', usdAmount, btcUnits);
-    } else if (type === 'SELL') {
-        if (btcUnits > btcHoldings) {
-            alert('Insufficient BTC holdings for this order.');
-            return;
-        }
-        userBalance += usdAmount;
-        btcHoldings -= btcUnits;
-        saveTradeLog('SELL', usdAmount, btcUnits);
-    }
-
-    localStorage.setItem('user_balance', userBalance.toFixed(2));
-    localStorage.setItem('user_btc', btcHoldings.toFixed(6));
-
-    amountInput.value = '';
-    updateTradingUI();
-}
-
-function saveTradeLog(type, usdAmount, btcUnits) {
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
-    const newEntry = {
-        type: type,
-        usd: usdAmount.toFixed(2),
-        btc: btcUnits.toFixed(4),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    logs.unshift(newEntry);
-    localStorage.setItem('paper_trade_history', JSON.stringify(logs.slice(0, 10)));
-}
-
-function renderTradeHistory() {
-    const historyContainer = document.getElementById('paperTradeHistory');
-    if (!historyContainer) return;
-
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
-
-    if (logs.length === 0) {
-        historyContainer.innerHTML = '<p class="text-slate-500 italic text-center py-2">No virtual trades executed yet.</p>';
-        return;
-    }
-
-    let html = '';
-    for (let i = 0; i < logs.length; i++) {
-        const item = logs[i];
-        const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
-        html += '<div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800/40">' +
-            '<div class="flex items-center gap-2">' +
-            '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + badgeClass + '">' + item.type + '</span>' +
-            '<span class="text-white font-medium">$' + item.usd + '</span>' +
-            '</div>' +
-            '<div class="text-right">' +
-            '<span class="text-slate-300 block font-mono">' + item.btc + ' BTC</span>' +
-            '<span class="text-[9px] text-slate-500">' + item.time + '</span>' +
-            '</div>' +
-            '</div>';
-    }
-    historyContainer.innerHTML = html;
-}
-
-function clearPaperTradeHistory() {
-    localStorage.removeItem('paper_trade_history');
-    renderTradeHistory();
 }
 </script>
 </body>

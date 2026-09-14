@@ -3679,10 +3679,40 @@ function setTradePercent(percent) {
     const inputElem = document.getElementById('tradeAmountInput');
     if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
 }
+// ==========================================
+// PAPER TRADING SYSTEM
+// ==========================================
+let currentBtcPrice = 65000.00;
 
-// Execute Paper Trade (Buy/Sell)
+function updateTradingUI() {
+    if (localStorage.getItem('user_balance') === null) {
+        localStorage.setItem('user_balance', '1000.00');
+    }
+
+    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+    const btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
+
+    const usdElem = document.getElementById('tradeUsdBalance');
+    const btcElem = document.getElementById('tradeBtcHolding');
+    const priceElem = document.getElementById('btcPriceDisplay');
+
+    if (usdElem) usdElem.innerText = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (btcElem) btcElem.innerText = btcHoldings.toFixed(4) + ' BTC';
+    if (priceElem) priceElem.innerText = '$' + currentBtcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+    renderTradeHistory();
+}
+
+function setTradePercent(percent) {
+    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+    const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
+    const inputElem = document.getElementById('tradeAmountInput');
+    if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
+}
+
 function executePaperTrade(type) {
     const amountInput = document.getElementById('tradeAmountInput');
+    if (!amountInput) return;
     const usdAmount = parseFloat(amountInput.value);
 
     if (!usdAmount || usdAmount <= 0) {
@@ -3719,7 +3749,6 @@ function executePaperTrade(type) {
     updateTradingUI();
 }
 
-// Log Trade to localStorage
 function saveTradeLog(type, usdAmount, btcUnits) {
     const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
     const newEntry = {
@@ -3728,11 +3757,10 @@ function saveTradeLog(type, usdAmount, btcUnits) {
         btc: btcUnits.toFixed(4),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    logs.unshift(newEntry); // Add newest to top
-    localStorage.setItem('paper_trade_history', JSON.stringify(logs.slice(0, 10))); // Keep last 10
+    logs.unshift(newEntry);
+    localStorage.setItem('paper_trade_history', JSON.stringify(logs.slice(0, 10)));
 }
 
-// Render History Items
 function renderTradeHistory() {
     const historyContainer = document.getElementById('paperTradeHistory');
     if (!historyContainer) return;
@@ -3740,27 +3768,28 @@ function renderTradeHistory() {
     const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
 
     if (logs.length === 0) {
-        historyContainer.innerHTML = `<p class="text-slate-500 italic text-center py-2">No virtual trades executed yet.</p>`;
+        historyContainer.innerHTML = '<p class="text-slate-500 italic text-center py-2">No virtual trades executed yet.</p>';
         return;
     }
 
-    historyContainer.innerHTML = logs.map(item => `
-        <div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800/40">
-            <div class="flex items-center gap-2">
-                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
-                    ${item.type}
-                </span>
-                <span class="text-white font-medium">$${item.usd}</span>
-            </div>
-            <div class="text-right">
-                <span class="text-slate-300 block font-mono">${item.btc} BTC</span>
-                <span class="text-[9px] text-slate-500">${item.time}</span>
-            </div>
-        </div>
-    `).join('');
+    let html = '';
+    for (let i = 0; i < logs.length; i++) {
+        const item = logs[i];
+        const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        html += '<div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800/40">' +
+            '<div class="flex items-center gap-2">' +
+            '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + badgeClass + '">' + item.type + '</span>' +
+            '<span class="text-white font-medium">$' + item.usd + '</span>' +
+            '</div>' +
+            '<div class="text-right">' +
+            '<span class="text-slate-300 block font-mono">' + item.btc + ' BTC</span>' +
+            '<span class="text-[9px] text-slate-500">' + item.time + '</span>' +
+            '</div>' +
+            '</div>';
+    }
+    historyContainer.innerHTML = html;
 }
 
-// Clear History Log
 function clearPaperTradeHistory() {
     localStorage.removeItem('paper_trade_history');
     renderTradeHistory();

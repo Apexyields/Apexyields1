@@ -4090,40 +4090,42 @@ function setTradePercent(percent) {
     }
 }
 
-function saveTradeLog(type, usdAmount, units, symbol = 'BTC') {
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
-    const newEntry = {
-        type: type,
-        usd: usdAmount.toFixed(2),
-        units: units.toFixed(cryptoMap[symbol] ? cryptoMap[symbol].decimals : 4),
-        symbol: symbol,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    logs.unshift(newEntry);
-    localStorage.setItem('paper_trade_history', JSON.stringify(logs.slice(0, 20)));
-}
-
 function clearPaperTradeHistory() {
     localStorage.removeItem('paper_trade_history');
     renderTradeHistory();
 }
 
-function cashOutPaperTrading() {
-    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+async function cashOutPaperTrading() {
+    const db = getDbClient();
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+    
     let totalCashedOutUsd = 0;
 
-    for (const symbol in cryptoMap) {
-        const key = cryptoMap[symbol].storageKey;
-        const costKey = cryptoMap[symbol].costKey;
-        const holding = parseFloat(localStorage.getItem(key) || '0.0000');
+    // Fetch active positions directly from Supabase
+    const { data: positions } = await db.from('paper_positions').select('*').eq('user_id', userId);
 
-        if (holding > 0) {
-            const usdVal = holding * (cryptoPrices[symbol] || 0);
-            totalCashedOutUsd += usdVal;
-            saveTradeLog('SELL', usdVal, holding, symbol);
-            
-            localStorage.setItem(key, '0.000000');
-            localStorage.setItem(costKey, '0.00');
+    if (positions && positions.length > 0) {
+        for (const pos of positions) {
+            const holding = parseFloat(pos.amount);
+            const symbol = pos.symbol;
+
+            if (holding > 0) {
+                const currentPrice = cryptoPrices[symbol] || 0;
+                const usdVal = holding * currentPrice;
+                totalCashedOutUsd += usdVal;
+
+                // Line 4123: Wait for Supabase trade log insert to finish
+                await saveTradeLog('SELL', usdVal, holding, symbol);
+
+                // Zero out position in database
+                await db.from('paper_positions').upsert({
+                    user_id: userId,
+                    symbol: symbol,
+                    amount: 0,
+                    cost_basis: 0,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,symbol' });
+            }
         }
     }
 
@@ -4132,11 +4134,17 @@ function cashOutPaperTrading() {
         return;
     }
 
-    userBalance += totalCashedOutUsd;
-    localStorage.setItem('user_balance', userBalance.toFixed(2));
+    // Add cashed out funds back to paper_balance in profiles
+    const { data: profile } = await db.from('profiles').select('paper_balance').eq('id', userId).single();
+    const currentBal = parseFloat(profile?.paper_balance || 0);
+    const newBal = currentBal + totalCashedOutUsd;
 
-    alert(`Cashed out all crypto holdings for $${totalCashedOutUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD!`);
-    updateTradingUI();
+    await db.from('profiles').update({ paper_balance: newBal }).eq('id', userId);
+
+    alert(`Cashed out all crypto holdings for $${totalCashedOutUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+    
+    if (typeof renderTradeHistory === 'function') await renderTradeHistory();
+    if (typeof updateTradingUI === 'function') updateTradingUI();
 }
 
 function resetPaperBalance() {

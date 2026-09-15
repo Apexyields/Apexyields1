@@ -57,7 +57,7 @@
                 <span id="announcementBadge" class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">
                     Official Announcement
                 </span>
-                <h3 id="announcementTitle" class="text-lg font-bold text-slate-100 pt-2">Welcome to Apex Yields</h3>
+                <h3 id="announcementTitle" class="text-lg font-bold text-slate-100 pt-2">Welcome to ApexLedger</h3>
             </div>
 
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-300 space-y-2 leading-relaxed text-left max-h-60 overflow-y-auto">
@@ -1529,7 +1529,7 @@ async function loadUserProfile() {
     }
 
     // ANNOUNCEMENT POPUP CONTROLLERS
-    function openAnnouncementModal(title = "Welcome to Apex Yields", message = null) {
+    function openAnnouncementModal(title = "Welcome to ApexLedger", message = null) {
         if (title) document.getElementById('announcementTitle').innerText = title;
         if (message) document.getElementById('announcementMessage').innerText = message;
         document.getElementById('announcementModal').classList.remove('hidden');
@@ -2466,7 +2466,7 @@ async function renderReferralHub() {
     const qrContainer = document.getElementById("qrcode");
     if (qrContainer) {
         const baseUrl = window.location.origin.includes('github.io') 
-            ? `${window.location.origin}/Apexyields1` 
+            ? `${window.location.origin}/ApexLedger` 
             : window.location.origin;
 
         const inviteLink = `${baseUrl}/?ref=${refCode}`;
@@ -2612,7 +2612,7 @@ if (rpcData && !rpcData.success) {
     function copyRefCode() {
         const code = document.getElementById('refCodeDisplay').innerText;
         const baseUrl = window.location.origin.includes('github.io') 
-            ? `${window.location.origin}/Apexyields1` 
+             ? `${window.location.origin}/ApexLedger`
             : window.location.origin;
         const link = `${baseUrl}/?ref=${code}`;
         navigator.clipboard.writeText(link).then(() => {

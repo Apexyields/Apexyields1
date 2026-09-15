@@ -3659,20 +3659,28 @@ let cryptoPrices = { BTC: 65000.00, ETH: 3500.00, SOL: 150.00, XRP: 0.60, BNB: 5
 
 async function fetchLiveCryptoPrices() {
     try {
-        const ids = Object.values(cryptoMap).map(c => c.id).join(',');
-        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
-        if (!response.ok) throw new Error('API response error');
+        const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT"]');
+        if (!response.ok) throw new Error('Binance API response error');
         const data = await response.json();
 
-        for (const symbol in cryptoMap) {
-            const coinId = cryptoMap[symbol].id;
-            if (data && data[coinId] && data[coinId].usd) {
-                cryptoPrices[symbol] = data[coinId].usd;
+        const symbolLookup = {
+            'BTCUSDT': 'BTC',
+            'ETHUSDT': 'ETH',
+            'SOLUSDT': 'SOL',
+            'XRPUSDT': 'XRP',
+            'BNBUSDT': 'BNB'
+        };
+
+        data.forEach(item => {
+            const key = symbolLookup[item.symbol];
+            if (key && item.price) {
+                cryptoPrices[key] = parseFloat(item.price);
             }
-        }
+        });
+
         updateTradingUI();
     } catch (error) {
-        console.warn('CoinGecko fetch failed, using cached prices:', error);
+        console.warn('Live price fetch failed, using cached prices:', error);
     }
 }
 
@@ -3966,7 +3974,7 @@ function resetPaperBalance() {
 }
 
 fetchLiveCryptoPrices();
-setInterval(fetchLiveCryptoPrices, 30000);
+setInterval(fetchLiveCryptoPrices, 10000);
   
 </script>
 </body>

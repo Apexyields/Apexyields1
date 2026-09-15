@@ -3641,22 +3641,15 @@ function handleLogout() {
 let selectedAsset = 'BTC';
 
 const cryptoMap = {
-    'BTC': { id: 'bitcoin', storageKey: 'user_btc', decimals: 4 },
-    'ETH': { id: 'ethereum', storageKey: 'user_eth', decimals: 4 },
-    'SOL': { id: 'solana', storageKey: 'user_sol', decimals: 2 },
-    'XRP': { id: 'ripple', storageKey: 'user_xrp', decimals: 2 },
-    'BNB': { id: 'binancecoin', storageKey: 'user_bnb', decimals: 4 }
+    'BTC': { id: 'bitcoin', storageKey: 'user_btc', costKey: 'user_btc_cost', decimals: 4 },
+    'ETH': { id: 'ethereum', storageKey: 'user_eth', costKey: 'user_eth_cost', decimals: 4 },
+    'SOL': { id: 'solana', storageKey: 'user_sol', costKey: 'user_sol_cost', decimals: 2 },
+    'XRP': { id: 'ripple', storageKey: 'user_xrp', costKey: 'user_xrp_cost', decimals: 2 },
+    'BNB': { id: 'binancecoin', storageKey: 'user_bnb', costKey: 'user_bnb_cost', decimals: 4 }
 };
 
-let cryptoPrices = {
-    BTC: 65000.00,
-    ETH: 3500.00,
-    SOL: 150.00,
-    XRP: 0.60,
-    BNB: 580.00
-};
+let cryptoPrices = { BTC: 65000.00, ETH: 3500.00, SOL: 150.00, XRP: 0.60, BNB: 580.00 };
 
-// Fetch real-time prices for BTC, ETH, SOL, XRP, and BNB
 async function fetchLiveCryptoPrices() {
     try {
         const ids = Object.values(cryptoMap).map(c => c.id).join(',');
@@ -3676,23 +3669,18 @@ async function fetchLiveCryptoPrices() {
     }
 }
 
-// Switch active coin context and update chart widget
 function selectAsset(symbol) {
     if (!cryptoMap[symbol]) return;
     selectedAsset = symbol;
 
     document.querySelectorAll('.asset-select-btn').forEach(btn => {
-        if (btn.dataset.symbol === symbol) {
-            btn.className = "asset-select-btn px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition";
-        } else {
-            btn.className = "asset-select-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition";
-        }
+        btn.className = (btn.dataset.symbol === symbol)
+            ? "asset-select-btn px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition"
+            : "asset-select-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition";
     });
 
     const chartWidget = document.querySelector('gecko-coin-price-chart-widget');
-    if (chartWidget) {
-        chartWidget.setAttribute('coin-id', cryptoMap[symbol].id);
-    }
+    if (chartWidget) chartWidget.setAttribute('coin-id', cryptoMap[symbol].id);
 
     updateTradingUI();
 }
@@ -3704,20 +3692,28 @@ function updateTradingUI() {
     const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
     const initialCapital = parseFloat(localStorage.getItem('paper_initial_capital') || '1000.00');
 
-    // Aggregate portfolio net worth across all 5 assets
     let totalCryptoValue = 0;
     for (const symbol in cryptoMap) {
         const holding = parseFloat(localStorage.getItem(cryptoMap[symbol].storageKey) || '0.0000');
         totalCryptoValue += holding * (cryptoPrices[symbol] || 0);
     }
 
+    // Global Portfolio PnL
     const totalPortfolio = userBalance + totalCryptoValue;
-    const pnl = totalPortfolio - initialCapital;
-    const pnlPercent = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0;
+    const globalPnl = totalPortfolio - initialCapital;
+    const globalPnlPercent = initialCapital > 0 ? (globalPnl / initialCapital) * 100 : 0;
 
+    // Active Asset Specific Calculations
     const activePrice = cryptoPrices[selectedAsset] || 0;
     const activeHolding = parseFloat(localStorage.getItem(cryptoMap[selectedAsset].storageKey) || '0.0000');
+    const activeCost = parseFloat(localStorage.getItem(cryptoMap[selectedAsset].costKey) || '0.00');
+    const activeMarketValue = activeHolding * activePrice;
+    
+    // Asset-specific PnL (Isolated per coin)
+    const assetPnl = activeMarketValue - activeCost;
+    const assetPnlPercent = activeCost > 0 ? (assetPnl / activeCost) * 100 : 0;
 
+    // Update Global Headers
     const usdElem = document.getElementById('tradeUsdBalance');
     const btcElem = document.getElementById('tradeBtcHolding');
     const priceElem = document.getElementById('btcPriceDisplay');
@@ -3726,28 +3722,28 @@ function updateTradingUI() {
     const pnlElem = document.getElementById('tradePnlBadge');
 
     if (usdElem) usdElem.innerText = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (btcElem) btcElem.innerText = `${activeHolding.toFixed(cryptoMap[selectedAsset].decimals)} ${selectedAsset}`;
     if (priceElem) priceElem.innerText = '$' + activePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (labelElem) labelElem.innerText = `${selectedAsset} / USD`;
     if (totalElem) totalElem.innerText = '$' + totalPortfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    // Active Asset Holding & Isolated PnL Badge Display
+    if (btcElem) {
+        const sign = assetPnl >= 0 ? '+' : '';
+        const pnlStr = activeCost > 0 ? ` (${sign}$${assetPnl.toFixed(2)})` : '';
+        btcElem.innerText = `${activeHolding.toFixed(cryptoMap[selectedAsset].decimals)} ${selectedAsset}${pnlStr}`;
+    }
+
+    // Global PnL Badge Update
     if (pnlElem) {
-        const isPositive = pnl >= 0;
+        const isPositive = globalPnl >= 0;
         const sign = isPositive ? '+' : '';
-        pnlElem.innerText = `${sign}$${pnl.toFixed(2)} (${sign}${pnlPercent.toFixed(2)}%)`;
+        pnlElem.innerText = `${sign}$${globalPnl.toFixed(2)} (${sign}${globalPnlPercent.toFixed(2)}%)`;
         pnlElem.className = isPositive 
             ? 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
             : 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20';
     }
 
     renderTradeHistory();
-}
-
-function setTradePercent(percent) {
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
-    const inputElem = document.getElementById('tradeAmountInput');
-    if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
 }
 
 function executePaperTrade(type) {
@@ -3762,7 +3758,11 @@ function executePaperTrade(type) {
 
     let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
     const activeKey = cryptoMap[selectedAsset].storageKey;
+    const activeCostKey = cryptoMap[selectedAsset].costKey;
+
     let currentHoldings = parseFloat(localStorage.getItem(activeKey) || '0.0000');
+    let currentCost = parseFloat(localStorage.getItem(activeCostKey) || '0.00');
+    
     const activePrice = cryptoPrices[selectedAsset];
     const units = usdAmount / activePrice;
 
@@ -3773,12 +3773,18 @@ function executePaperTrade(type) {
         }
         userBalance -= usdAmount;
         currentHoldings += units;
+        currentCost += usdAmount; // Increase asset cost basis
         saveTradeLog('BUY', usdAmount, units, selectedAsset);
     } else if (type === 'SELL') {
         if (units > currentHoldings) {
             alert(`Insufficient ${selectedAsset} holdings for this order.`);
             return;
         }
+        
+        // Proportionately decrease cost basis
+        const portionSold = units / currentHoldings;
+        currentCost -= (currentCost * portionSold);
+        
         userBalance += usdAmount;
         currentHoldings -= units;
         saveTradeLog('SELL', usdAmount, units, selectedAsset);
@@ -3786,9 +3792,48 @@ function executePaperTrade(type) {
 
     localStorage.setItem('user_balance', userBalance.toFixed(2));
     localStorage.setItem(activeKey, currentHoldings.toFixed(6));
+    localStorage.setItem(activeCostKey, Math.max(0, currentCost).toFixed(2));
 
     amountInput.value = '';
     updateTradingUI();
+}
+
+function cashOutPaperTrading() {
+    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+    let totalCashedOutUsd = 0;
+
+    for (const symbol in cryptoMap) {
+        const key = cryptoMap[symbol].storageKey;
+        const costKey = cryptoMap[symbol].costKey;
+        const holding = parseFloat(localStorage.getItem(key) || '0.0000');
+
+        if (holding > 0) {
+            const usdVal = holding * (cryptoPrices[symbol] || 0);
+            totalCashedOutUsd += usdVal;
+            saveTradeLog('SELL', usdVal, holding, symbol);
+            
+            localStorage.setItem(key, '0.000000');
+            localStorage.setItem(costKey, '0.00');
+        }
+    }
+
+    if (totalCashedOutUsd <= 0) {
+        alert('No crypto holdings to cash out.');
+        return;
+    }
+
+    userBalance += totalCashedOutUsd;
+    localStorage.setItem('user_balance', userBalance.toFixed(2));
+
+    alert(`Cashed out all crypto holdings for $${totalCashedOutUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD!`);
+    updateTradingUI();
+}
+
+function setTradePercent(percent) {
+    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+    const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
+    const inputElem = document.getElementById('tradeAmountInput');
+    if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
 }
 
 function saveTradeLog(type, usdAmount, units, symbol = 'BTC') {
@@ -3840,33 +3885,6 @@ function clearPaperTradeHistory() {
     renderTradeHistory();
 }
 
-function cashOutPaperTrading() {
-    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    let totalCashedOutUsd = 0;
-
-    for (const symbol in cryptoMap) {
-        const key = cryptoMap[symbol].storageKey;
-        const holding = parseFloat(localStorage.getItem(key) || '0.0000');
-        if (holding > 0) {
-            const usdVal = holding * (cryptoPrices[symbol] || 0);
-            totalCashedOutUsd += usdVal;
-            saveTradeLog('SELL', usdVal, holding, symbol);
-            localStorage.setItem(key, '0.000000');
-        }
-    }
-
-    if (totalCashedOutUsd <= 0) {
-        alert('No crypto holdings to cash out.');
-        return;
-    }
-
-    userBalance += totalCashedOutUsd;
-    localStorage.setItem('user_balance', userBalance.toFixed(2));
-
-    alert(`Cashed out all crypto holdings for $${totalCashedOutUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD!`);
-    updateTradingUI();
-}
-
 function resetPaperBalance() {
     const currentVal = localStorage.getItem('user_balance') || '1000.00';
     const input = prompt('Enter your desired Demo USD balance:', currentVal);
@@ -3875,6 +3893,10 @@ function resetPaperBalance() {
         if (!isNaN(parsed) && parsed >= 0) {
             localStorage.setItem('user_balance', parsed.toFixed(2));
             localStorage.setItem('paper_initial_capital', parsed.toFixed(2));
+            // Reset cost bases
+            for (const symbol in cryptoMap) {
+                localStorage.setItem(cryptoMap[symbol].costKey, '0.00');
+            }
             updateTradingUI();
         } else {
             alert('Please enter a valid numeric balance.');
@@ -3882,7 +3904,6 @@ function resetPaperBalance() {
     }
 }
 
-// Initial Fetch and 30s Polling
 fetchLiveCryptoPrices();
 setInterval(fetchLiveCryptoPrices, 30000);
 </script>

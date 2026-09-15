@@ -139,7 +139,7 @@
         </header>
 
             <!-- TAB 1: PACKAGES -->
-            <div id="view-packages" class="tab-view transition-all duration-200 ease-out space-y-4">
+            <div id="view-packages" class="tab-view hidden transition-all duration-200 ease-out space-y-4">
                 <div class="bg-gradient-to-r from-blue-900/40 to-slate-900 border border-blue-500/20 rounded-2xl p-4 flex justify-between items-center">
                     <div>
                         <span class="text-xs text-blue-300 font-semibold uppercase tracking-wider">Active Balance</span>
@@ -350,7 +350,7 @@
             </div>
             
 <!-- TAB: MARKET & PAPER TRADING -->
-<div id="view-market" class="tab-view transition-all duration-200 ease-out hidden opacity-0 translate-y-2 space-y-4">
+<div id="view-market" class="tab-view transition-all duration-200 ease-out opacity-0 translate-y-2 space-y-4">
 
     <!-- Paper Trading Portfolio Overview -->
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
@@ -750,13 +750,13 @@
 
         <!-- PERSISTENT BOTTOM NAVIGATION -->
     <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-slate-900/90 border-t border-slate-800 backdrop-blur-md z-40 flex justify-around items-center py-2 px-1 text-slate-400">
-        <button onclick="switchTab('packages')" id="tab-packages" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400 active-tab">
-            <span class="text-base transition-transform duration-200">📦</span>
-            <span class="text-[10px] font-medium">Packages</span>
-        </button>
-        <button onclick="switchTab('market')" id="tab-market" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
+            <button onclick="switchTab('market')" id="tab-market" class="flex-1 text-center py-2">
             <span class="text-base transition-transform duration-200">📈</span>
             <span class="text-[10px] font-medium">Market</span>
+        </button>
+        <button onclick="switchTab('packages')" id="tab-packages" class="flex-1 text-center py-2">
+            <span class="text-base transition-transform duration-200">📦</span>
+            <span class="text-[10px] font-medium">Packages</span>
         </button>
         <button onclick="switchTab('wallet')" id="tab-wallet" class="flex-1 text-center py-1 flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 text-slate-400">
             <span class="text-base transition-transform duration-200">💳</span>
@@ -2215,13 +2215,16 @@ if (tierLabel) tierLabel.innerText = tierInfo.tierLabel;
 const refBadge = document.getElementById('userReferralBadge');
 if (refBadge) refBadge.innerText = `${qualifiedRefs} Active Refs (${tierInfo.capRate}% Cap)`;
 
-    renderDynamicPackageCards(qualifiedRefs);
+        renderDynamicPackageCards(qualifiedRefs);
     renderPackageButtons();
     renderUserActiveSubscriptions();
     renderReferralHub();
     renderDepositHistory();
     renderPayoutHistory();
     updateUniversalPackageCounts();
+
+    // Auto-switch to Market view on dashboard load
+    switchTab('market');
 }
 
     function renderDynamicPackageCards(referralCount) {

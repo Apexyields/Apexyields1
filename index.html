@@ -3855,10 +3855,9 @@ function selectAsset(symbol) {
         }
 
         // 5. Update Position List
-        if (typeof renderActivePositions === 'function') {
-            renderActivePositions(positions);
+        if (typeof renderTradeHistory === 'function') {
+    await renderTradeHistory();
         }
-
     } catch (err) {
         console.error("UI Update Error:", err);
     }
@@ -4025,40 +4024,43 @@ async function executePaperTrade(type) {
 
 async function renderTradeHistory() {
     const historyContainer = document.getElementById('paperTradeHistory');
-    if (!historyContainer) return;
+    const activePositionsElem = document.getElementById('paperHoldingsList');
+    if (!historyContainer && !activePositionsElem) return;
+
+    const db = window.supabaseClient || window.supabase;
+    if (!db || typeof db.from !== 'function') return;
 
     const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-    // 1. Fetch Paper Balance & Active Positions parallelly
+    // 1. Fetch Paper Balance, Active Positions, and Trade Logs
     const [profileRes, positionsRes, tradesRes] = await Promise.all([
-        supabase.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
-        supabase.from('paper_positions').select('*').eq('user_id', userId),
-        supabase.from('paper_trades').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
+        db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+        db.from('paper_positions').select('*').eq('user_id', userId),
+        db.from('paper_trades').select('*').eq('user_id', userId).order('created_at', { ascending: false })
     ]);
 
-    const marketBalance = parseFloat(profileRes.data?.paper_balance || 10000.00);
     const positions = positionsRes.data || [];
     const logs = tradesRes.data || [];
 
-    let totalUnrealizedPnL = 0;
     let holdingsHtml = '';
     let hasHoldings = false;
 
     // 2. Compute LIVE position PnL dynamically using real-time price feeds
     for (const pos of positions) {
-        const holding = parseFloat(pos.amount);
-        const costBasis = parseFloat(pos.cost_basis);
+        const holding = parseFloat(pos.amount || 0);
+        const costBasis = parseFloat(pos.cost_basis || 0);
         const symbol = pos.symbol;
 
-        if (holding > 0) {
+        if (holding > 0.000001) {
             hasHoldings = true;
-            const currentPrice = cryptoPrices[symbol] || 0;
-            const entryPrice = costBasis / holding;
+            const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) 
+                ? parseFloat(cryptoPrices[symbol]) 
+                : 0;
+
+            const entryPrice = holding > 0 ? costBasis / holding : 0;
             const currentMktVal = holding * currentPrice;
             const indPnl = currentMktVal - costBasis;
             const pnlPct = costBasis > 0 ? (indPnl / costBasis) * 100 : 0;
-
-            totalUnrealizedPnL += indPnl;
 
             const isPos = indPnl >= 0;
             const pnlColorClass = isPos ? 'text-emerald-400' : 'text-rose-400';
@@ -4078,11 +4080,11 @@ async function renderTradeHistory() {
                     <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/60 text-[10px]">
                         <div>
                             <span class="text-slate-500 block">Avg Entry</span>
-                            <span class="text-slate-300 font-mono font-medium">$${entryPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span class="text-slate-300 font-mono font-medium">$${entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                         </div>
                         <div class="text-right">
                             <span class="text-slate-500 block">Current Value</span>
-                            <span class="text-slate-300 font-mono font-medium">$${currentMktVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span class="text-slate-300 font-mono font-medium">$${currentMktVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                         </div>
                     </div>
                 </div>
@@ -4090,39 +4092,40 @@ async function renderTradeHistory() {
         }
     }
 
-    const activePositionsElem = document.getElementById('paperHoldingsList');
     if (activePositionsElem) {
         activePositionsElem.innerHTML = hasHoldings 
             ? `<div class="max-h-48 overflow-y-auto pr-1 space-y-2">${holdingsHtml}</div>`
-            : '<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions open</p>';
+            : `<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions</p>`;
     }
 
-    // 3. Render Persistent Trade History Logs
-    let logsHtml = '';
-    if (logs.length === 0) {
-        logsHtml = '<p class="text-slate-500 italic text-center py-2 text-xs">No trade history</p>';
-    } else {
-        logsHtml += '<div class="max-h-36 overflow-y-auto pr-1 space-y-1.5">';
-        for (const item of logs) {
-            const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-            const formattedTime = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // 3. Render Trade History Logs
+    if (historyContainer) {
+        if (!logs || logs.length === 0) {
+            historyContainer.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-2">No trade history</p>`;
+            return;
+        }
+
+        let logsHtml = '';
+        logs.forEach(log => {
+            const isBuy = log.type === 'BUY';
+            const badgeClass = isBuy ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+            const timeStr = log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
             logsHtml += `
-                <div class="flex justify-between items-center text-xs bg-slate-950/40 p-2 rounded-lg border border-slate-800/50">
+                <div class="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg border border-slate-800/50 text-xs mb-1.5">
                     <div class="flex items-center gap-2">
-                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeClass}">${item.type}</span>
-                        <span class="text-white font-medium">$${item.usd_amount}</span>
-                        <span class="text-slate-400 text-[10px]">${item.units} ${item.symbol}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${log.type}</span>
+                        <span class="font-bold text-white">$${parseFloat(log.amount_usd || 0).toFixed(2)}</span>
+                        <span class="text-[10px] text-slate-400">${parseFloat(log.units || 0).toFixed(4)} ${log.symbol}</span>
                     </div>
-                    <span class="text-slate-500 text-[9px]">${formattedTime}</span>
+                    <span class="text-[10px] text-slate-500">${timeStr}</span>
                 </div>
             `;
-        }
-        logsHtml += '</div>';
+        });
+        historyContainer.innerHTML = `<div class="max-h-48 overflow-y-auto pr-1 space-y-1.5">${logsHtml}</div>`;
     }
-
-    historyContainer.innerHTML = logsHtml;
 }
+
 // Helper function to force liquidate all open positions
 function executeMarginLiquidation() {
     let totalCashedOutUsd = 0;

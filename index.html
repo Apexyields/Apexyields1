@@ -3787,7 +3787,7 @@ for (const symbol in cryptoMap) {
     renderTradeHistory();
 }
 
-function executePaperTrade(type) {
+async function executePaperTrade(type) {
     const amountInput = document.getElementById('paperTradeAmount');
     if (!amountInput) return;
 
@@ -3807,12 +3807,20 @@ function executePaperTrade(type) {
         return;
     }
 
-    // Read sandbox market balance independently
-    let marketBalance = parseFloat(localStorage.getItem('market_paper_balance'));
-    if (isNaN(marketBalance)) {
-        marketBalance = 10000.00;
-        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('paper_balance')
+        .eq('id', userId)
+        .single();
+
+    if (error || !profile) {
+        alert('Error fetching paper trading balance from Supabase.');
+        return;
     }
+
+    let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
 
     const storageKey = cryptoConfig.storageKey;
     const costKey = cryptoConfig.costKey;
@@ -3822,15 +3830,22 @@ function executePaperTrade(type) {
 
     if (type === 'BUY') {
         if (usdAmount > marketBalance) {
-            alert('Insufficient market paper balance for this trade!');
+            alert('Insufficient paper balance for this trade!');
             return;
         }
 
         const unitsBought = usdAmount / currentPrice;
-
-        // Modify only the isolated sandbox key
         marketBalance -= usdAmount;
-        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ paper_balance: marketBalance })
+            .eq('id', userId);
+
+        if (updateError) {
+            alert('Failed to update paper balance in Supabase.');
+            return;
+        }
 
         localStorage.setItem(storageKey, (currentHoldings + unitsBought).toFixed(6));
         localStorage.setItem(costKey, (currentCost + usdAmount).toFixed(2));
@@ -3849,7 +3864,16 @@ function executePaperTrade(type) {
         const costBasisReduction = (unitsSold / currentHoldings) * currentCost;
 
         marketBalance += usdAmount;
-        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ paper_balance: marketBalance })
+            .eq('id', userId);
+
+        if (updateError) {
+            alert('Failed to update paper balance in Supabase.');
+            return;
+        }
 
         localStorage.setItem(storageKey, Math.max(0, currentHoldings - unitsSold).toFixed(6));
         localStorage.setItem(costKey, Math.max(0, currentCost - costBasisReduction).toFixed(2));
@@ -3897,22 +3921,26 @@ function saveTradeLog(type, usd, units, symbol) {
     localStorage.setItem('paper_trade_history', JSON.stringify(logs));
 }
 
-function renderTradeHistory() {
+async function renderTradeHistory() {
     const historyContainer = document.getElementById('paperTradeHistory');
     if (!historyContainer) return;
 
-    // Use completely isolated sandbox cash balance (independent of Supabase user profile)
-    let marketBalance = parseFloat(localStorage.getItem('market_paper_balance'));
-    if (isNaN(marketBalance)) {
-        marketBalance = 10000.00; // Default sandbox starting balance
-        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
-    }
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('paper_balance')
+        .eq('id', userId)
+        .single();
+
+    if (error || !profile) return;
+
+    let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
     
     let totalUnrealizedPnL = 0;
     let holdingsHtml = '';
     let hasHoldings = false;
 
-    // 1. Calculate Active Positions, Entry Prices & PnL
     for (const symbol in cryptoMap) {
         const holding = parseFloat(localStorage.getItem(cryptoMap[symbol].storageKey)) || 0;
         const costBasis = parseFloat(localStorage.getItem(cryptoMap[symbol].costKey)) || 0;
@@ -3957,6 +3985,60 @@ function renderTradeHistory() {
         }
     }
 
+    const activePositionsElem = document.getElementById('paperHoldingsList');
+    if (activePositionsElem) {
+        activePositionsElem.innerHTML = hasHoldings 
+            ? `<div class="max-h-48 overflow-y-auto pr-1 space-y-2">${holdingsHtml}</div>`
+            : '<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions open</p>';
+    }
+
+    const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
+    let logsHtml = '';
+
+    if (logs.length === 0) {
+        logsHtml = '<p class="text-slate-500 italic text-center py-2 text-xs">No trade history</p>';
+    } else {
+        logsHtml += '<div class="max-h-36 overflow-y-auto pr-1 space-y-1.5">';
+        for (let i = 0; i < logs.length; i++) {
+            const item = logs[i];
+            const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+            const displaySymbol = item.symbol || 'BTC';
+            const displayUnits = item.units || item.btc || '0.0000';
+
+            logsHtml += `
+                <div class="flex justify-between items-center text-xs bg-slate-950/40 p-2 rounded-lg border border-slate-800/50">
+                    <div class="flex items-center gap-2">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeClass}">${item.type}</span>
+                        <span class="text-white font-medium">$${item.usd}</span>
+                        <span class="text-slate-400 text-[10px]">${displayUnits} ${displaySymbol}</span>
+                    </div>
+                    <span class="text-slate-500 text-[9px]">${item.time}</span>
+                </div>
+            `;
+        }
+        logsHtml += '</div>';
+    }
+
+    historyContainer.innerHTML = logsHtml;
+
+    const riskBadge = document.getElementById('liquidationRiskBadge');
+    
+    if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance) {
+        if (riskBadge) {
+            riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold border border-rose-500/40 animate-pulse";
+            riskBadge.innerText = "LIQUIDATING";
+        }
+        setTimeout(() => executeMarginLiquidation(), 300);
+    } else if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance * 0.7) {
+        if (riskBadge) {
+            riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40";
+            riskBadge.innerText = "HIGH RISK";
+        }
+    } else if (riskBadge) {
+        riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20";
+        riskBadge.innerText = "SAFE";
+    }
+}
     // 2. Render Active Positions
     const activePositionsElem = document.getElementById('paperHoldingsList');
     if (activePositionsElem) {

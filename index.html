@@ -391,9 +391,9 @@
                 </button>
             </div>
             <div class="bg-slate-950/40 rounded-xl p-2.5 border border-slate-800/50">
-                <span class="text-[10px] font-medium text-slate-400 block">BTC Holdings</span>
-                <span id="tradeBtcHolding" class="text-sm font-bold text-amber-400">0.0000 BTC</span>
-            </div>
+    <span id="tradeHoldingsLabel" class="text-[10px] font-medium text-slate-400 block">BTC Holdings</span>
+    <span id="tradeBtcHolding" class="text-sm font-bold text-amber-400">0.0000 BTC</span>
+</div>
         </div>
     </div>
 
@@ -3759,22 +3759,39 @@ function setTradeMode(mode) {
 }
 
 function selectAsset(symbol) {
-    if (!cryptoMap[symbol]) return;
-    selectedAsset = symbol;
+    if (!cryptoMap || !cryptoMap[symbol]) return;
 
+    // 1. Sync BOTH global tracking variables
+    selectedAsset = symbol;
+    window.currentCryptoSymbol = symbol;
+
+    // 2. Highlight active coin button tab
     document.querySelectorAll('.asset-select-btn').forEach(btn => {
-        btn.className = (btn.dataset.symbol === symbol)
-            ? "asset-select-btn px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition"
-            : "asset-select-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition";
+        const isActive = btn.dataset.symbol === symbol;
+        btn.className = `asset-select-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            isActive 
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/10' 
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+        }`;
     });
 
-    const chartWidget = document.querySelector('gecko-coin-price-chart-widget');
-    if (chartWidget) chartWidget.setAttribute('coin-id', cryptoMap[symbol].id);
+    // 3. Update the trading pair heading (e.g. "ETH / USD")
+    const pairLabel = document.getElementById('selectedAssetLabel');
+    if (pairLabel) pairLabel.innerText = `${symbol} / USD`;
 
-    setTradeMode(tradeMode); // Refresh input label for new asset
-    updateTradingUI();
+    // 4. Update top holdings label title (e.g. "ETH Holdings")
+    const holdingsLabel = document.getElementById('tradeHoldingsLabel');
+    if (holdingsLabel) holdingsLabel.innerText = `${symbol} Holdings`;
+
+    // 5. Update trade input labels
+    if (typeof setTradeMode === 'function' && typeof tradeMode !== 'undefined') {
+        setTradeMode(tradeMode);
+    }
+
+    // 6. Refresh live market feeds and recalculate UI state
+    if (typeof fetchLiveCryptoPrices === 'function') fetchLiveCryptoPrices();
+    if (typeof updateTradingUI === 'function') updateTradingUI();
 }
-
 
         async function updateTradingUI() {
     try {
@@ -3782,8 +3799,7 @@ function selectAsset(symbol) {
         if (!db || typeof db.from !== 'function') return;
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
-        const currentSymbol = window.currentCryptoSymbol || 'BTC';
-
+        const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
         // 1. Fetch live paper balance from Supabase
         const { data: profile } = await db
             .from('profiles')

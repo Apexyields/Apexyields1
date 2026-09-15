@@ -3673,29 +3673,67 @@ const cryptoMap = {
 let cryptoPrices = { BTC: 65000.00, ETH: 3500.00, SOL: 150.00, XRP: 0.60, BNB: 580.00 };
 
 async function fetchLiveCryptoPrices() {
+    let fetchedSuccessfully = false;
+
+    // 1. Try Binance API (fetching full list to avoid URL format errors)
     try {
-        const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT"]');
-        if (!response.ok) throw new Error('Binance API response error');
-        const data = await response.json();
+        const response = await fetch('https://api.binance.com/api/v3/ticker/price');
+        if (response.ok) {
+            const data = await response.json();
+            const symbolLookup = {
+                'BTCUSDT': 'BTC',
+                'ETHUSDT': 'ETH',
+                'SOLUSDT': 'SOL',
+                'XRPUSDT': 'XRP',
+                'BNBUSDT': 'BNB'
+            };
 
-        const symbolLookup = {
-            'BTCUSDT': 'BTC',
-            'ETHUSDT': 'ETH',
-            'SOLUSDT': 'SOL',
-            'XRPUSDT': 'XRP',
-            'BNBUSDT': 'BNB'
-        };
+            data.forEach(item => {
+                const key = symbolLookup[item.symbol];
+                if (key && item.price) {
+                    cryptoPrices[key] = parseFloat(item.price);
+                }
+            });
+            fetchedSuccessfully = true;
+        }
+    } catch (binanceErr) {
+        console.warn('Binance price fetch blocked, switching to Coinbase fallback...');
+    }
 
-        data.forEach(item => {
-            const key = symbolLookup[item.symbol];
-            if (key && item.price) {
-                cryptoPrices[key] = parseFloat(item.price);
+    // 2. Coinbase API Fallback (runs if Binance fails or gets CORS-blocked)
+    if (!fetchedSuccessfully) {
+        try {
+            const cbResponse = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD');
+            if (cbResponse.ok) {
+                const cbData = await cbResponse.json();
+                const rates = cbData?.data?.rates;
+
+                if (rates) {
+                    if (rates.BTC) cryptoPrices.BTC = 1 / parseFloat(rates.BTC);
+                    if (rates.ETH) cryptoPrices.ETH = 1 / parseFloat(rates.ETH);
+                    if (rates.SOL) cryptoPrices.SOL = 1 / parseFloat(rates.SOL);
+                    if (rates.XRP) cryptoPrices.XRP = 1 / parseFloat(rates.XRP);
+                    if (rates.BNB) cryptoPrices.BNB = 1 / parseFloat(rates.BNB);
+                    fetchedSuccessfully = true;
+                }
             }
-        });
+        } catch (cbErr) {
+            console.error('All live price feeds failed:', cbErr);
+        }
+    }
 
+    // 3. Update top panel market price label ($65,000.00 text)
+    const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
+    const livePrice = cryptoPrices[currentSymbol] || 0;
+
+    const btcPriceDisplay = document.getElementById('btcPriceDisplay');
+    if (btcPriceDisplay && livePrice > 0) {
+        btcPriceDisplay.innerText = `$${livePrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+
+    // 4. Trigger UI recalculation
+    if (typeof updateTradingUI === 'function') {
         await updateTradingUI();
-    } catch (error) {
-        console.warn('Live price fetch failed, using cached prices:', error);
     }
 }
 

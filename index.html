@@ -3793,10 +3793,11 @@ for (const symbol in cryptoMap) {
 
 // Helper to safely fetch whichever Supabase client instance exists
 function getDbClient() {
-    if (typeof supabaseClient !== 'undefined') return supabaseClient;
-    if (typeof supabase !== 'undefined') return supabase;
-    if (window.supabaseClient) return window.supabaseClient;
-    if (window.supabase) return window.supabase;
+    if (typeof supabaseClient !== 'undefined' && typeof supabaseClient.from === 'function') return supabaseClient;
+    if (typeof _supabase !== 'undefined' && typeof _supabase.from === 'function') return _supabase;
+    if (window.supabaseClient && typeof window.supabaseClient.from === 'function') return window.supabaseClient;
+    if (typeof supabase !== 'undefined' && typeof supabase.from === 'function') return supabase;
+    if (window.supabase && typeof window.supabase.from === 'function') return window.supabase;
     return null;
 }
 

@@ -3631,6 +3631,26 @@ function handleLogout() {
 // ==========================================
 let currentBtcPrice = 65000.00;
 
+// Fetch real-time BTC price from CoinGecko API
+async function fetchLiveBtcPrice() {
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        if (!response.ok) throw new Error('API response error');
+        const data = await response.json();
+
+        if (data && data.bitcoin && data.bitcoin.usd) {
+            currentBtcPrice = data.bitcoin.usd;
+            updateTradingUI();
+        }
+    } catch (error) {
+        console.warn('CoinGecko price fetch failed, using fallback/cached price:', error);
+    }
+}
+
+// Fetch price immediately on page load, then poll every 30 seconds
+fetchLiveBtcPrice();
+setInterval(fetchLiveBtcPrice, 30000);
+
 function updateTradingUI() {
     if (localStorage.getItem('user_balance') === null) {
         localStorage.setItem('user_balance', '1000.00');

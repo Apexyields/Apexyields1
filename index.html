@@ -3788,68 +3788,117 @@ for (const symbol in cryptoMap) {
 }
 
 function executePaperTrade(type) {
-    const amountInput = document.getElementById('tradeAmountInput');
+    const amountInput = document.getElementById('paperTradeAmount');
     if (!amountInput) return;
-    const rawVal = parseFloat(amountInput.value);
 
-    if (!rawVal || rawVal <= 0) {
+    const usdAmount = parseFloat(amountInput.value);
+    if (isNaN(usdAmount) || usdAmount <= 0) {
         alert('Please enter a valid trade amount.');
         return;
     }
 
-    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const activeKey = cryptoMap[selectedAsset].storageKey;
-    const activeCostKey = cryptoMap[selectedAsset].costKey;
-    const activePrice = cryptoPrices[selectedAsset];
+    // Determine current active symbol (e.g., BTC, ETH, SOL) from your chart/state
+    const currentSymbol = window.currentCryptoSymbol || 'BTC'; 
+    const cryptoConfig = cryptoMap[currentSymbol];
+    if (!cryptoConfig) return;
 
-    let currentHoldings = parseFloat(localStorage.getItem(activeKey) || '0.0000');
-    let currentCost = parseFloat(localStorage.getItem(activeCostKey) || '0.00');
-
-    let usdAmount = 0;
-    let units = 0;
-
-    if (tradeMode === 'USD') {
-        usdAmount = rawVal;
-        units = usdAmount / activePrice;
-    } else {
-        units = rawVal;
-        usdAmount = units * activePrice;
+    const currentPrice = cryptoPrices[currentSymbol] || 0;
+    if (currentPrice <= 0) {
+        alert('Waiting for live market price...');
+        return;
     }
+
+    // Use the independent market paper balance
+    let marketBalance = parseFloat(localStorage.getItem('market_paper_balance'));
+    if (isNaN(marketBalance)) {
+        marketBalance = 10000.00; // Default starting balance
+        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+    }
+
+    const storageKey = cryptoConfig.storageKey;
+    const costKey = cryptoConfig.costKey;
+
+    let currentHoldings = parseFloat(localStorage.getItem(storageKey)) || 0;
+    let currentCost = parseFloat(localStorage.getItem(costKey)) || 0;
 
     if (type === 'BUY') {
-        if (usdAmount > userBalance) {
-            alert('Insufficient USD balance.');
+        if (usdAmount > marketBalance) {
+            alert('Insufficient market paper balance for this trade!');
             return;
         }
-        userBalance -= usdAmount;
-        currentHoldings += units;
-        currentCost += usdAmount;
-        saveTradeLog('BUY', usdAmount, units, selectedAsset);
+
+        const unitsBought = usdAmount / currentPrice;
+
+        // Deduct from sandbox balance only
+        marketBalance -= usdAmount;
+        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+
+        // Update asset holdings and cost basis
+        localStorage.setItem(storageKey, (currentHoldings + unitsBought).toFixed(6));
+        localStorage.setItem(costKey, (currentCost + usdAmount).toFixed(2));
+
+        // Log trade history
+        saveTradeLog('BUY', usdAmount, unitsBought.toFixed(4), currentSymbol);
+
     } else if (type === 'SELL') {
-        if (units > currentHoldings) {
-            alert(`Insufficient ${selectedAsset} holdings for this order.`);
+        const currentMktVal = currentHoldings * currentPrice;
+
+        if (currentHoldings <= 0 || usdAmount > currentMktVal) {
+            alert('You do not have enough holdings to sell that amount!');
             return;
         }
-        const portionSold = units / currentHoldings;
-        currentCost -= (currentCost * portionSold);
-        userBalance += usdAmount;
-        currentHoldings -= units;
-        saveTradeLog('SELL', usdAmount, units, selectedAsset);
+
+        const unitsSold = usdAmount / currentPrice;
+        const costBasisReduction = (unitsSold / currentHoldings) * currentCost;
+
+        // Add proceeds back to sandbox balance only
+        marketBalance += usdAmount;
+        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+
+        // Reduce asset holdings and cost basis proportionally
+        localStorage.setItem(storageKey, Math.max(0, currentHoldings - unitsSold).toFixed(6));
+        localStorage.setItem(costKey, Math.max(0, currentCost - costBasisReduction).toFixed(2));
+
+        // Log trade history
+        saveTradeLog('SELL', usdAmount, unitsSold.toFixed(4), currentSymbol);
     }
 
-    localStorage.setItem('user_balance', userBalance.toFixed(2));
-    localStorage.setItem(activeKey, currentHoldings.toFixed(6));
-    localStorage.setItem(activeCostKey, Math.max(0, currentCost).toFixed(2));
-
+    // Clear input and refresh UI components
     amountInput.value = '';
-    updateTradingUI();
+    renderTradeHistory();
+    if (typeof updateTradingUI === 'function') {
+        updateTradingUI();
+    }
+}
+
+// Helper function to handle logs
+function saveTradeLog(type, usd, units, symbol) {
+    const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    logs.unshift({
+        type: type,
+        usd: usd.toFixed(2),
+        units: units,
+        symbol: symbol,
+        time: timeStr
+    });
+
+    // Keep last 50 logs
+    if (logs.length > 50) logs.pop();
+    localStorage.setItem('paper_trade_history', JSON.stringify(logs));
 }
 
 function renderTradeHistory() {
     const historyContainer = document.getElementById('paperTradeHistory');
     if (!historyContainer) return;
 
-    const userBalance = parseFloat(localStorage.getItem('user_balance')) || 1000.00;
+    // Independent sandbox cash balance for the market tab paper trading
+    let marketBalance = parseFloat(localStorage.getItem('market_paper_balance'));
+    if (isNaN(marketBalance)) {
+        marketBalance = 10000.00; // Default starting balance for the standalone mini-app
+        localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
+    }
     
     let totalUnrealizedPnL = 0;
     let holdingsHtml = '';
@@ -3938,16 +3987,16 @@ function renderTradeHistory() {
 
     historyContainer.innerHTML = logsHtml;
 
-    // 4. Margin Liquidation System
+    // 4. Margin Liquidation System (using the isolated balance)
     const riskBadge = document.getElementById('liquidationRiskBadge');
     
-    if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= userBalance) {
+    if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance) {
         if (riskBadge) {
             riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold border border-rose-500/40 animate-pulse";
             riskBadge.innerText = "LIQUIDATING";
         }
         setTimeout(() => executeMarginLiquidation(), 300);
-    } else if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= userBalance * 0.7) {
+    } else if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance * 0.7) {
         if (riskBadge) {
             riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40";
             riskBadge.innerText = "HIGH RISK";

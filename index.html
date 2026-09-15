@@ -3829,7 +3829,7 @@ async function executePaperTrade(type) {
             return;
         }
 
-        const amountInput = document.getElementById('paperTradeAmount');
+        const amountInput = document.getElementById('tradeAmountInput') || document.getElementById('paperTradeAmount');
         if (!amountInput) {
             alert('Trade Error: Input field #paperTradeAmount not found.');
             return;

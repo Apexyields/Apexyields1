@@ -3831,7 +3831,7 @@ async function executePaperTrade(type) {
 
         const amountInput = document.getElementById('tradeAmountInput') || document.getElementById('paperTradeAmount');
         if (!amountInput) {
-            alert('Trade Error: Input field #paperTradeAmount not found.');
+            alert('Trade Error: Input field not found.');
             return;
         }
 
@@ -3842,7 +3842,7 @@ async function executePaperTrade(type) {
         }
 
         const currentSymbol = window.currentCryptoSymbol || 'BTC';
-        const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) ? cryptoPrices[currentSymbol] : 0;
+        const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) ? parseFloat(cryptoPrices[currentSymbol]) : 0;
         
         if (currentPrice <= 0) {
             alert('Waiting for live market price updates...');
@@ -3852,7 +3852,9 @@ async function executePaperTrade(type) {
         // Detect Crypto vs USD Mode safely
         const tradeLabel = document.getElementById('tradeAmountLabel')?.innerText || '';
         const isCryptoMode = tradeLabel.toUpperCase().includes('CRYPTO') || tradeLabel.includes(currentSymbol);
-        const usdAmount = isCryptoMode ? (rawInputVal * currentPrice) : rawInputVal;
+        
+        // Ensure usdAmount is strictly a numeric value
+        const usdAmount = Number(isCryptoMode ? (rawInputVal * currentPrice) : rawInputVal);
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
@@ -3902,7 +3904,7 @@ async function executePaperTrade(type) {
             }, { onConflict: 'user_id,symbol' });
             if (posErr) throw new Error("Position update failed: " + posErr.message);
 
-            await saveTradeLog('BUY', usdAmount.toFixed(2), unitsBought.toFixed(4), currentSymbol);
+            await saveTradeLog('BUY', usdAmount, unitsBought, currentSymbol);
 
         } else if (type === 'SELL') {
             const currentMktVal = currentHoldings * currentPrice;
@@ -3929,7 +3931,7 @@ async function executePaperTrade(type) {
             }, { onConflict: 'user_id,symbol' });
             if (posErr) throw new Error("Position update failed: " + posErr.message);
 
-            await saveTradeLog('SELL', usdAmount.toFixed(2), unitsSold.toFixed(4), currentSymbol);
+            await saveTradeLog('SELL', usdAmount, unitsSold, currentSymbol);
         }
 
         amountInput.value = '';

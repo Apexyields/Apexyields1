@@ -3784,7 +3784,6 @@ for (const symbol in cryptoMap) {
             : 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20';
     }
 
-    renderTradeHistory();
 }
 
 async function executePaperTrade(type) {
@@ -3900,23 +3899,6 @@ function saveTradeLog(type, usd, units, symbol) {
         time: timeStr
     });
 
-    if (logs.length > 50) logs.pop();
-    localStorage.setItem('paper_trade_history', JSON.stringify(logs));
-}
-// Helper function to handle logs
-function saveTradeLog(type, usd, units, symbol) {
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    logs.unshift({
-        type: type,
-        usd: usd.toFixed(2),
-        units: units,
-        symbol: symbol,
-        time: timeStr
-    });
-
-    // Keep last 50 logs
     if (logs.length > 50) logs.pop();
     localStorage.setItem('paper_trade_history', JSON.stringify(logs));
 }

@@ -3795,8 +3795,8 @@ async function executePaperTrade(type) {
     const amountInput = document.getElementById('paperTradeAmount');
     if (!amountInput) return;
 
-    const usdAmount = parseFloat(amountInput.value);
-    if (isNaN(usdAmount) || usdAmount <= 0) {
+    const rawInputVal = parseFloat(amountInput.value);
+    if (isNaN(rawInputVal) || rawInputVal <= 0) {
         alert('Please enter a valid trade amount.');
         return;
     }
@@ -3811,110 +3811,101 @@ async function executePaperTrade(type) {
         return;
     }
 
+    // 1. Detect if the user is in Crypto (e.g., BTC) mode or USD ($) mode
+    const cryptoToggleBtn = document.getElementById('modeCryptoBtn') || document.querySelector('.bg-amber-500');
+    const isCryptoMode = cryptoToggleBtn?.innerText?.toLowerCase().includes('crypto') || 
+                         document.getElementById('tradeAmountLabel')?.innerText?.includes(currentSymbol);
+
+    const usdAmount = isCryptoMode ? (rawInputVal * currentPrice) : rawInputVal;
+
     const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-    // 1. Fetch paper wallet balance from Supabase
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('paper_balance')
-        .eq('id', userId)
-        .single();
-
-    if (error || !profile) {
-        alert('Error fetching paper trading balance from Supabase.');
-        return;
-    }
-
-    let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
-
-    // 2. Fetch current position for this symbol directly from Supabase
-    const { data: posData } = await supabase
-        .from('paper_positions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('symbol', currentSymbol)
-        .maybeSingle();
-
-    let currentHoldings = parseFloat(posData?.amount || 0);
-    let currentCost = parseFloat(posData?.cost_basis || 0);
-
-    if (type === 'BUY') {
-        if (usdAmount > marketBalance) {
-            alert('Insufficient paper balance for this trade!');
-            return;
-        }
-
-        const unitsBought = usdAmount / currentPrice;
-        marketBalance -= usdAmount;
-
-        // Update paper balance in profiles table
-        const { error: updateError } = await supabase
+    try {
+        // 2. Fetch current paper wallet balance
+        const { data: profile, error: profileErr } = await supabase
             .from('profiles')
-            .update({ paper_balance: marketBalance })
-            .eq('id', userId);
+            .select('paper_balance')
+            .eq('id', userId)
+            .single();
 
-        if (updateError) {
-            alert('Failed to update paper balance in Supabase.');
+        if (profileErr || !profile) {
+            alert('Error fetching paper balance from database.');
             return;
         }
 
-        // Save position to paper_positions table
-        const newHoldings = currentHoldings + unitsBought;
-        const newCost = currentCost + usdAmount;
+        let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
 
-        await supabase.from('paper_positions').upsert({
-            user_id: userId,
-            symbol: currentSymbol,
-            amount: newHoldings,
-            cost_basis: newCost,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id,symbol' });
+        // 3. Fetch current position for symbol
+        const { data: posData } = await supabase
+            .from('paper_positions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('symbol', currentSymbol)
+            .maybeSingle();
 
-        await saveTradeLog('BUY', usdAmount, unitsBought.toFixed(4), currentSymbol);
+        let currentHoldings = parseFloat(posData?.amount || 0);
+        let currentCost = parseFloat(posData?.cost_basis || 0);
 
-    } else if (type === 'SELL') {
-        const currentMktVal = currentHoldings * currentPrice;
+        if (type === 'BUY') {
+            if (usdAmount > marketBalance) {
+                alert(`Insufficient paper balance! Required: $${usdAmount.toFixed(2)}, Available: $${marketBalance.toFixed(2)}`);
+                return;
+            }
 
-        if (currentHoldings <= 0 || usdAmount > currentMktVal) {
-            alert('You do not have enough holdings to sell that amount!');
-            return;
+            const unitsBought = usdAmount / currentPrice;
+            marketBalance -= usdAmount;
+
+            // Update profiles table
+            await supabase.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
+
+            // Upsert position
+            await supabase.from('paper_positions').upsert({
+                user_id: userId,
+                symbol: currentSymbol,
+                amount: currentHoldings + unitsBought,
+                cost_basis: currentCost + usdAmount,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,symbol' });
+
+            // Record trade log
+            await saveTradeLog('BUY', usdAmount.toFixed(2), unitsBought.toFixed(4), currentSymbol);
+
+        } else if (type === 'SELL') {
+            const currentMktVal = currentHoldings * currentPrice;
+
+            if (currentHoldings <= 0 || usdAmount > (currentMktVal + 0.01)) {
+                alert('You do not have enough holdings to sell that amount!');
+                return;
+            }
+
+            const unitsSold = usdAmount / currentPrice;
+            const costBasisReduction = currentHoldings > 0 ? (unitsSold / currentHoldings) * currentCost : 0;
+
+            marketBalance += usdAmount;
+
+            // Update profiles table
+            await supabase.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
+
+            // Upsert position
+            await supabase.from('paper_positions').upsert({
+                user_id: userId,
+                symbol: currentSymbol,
+                amount: Math.max(0, currentHoldings - unitsSold),
+                cost_basis: Math.max(0, currentCost - costBasisReduction),
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,symbol' });
+
+            // Record trade log
+            await saveTradeLog('SELL', usdAmount.toFixed(2), unitsSold.toFixed(4), currentSymbol);
         }
 
-        const unitsSold = usdAmount / currentPrice;
-        const costBasisReduction = (unitsSold / currentHoldings) * currentCost;
+        amountInput.value = '';
+        if (typeof renderTradeHistory === 'function') await renderTradeHistory();
+        if (typeof updateTradingUI === 'function') updateTradingUI();
 
-        marketBalance += usdAmount;
-
-        // Update paper balance in profiles table
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ paper_balance: marketBalance })
-            .eq('id', userId);
-
-        if (updateError) {
-            alert('Failed to update paper balance in Supabase.');
-            return;
-        }
-
-        // Save position to paper_positions table
-        const newHoldings = Math.max(0, currentHoldings - unitsSold);
-        const newCost = Math.max(0, currentCost - costBasisReduction);
-
-        await supabase.from('paper_positions').upsert({
-            user_id: userId,
-            symbol: currentSymbol,
-            amount: newHoldings,
-            cost_basis: newCost,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id,symbol' });
-
-        await saveTradeLog('SELL', usdAmount, unitsSold.toFixed(4), currentSymbol);
-    }
-
-    amountInput.value = '';
-    await renderTradeHistory();
-    if (typeof updateTradingUI === 'function') {
-        updateTradingUI();
+    } catch (err) {
+        console.error("Trade Execution Error:", err);
+        alert("Trade failed: " + err.message);
     }
 }
 

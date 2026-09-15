@@ -3693,7 +3693,7 @@ async function fetchLiveCryptoPrices() {
             }
         });
 
-        updateTradingUI();
+        await updateTradingUI();
     } catch (error) {
         console.warn('Live price fetch failed, using cached prices:', error);
     }

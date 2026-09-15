@@ -3852,7 +3852,7 @@ function renderTradeHistory() {
     const userBalance = parseFloat(localStorage.getItem('user_balance')) || 1000.00;
     
     let totalUnrealizedPnL = 0;
-    let holdingsHtml = '<div class="space-y-2 mb-3 pb-3 border-b border-slate-800">';
+    let holdingsHtml = '';
     let hasHoldings = false;
 
     // 1. Calculate Active Positions, Entry Prices & PnL
@@ -3874,7 +3874,7 @@ function renderTradeHistory() {
             const pnlColorClass = isPos ? 'text-emerald-400' : 'text-rose-400';
 
             holdingsHtml += `
-                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-1.5">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-1.5 mb-2">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-1.5">
                             <span class="font-bold text-white text-xs">${symbol}</span>
@@ -3900,19 +3900,22 @@ function renderTradeHistory() {
         }
     }
 
-    if (!hasHoldings) {
-        holdingsHtml += '<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions open</p>';
+    // 2. Render Active Positions
+    const activePositionsElem = document.getElementById('paperHoldingsList');
+    if (activePositionsElem) {
+        activePositionsElem.innerHTML = hasHoldings 
+            ? `<div class="max-h-48 overflow-y-auto pr-1 space-y-2">${holdingsHtml}</div>`
+            : '<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions open</p>';
     }
-    holdingsHtml += '</div>';
 
-    // 2. Render Order Logs
+    // 3. Render Order Logs
     const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
-    let logsHtml = '<div><span class="text-[10px] font-bold text-slate-400 tracking-wider uppercase block mb-1.5">Order Logs</span>';
+    let logsHtml = '';
 
     if (logs.length === 0) {
-        logsHtml += '<p class="text-slate-500 italic text-center py-2 text-xs">No trade history</p>';
+        logsHtml = '<p class="text-slate-500 italic text-center py-2 text-xs">No trade history</p>';
     } else {
-        logsHtml += '<div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">';
+        logsHtml += '<div class="max-h-36 overflow-y-auto pr-1 space-y-1.5">';
         for (let i = 0; i < logs.length; i++) {
             const item = logs[i];
             const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
@@ -3920,8 +3923,8 @@ function renderTradeHistory() {
             const displayUnits = item.units || item.btc || '0.0000';
 
             logsHtml += `
-                <div class="flex justify-between items-center text-xs bg-slate-950/40 p-1.5 rounded border border-slate-800/50">
-                    <div class="flex items-center gap-1.5">
+                <div class="flex justify-between items-center text-xs bg-slate-950/40 p-2 rounded-lg border border-slate-800/50">
+                    <div class="flex items-center gap-2">
                         <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeClass}">${item.type}</span>
                         <span class="text-white font-medium">$${item.usd}</span>
                         <span class="text-slate-400 text-[10px]">${displayUnits} ${displaySymbol}</span>
@@ -3932,11 +3935,10 @@ function renderTradeHistory() {
         }
         logsHtml += '</div>';
     }
-    logsHtml += '</div>';
 
-    historyContainer.innerHTML = holdingsHtml + logsHtml;
+    historyContainer.innerHTML = logsHtml;
 
-    // 3. Margin Liquidation System
+    // 4. Margin Liquidation System
     const riskBadge = document.getElementById('liquidationRiskBadge');
     
     if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= userBalance) {

@@ -366,15 +366,37 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+            <!-- Live Total Portfolio & PnL Card -->
+            <div class="col-span-2 bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                <div>
+                    <p class="text-[11px] text-slate-400 font-medium">Live Total Portfolio Value</p>
+                    <div class="flex items-baseline gap-2">
+                        <span id="tradeTotalValue" class="text-lg font-bold text-white">$0.00</span>
+                        <span id="tradePnlBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00 (0.00%)</span>
+                    </div>
+                </div>
+                <button type="button" onclick="cashOutPaperTrading()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-1.5 rounded-xl transition-all shadow-md shadow-emerald-500/10">
+                    💰 Cash Out
+                </button>
+            </div>
+
+            <!-- USD Balance Card -->
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 flex justify-between items-center">
-    <div>
-        <p class="text-[11px] text-slate-400">Paper USD Balance</p>
-        <p id="tradeUsdBalance" class="text-base font-bold text-emerald-400">$0.00</p>
-    </div>
-    <button type="button" onclick="resetPaperBalance()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700/50 transition-all font-semibold">
-        ⚙️ Edit
-    </button>
-</div>
+                <div>
+                    <p class="text-[11px] text-slate-400">Paper USD Balance</p>
+                    <p id="tradeUsdBalance" class="text-base font-bold text-emerald-400">$0.00</p>
+                </div>
+                <button type="button" onclick="resetPaperBalance()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700/50 transition-all font-semibold">
+                    ⚙️ Edit
+                </button>
+            </div>
+
+            <!-- BTC Holdings Card -->
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 text-right">
+                <p class="text-[11px] text-slate-400">BTC Holdings</p>
+                <p id="tradeBtcHolding" class="text-base font-bold text-amber-400">0.0000 BTC</p>
+            </div>
+        </div>
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 text-right">
                 <p class="text-[11px] text-slate-400">BTC Holdings</p>
                 <p id="tradeBtcHolding" class="text-base font-bold text-amber-400">0.0000 BTC</p>
@@ -3615,17 +3637,39 @@ function updateTradingUI() {
     if (localStorage.getItem('user_balance') === null) {
         localStorage.setItem('user_balance', '1000.00');
     }
+    if (localStorage.getItem('paper_initial_capital') === null) {
+        localStorage.setItem('paper_initial_capital', '1000.00');
+    }
 
     const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
     const btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
+    const initialCapital = parseFloat(localStorage.getItem('paper_initial_capital') || '1000.00');
+
+    // Calculate total net worth and live PnL
+    const btcValue = btcHoldings * currentBtcPrice;
+    const totalPortfolio = userBalance + btcValue;
+    const pnl = totalPortfolio - initialCapital;
+    const pnlPercent = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0;
 
     const usdElem = document.getElementById('tradeUsdBalance');
     const btcElem = document.getElementById('tradeBtcHolding');
     const priceElem = document.getElementById('btcPriceDisplay');
+    const totalElem = document.getElementById('tradeTotalValue');
+    const pnlElem = document.getElementById('tradePnlBadge');
 
     if (usdElem) usdElem.innerText = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (btcElem) btcElem.innerText = btcHoldings.toFixed(4) + ' BTC';
     if (priceElem) priceElem.innerText = '$' + currentBtcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    if (totalElem) totalElem.innerText = '$' + totalPortfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (pnlElem) {
+        const isPositive = pnl >= 0;
+        const sign = isPositive ? '+' : '';
+        pnlElem.innerText = `${sign}$${pnl.toFixed(2)} (${sign}${pnlPercent.toFixed(2)}%)`;
+        pnlElem.className = isPositive 
+            ? 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+            : 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20';
+    }
 
     renderTradeHistory();
 }
@@ -3721,13 +3765,40 @@ function clearPaperTradeHistory() {
     localStorage.removeItem('paper_trade_history');
     renderTradeHistory();
 }
-        function resetPaperBalance() {
+        function clearPaperTradeHistory() {
+    localStorage.removeItem('paper_trade_history');
+    renderTradeHistory();
+}
+
+function cashOutPaperTrading() {
+    let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+    let btcHoldings = parseFloat(localStorage.getItem('user_btc') || '0.0000');
+
+    if (btcHoldings <= 0) {
+        alert('No BTC holdings to cash out.');
+        return;
+    }
+
+    const usdReturned = btcHoldings * currentBtcPrice;
+    userBalance += usdReturned;
+
+    saveTradeLog('SELL', usdReturned, btcHoldings);
+
+    localStorage.setItem('user_balance', userBalance.toFixed(2));
+    localStorage.setItem('user_btc', '0.000000');
+
+    alert(`Cashed out ${btcHoldings.toFixed(4)} BTC for $${usdReturned.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD!`);
+    updateTradingUI();
+}
+
+function resetPaperBalance() {
     const currentVal = localStorage.getItem('user_balance') || '1000.00';
     const input = prompt('Enter your desired Demo USD balance:', currentVal);
     if (input !== null) {
         const parsed = parseFloat(input);
         if (!isNaN(parsed) && parsed >= 0) {
             localStorage.setItem('user_balance', parsed.toFixed(2));
+            localStorage.setItem('paper_initial_capital', parsed.toFixed(2));
             updateTradingUI();
         } else {
             alert('Please enter a valid numeric balance.');

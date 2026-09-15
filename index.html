@@ -419,9 +419,15 @@
             </div>
         </div>
 
-        <div>
-            <label class="text-[10px] text-slate-400 block mb-1">Trade Amount ($)</label>
-            <input type="number" id="tradeAmountInput" placeholder="e.g. 100" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
+                <div>
+            <div class="flex justify-between items-center mb-1">
+                <label id="tradeInputLabel" class="text-[10px] text-slate-400">Trade Amount ($)</label>
+                <div class="flex items-center gap-1 text-[10px]">
+                    <button type="button" id="btnModeUsd" onclick="setTradeMode('USD')" class="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold transition">USD ($)</button>
+                    <button type="button" id="btnModeCrypto" onclick="setTradeMode('CRYPTO')" class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white font-bold transition">Crypto</button>
+                </div>
+            </div>
+            <input type="number" id="tradeAmountInput" placeholder="e.g. 100" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
         </div>
 
         <div class="grid grid-cols-3 gap-2">
@@ -3639,6 +3645,7 @@ function handleLogout() {
 // PAPER TRADING SYSTEM
 // ==========================================
 let selectedAsset = 'BTC';
+let tradeMode = 'USD'; // 'USD' or 'CRYPTO'
 
 const cryptoMap = {
     'BTC': { id: 'bitcoin', storageKey: 'user_btc', costKey: 'user_btc_cost', decimals: 4 },
@@ -3669,6 +3676,27 @@ async function fetchLiveCryptoPrices() {
     }
 }
 
+// Toggle between Cash Buy ($) and Quantity Buy (e.g. 1.3 BTC)
+function setTradeMode(mode) {
+    tradeMode = mode;
+    const label = document.getElementById('tradeInputLabel');
+    const input = document.getElementById('tradeAmountInput');
+    const btnUsd = document.getElementById('btnModeUsd');
+    const btnCrypto = document.getElementById('btnModeCrypto');
+
+    if (mode === 'USD') {
+        if (label) label.innerText = 'Trade Amount ($)';
+        if (input) input.placeholder = 'e.g. 100';
+        if (btnUsd) btnUsd.className = 'px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold transition';
+        if (btnCrypto) btnCrypto.className = 'px-2 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white font-bold transition';
+    } else {
+        if (label) label.innerText = `Trade Amount (${selectedAsset})`;
+        if (input) input.placeholder = `e.g. 1.5`;
+        if (btnUsd) btnUsd.className = 'px-2 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white font-bold transition';
+        if (btnCrypto) btnCrypto.className = 'px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold transition';
+    }
+}
+
 function selectAsset(symbol) {
     if (!cryptoMap[symbol]) return;
     selectedAsset = symbol;
@@ -3682,6 +3710,7 @@ function selectAsset(symbol) {
     const chartWidget = document.querySelector('gecko-coin-price-chart-widget');
     if (chartWidget) chartWidget.setAttribute('coin-id', cryptoMap[symbol].id);
 
+    setTradeMode(tradeMode); // Refresh input label for new asset
     updateTradingUI();
 }
 
@@ -3698,22 +3727,14 @@ function updateTradingUI() {
         totalCryptoValue += holding * (cryptoPrices[symbol] || 0);
     }
 
-    // Global Portfolio PnL
+    // Global Portfolio Net Worth & Total PnL (Top Header Only)
     const totalPortfolio = userBalance + totalCryptoValue;
     const globalPnl = totalPortfolio - initialCapital;
     const globalPnlPercent = initialCapital > 0 ? (globalPnl / initialCapital) * 100 : 0;
 
-    // Active Asset Specific Calculations
     const activePrice = cryptoPrices[selectedAsset] || 0;
     const activeHolding = parseFloat(localStorage.getItem(cryptoMap[selectedAsset].storageKey) || '0.0000');
-    const activeCost = parseFloat(localStorage.getItem(cryptoMap[selectedAsset].costKey) || '0.00');
-    const activeMarketValue = activeHolding * activePrice;
-    
-    // Asset-specific PnL (Isolated per coin)
-    const assetPnl = activeMarketValue - activeCost;
-    const assetPnlPercent = activeCost > 0 ? (assetPnl / activeCost) * 100 : 0;
 
-    // Update Global Headers
     const usdElem = document.getElementById('tradeUsdBalance');
     const btcElem = document.getElementById('tradeBtcHolding');
     const priceElem = document.getElementById('btcPriceDisplay');
@@ -3722,18 +3743,12 @@ function updateTradingUI() {
     const pnlElem = document.getElementById('tradePnlBadge');
 
     if (usdElem) usdElem.innerText = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (btcElem) btcElem.innerText = `${activeHolding.toFixed(cryptoMap[selectedAsset].decimals)} ${selectedAsset}`;
     if (priceElem) priceElem.innerText = '$' + activePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (labelElem) labelElem.innerText = `${selectedAsset} / USD`;
     if (totalElem) totalElem.innerText = '$' + totalPortfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // Active Asset Holding & Isolated PnL Badge Display
-    if (btcElem) {
-        const sign = assetPnl >= 0 ? '+' : '';
-        const pnlStr = activeCost > 0 ? ` (${sign}$${assetPnl.toFixed(2)})` : '';
-        btcElem.innerText = `${activeHolding.toFixed(cryptoMap[selectedAsset].decimals)} ${selectedAsset}${pnlStr}`;
-    }
-
-    // Global PnL Badge Update
+    // Render Global Total PnL at the very top
     if (pnlElem) {
         const isPositive = globalPnl >= 0;
         const sign = isPositive ? '+' : '';
@@ -3749,9 +3764,9 @@ function updateTradingUI() {
 function executePaperTrade(type) {
     const amountInput = document.getElementById('tradeAmountInput');
     if (!amountInput) return;
-    const usdAmount = parseFloat(amountInput.value);
+    const rawVal = parseFloat(amountInput.value);
 
-    if (!usdAmount || usdAmount <= 0) {
+    if (!rawVal || rawVal <= 0) {
         alert('Please enter a valid trade amount.');
         return;
     }
@@ -3759,12 +3774,21 @@ function executePaperTrade(type) {
     let userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
     const activeKey = cryptoMap[selectedAsset].storageKey;
     const activeCostKey = cryptoMap[selectedAsset].costKey;
+    const activePrice = cryptoPrices[selectedAsset];
 
     let currentHoldings = parseFloat(localStorage.getItem(activeKey) || '0.0000');
     let currentCost = parseFloat(localStorage.getItem(activeCostKey) || '0.00');
-    
-    const activePrice = cryptoPrices[selectedAsset];
-    const units = usdAmount / activePrice;
+
+    let usdAmount = 0;
+    let units = 0;
+
+    if (tradeMode === 'USD') {
+        usdAmount = rawVal;
+        units = usdAmount / activePrice;
+    } else {
+        units = rawVal;
+        usdAmount = units * activePrice;
+    }
 
     if (type === 'BUY') {
         if (usdAmount > userBalance) {
@@ -3773,18 +3797,15 @@ function executePaperTrade(type) {
         }
         userBalance -= usdAmount;
         currentHoldings += units;
-        currentCost += usdAmount; // Increase asset cost basis
+        currentCost += usdAmount;
         saveTradeLog('BUY', usdAmount, units, selectedAsset);
     } else if (type === 'SELL') {
         if (units > currentHoldings) {
             alert(`Insufficient ${selectedAsset} holdings for this order.`);
             return;
         }
-        
-        // Proportionately decrease cost basis
         const portionSold = units / currentHoldings;
         currentCost -= (currentCost * portionSold);
-        
         userBalance += usdAmount;
         currentHoldings -= units;
         saveTradeLog('SELL', usdAmount, units, selectedAsset);
@@ -3796,6 +3817,103 @@ function executePaperTrade(type) {
 
     amountInput.value = '';
     updateTradingUI();
+}
+
+function renderTradeHistory() {
+    const historyContainer = document.getElementById('paperTradeHistory');
+    if (!historyContainer) return;
+
+    // 1. Render Holdings Summary with Individual PnLs next to each asset
+    let holdingsHtml = '<div class="mb-3 space-y-1.5 pb-2 border-b border-slate-800/80"><span class="text-[10px] font-bold text-slate-400 block uppercase">Active Holdings & Asset PnL</span>';
+    let hasHoldings = false;
+
+    for (const symbol in cryptoMap) {
+        const holding = parseFloat(localStorage.getItem(cryptoMap[symbol].storageKey) || '0.0000');
+        if (holding > 0) {
+            hasHoldings = true;
+            const cost = parseFloat(localStorage.getItem(cryptoMap[symbol].costKey) || '0.00');
+            const mktVal = holding * (cryptoPrices[symbol] || 0);
+            const indPnl = mktVal - cost;
+            const pnlPct = cost > 0 ? (indPnl / cost) * 100 : 0;
+
+            const isPos = indPnl >= 0;
+            const sign = isPos ? '+' : '';
+            const badgeClass = isPos ? 'text-emerald-400' : 'text-rose-400';
+
+            holdingsHtml += `
+                <div class="flex justify-between items-center text-xs bg-slate-950/40 px-2 py-1 rounded-lg border border-slate-800/40">
+                    <span class="font-bold text-white">${symbol}: <span class="text-slate-300 font-normal">${holding.toFixed(cryptoMap[symbol].decimals)}</span></span>
+                    <span class="font-mono text-[11px] ${badgeClass}">${sign}$${indPnl.toFixed(2)} (${sign}${pnlPct.toFixed(2)}%)</span>
+                </div>
+            `;
+        }
+    }
+
+    if (!hasHoldings) {
+        holdingsHtml += '<p class="text-[11px] text-slate-500 italic">No crypto assets currently held.</p>';
+    }
+    holdingsHtml += '</div>';
+
+    // 2. Render Order Logs
+    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
+    let logsHtml = '<span class="text-[10px] font-bold text-slate-400 block uppercase mb-1.5">Trade Log</span>';
+
+    if (logs.length === 0) {
+        logsHtml += '<p class="text-slate-500 italic text-center py-2 text-xs">No virtual trades executed yet.</p>';
+    } else {
+        for (let i = 0; i < logs.length; i++) {
+            const item = logs[i];
+            const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+            const displaySymbol = item.symbol || 'BTC';
+            const displayUnits = item.units || item.btc || '0.0000';
+
+            logsHtml += `<div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800/50 text-xs mb-1.5">
+                <div class="flex items-center gap-2">
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeClass}">${item.type}</span>
+                    <span class="text-white font-medium">$${item.usd}</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-slate-300 block font-mono text-[11px]">${displayUnits} ${displaySymbol}</span>
+                    <span class="text-[9px] text-slate-500">${item.time}</span>
+                </div>
+            </div>`;
+        }
+    }
+
+    historyContainer.innerHTML = holdingsHtml + logsHtml;
+}
+
+function setTradePercent(percent) {
+    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
+    const inputElem = document.getElementById('tradeAmountInput');
+    const activePrice = cryptoPrices[selectedAsset] || 1;
+
+    if (tradeMode === 'USD') {
+        const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
+        if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
+    } else {
+        const calculatedUsd = userBalance * (percent / 100);
+        const calculatedCrypto = (calculatedUsd / activePrice).toFixed(cryptoMap[selectedAsset].decimals);
+        if (inputElem) inputElem.value = calculatedCrypto > 0 ? calculatedCrypto : '';
+    }
+}
+
+function saveTradeLog(type, usdAmount, units, symbol = 'BTC') {
+    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
+    const newEntry = {
+        type: type,
+        usd: usdAmount.toFixed(2),
+        units: units.toFixed(cryptoMap[symbol] ? cryptoMap[symbol].decimals : 4),
+        symbol: symbol,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    logs.unshift(newEntry);
+    localStorage.setItem('paper_trade_history', JSON.stringify(logs.slice(0, 20)));
+}
+
+function clearPaperTradeHistory() {
+    localStorage.removeItem('paper_trade_history');
+    renderTradeHistory();
 }
 
 function cashOutPaperTrading() {
@@ -3829,62 +3947,6 @@ function cashOutPaperTrading() {
     updateTradingUI();
 }
 
-function setTradePercent(percent) {
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const calculatedAmount = (userBalance * (percent / 100)).toFixed(2);
-    const inputElem = document.getElementById('tradeAmountInput');
-    if (inputElem) inputElem.value = calculatedAmount > 0 ? calculatedAmount : '';
-}
-
-function saveTradeLog(type, usdAmount, units, symbol = 'BTC') {
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
-    const newEntry = {
-        type: type,
-        usd: usdAmount.toFixed(2),
-        units: units.toFixed(cryptoMap[symbol] ? cryptoMap[symbol].decimals : 4),
-        symbol: symbol,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    logs.unshift(newEntry);
-    localStorage.setItem('paper_trade_history', JSON.stringify(logs.slice(0, 20)));
-}
-
-function renderTradeHistory() {
-    const historyContainer = document.getElementById('paperTradeHistory');
-    if (!historyContainer) return;
-
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history') || '[]');
-    if (logs.length === 0) {
-        historyContainer.innerHTML = '<p class="text-slate-500 italic text-center py-2 text-xs">No virtual trades executed yet.</p>';
-        return;
-    }
-
-    let html = '';
-    for (let i = 0; i < logs.length; i++) {
-        const item = logs[i];
-        const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-        const displaySymbol = item.symbol || 'BTC';
-        const displayUnits = item.units || item.btc || '0.0000';
-
-        html += `<div class="flex justify-between items-center bg-slate-950/60 p-2 rounded-xl border border-slate-800/50 text-xs">
-            <div class="flex items-center gap-2">
-                <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeClass}">${item.type}</span>
-                <span class="text-white font-medium">$${item.usd}</span>
-            </div>
-            <div class="text-right">
-                <span class="text-slate-300 block font-mono text-[11px]">${displayUnits} ${displaySymbol}</span>
-                <span class="text-[9px] text-slate-500">${item.time}</span>
-            </div>
-        </div>`;
-    }
-    historyContainer.innerHTML = html;
-}
-
-function clearPaperTradeHistory() {
-    localStorage.removeItem('paper_trade_history');
-    renderTradeHistory();
-}
-
 function resetPaperBalance() {
     const currentVal = localStorage.getItem('user_balance') || '1000.00';
     const input = prompt('Enter your desired Demo USD balance:', currentVal);
@@ -3893,7 +3955,6 @@ function resetPaperBalance() {
         if (!isNaN(parsed) && parsed >= 0) {
             localStorage.setItem('user_balance', parsed.toFixed(2));
             localStorage.setItem('paper_initial_capital', parsed.toFixed(2));
-            // Reset cost bases
             for (const symbol in cryptoMap) {
                 localStorage.setItem(cryptoMap[symbol].costKey, '0.00');
             }
@@ -3906,6 +3967,7 @@ function resetPaperBalance() {
 
 fetchLiveCryptoPrices();
 setInterval(fetchLiveCryptoPrices, 30000);
+  
 </script>
 </body>
 </html>

@@ -366,10 +366,15 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50">
-                <p class="text-[11px] text-slate-400">Paper USD Balance</p>
-                <p id="tradeUsdBalance" class="text-base font-bold text-emerald-400">$0.00</p>
-            </div>
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 flex justify-between items-center">
+    <div>
+        <p class="text-[11px] text-slate-400">Paper USD Balance</p>
+        <p id="tradeUsdBalance" class="text-base font-bold text-emerald-400">$0.00</p>
+    </div>
+    <button type="button" onclick="resetPaperBalance()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700/50 transition-all font-semibold">
+        ⚙️ Edit
+    </button>
+</div>
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 text-right">
                 <p class="text-[11px] text-slate-400">BTC Holdings</p>
                 <p id="tradeBtcHolding" class="text-base font-bold text-amber-400">0.0000 BTC</p>
@@ -3715,6 +3720,19 @@ function renderTradeHistory() {
 function clearPaperTradeHistory() {
     localStorage.removeItem('paper_trade_history');
     renderTradeHistory();
+}
+        function resetPaperBalance() {
+    const currentVal = localStorage.getItem('user_balance') || '1000.00';
+    const input = prompt('Enter your desired Demo USD balance:', currentVal);
+    if (input !== null) {
+        const parsed = parseFloat(input);
+        if (!isNaN(parsed) && parsed >= 0) {
+            localStorage.setItem('user_balance', parsed.toFixed(2));
+            updateTradingUI();
+        } else {
+            alert('Please enter a valid numeric balance.');
+        }
+    }
 }
 </script>
 </body>

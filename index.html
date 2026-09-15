@@ -3983,7 +3983,8 @@ setInterval(fetchLiveCryptoPrices, 10000);
         // 1. Render mini chart cards for each cryptocurrency
 function renderMultiCryptoCharts() {
     const gridContainer = document.getElementById('cryptoChartsGrid');
-    if (!gridContainer) return;
+    // Guard clause: prevent re-rendering if charts are already initialized (keeps live WebSockets open)
+    if (!gridContainer || gridContainer.children.length > 0) return;
 
     gridContainer.innerHTML = '';
 
@@ -4009,10 +4010,11 @@ function renderMultiCryptoCharts() {
                         <span class="text-[10px] text-slate-400 font-mono">/ USD</span>
                     </div>
                     <span id="card-price-${symbol}" class="font-mono text-xs font-semibold text-emerald-400">
-                        $${(cryptoPrices[symbol] || 0).toLocaleString()}
+                        $${(cryptoPrices[symbol] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
-                <div class="h-44 w-full rounded-lg overflow-hidden">
+                <!-- TradingView Live Stream Container -->
+                <div class="h-60 w-full rounded-lg overflow-hidden bg-slate-950">
                     <iframe 
                         src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_${symbol}&symbol=${tvSymbols[symbol]}&interval=15&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=000000&theme=dark&style=1&timezone=Etc%2FUTC"
                         width="100%" 

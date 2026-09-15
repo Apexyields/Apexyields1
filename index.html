@@ -3826,15 +3826,15 @@ async function saveTradeLog(type, usdAmount, units, symbol) {
 
 async function executePaperTrade(type) {
     try {
-        const db = getDbClient();
-        if (!db) {
-            alert('Trade Error: Supabase client is not initialized.');
+        const db = window.supabaseClient || window.supabase;
+        if (!db || typeof db.from !== 'function') {
+            alert('Trade Error: Supabase client is not initialized correctly.');
             return;
         }
 
         const amountInput = document.getElementById('tradeAmountInput') || document.getElementById('paperTradeAmount');
         if (!amountInput) {
-            alert('Trade Error: Input field not found.');
+            alert('Trade Error: Trade input element not found.');
             return;
         }
 
@@ -3852,16 +3852,32 @@ async function executePaperTrade(type) {
             return;
         }
 
-        // Detect Crypto vs USD Mode safely
-        const tradeLabel = document.getElementById('tradeAmountLabel')?.innerText || '';
-        const isCryptoMode = tradeLabel.toUpperCase().includes('CRYPTO') || tradeLabel.includes(currentSymbol);
-        
-        // Ensure usdAmount is strictly a numeric value
-        const usdAmount = Number(isCryptoMode ? (rawInputVal * currentPrice) : rawInputVal);
+        // 1. Detect Mode accurately (Checks global tradeMode variable or UI elements)
+        let isCryptoMode = false;
+        if (typeof tradeMode !== 'undefined') {
+            isCryptoMode = (tradeMode === 'CRYPTO' || tradeMode === 'Crypto');
+        } else {
+            const labelText = document.getElementById('tradeAmountLabel')?.innerText || '';
+            const cryptoBtn = document.querySelector('.bg-amber-500, .bg-yellow-500, .active-mode'); // check active toggle styling
+            isCryptoMode = labelText.toUpperCase().includes('CRYPTO') || labelText.includes(currentSymbol);
+        }
+
+        // 2. Calculate USD Value & Units based on Mode
+        let usdAmount = 0;
+        let unitsCount = 0;
+
+        if (isCryptoMode) {
+            // Input is in Units (e.g. 1 BTC -> $75,562.45 USD)
+            unitsCount = rawInputVal;
+            usdAmount = rawInputVal * currentPrice;
+        } else {
+            // Input is in USD (e.g. $100 USD -> 0.00132 BTC)
+            usdAmount = rawInputVal;
+            unitsCount = rawInputVal / currentPrice;
+        }
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-        // 1. Fetch paper wallet balance
         const { data: profile, error: profileErr } = await db
             .from('profiles')
             .select('paper_balance')
@@ -3869,13 +3885,12 @@ async function executePaperTrade(type) {
             .single();
 
         if (profileErr || !profile) {
-            alert('Error fetching paper balance: ' + (profileErr?.message || 'Profile missing'));
+            alert('Error fetching paper balance from database.');
             return;
         }
 
         let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
 
-        // 2. Fetch active position for current symbol
         const { data: posData } = await db
             .from('paper_positions')
             .select('*')
@@ -3888,60 +3903,49 @@ async function executePaperTrade(type) {
 
         if (type === 'BUY') {
             if (usdAmount > marketBalance) {
-                alert(`Insufficient paper balance! Required: $${usdAmount.toFixed(2)}, Available: $${marketBalance.toFixed(2)}`);
+                alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}, Available: $${marketBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
                 return;
             }
 
-            const unitsBought = usdAmount / currentPrice;
             marketBalance -= usdAmount;
 
-            const { error: balErr } = await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
-            if (balErr) throw new Error("Balance update failed: " + balErr.message);
-
-            const { error: posErr } = await db.from('paper_positions').upsert({
+            await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
+            await db.from('paper_positions').upsert({
                 user_id: userId,
                 symbol: currentSymbol,
-                amount: currentHoldings + unitsBought,
+                amount: currentHoldings + unitsCount,
                 cost_basis: currentCost + usdAmount,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id,symbol' });
-            if (posErr) throw new Error("Position update failed: " + posErr.message);
 
-            await saveTradeLog('BUY', usdAmount, unitsBought, currentSymbol);
+            await saveTradeLog('BUY', usdAmount, unitsCount, currentSymbol);
 
         } else if (type === 'SELL') {
-            const currentMktVal = currentHoldings * currentPrice;
-
-            if (currentHoldings <= 0 || usdAmount > (currentMktVal + 0.05)) {
-                alert('You do not have enough holdings to sell that amount!');
+            if (currentHoldings <= 0 || unitsCount > (currentHoldings + 0.000001)) {
+                alert(`You do not have enough ${currentSymbol} holdings to sell that amount! (Available: ${currentHoldings.toFixed(4)})`);
                 return;
             }
 
-            const unitsSold = usdAmount / currentPrice;
-            const costBasisReduction = currentHoldings > 0 ? (unitsSold / currentHoldings) * currentCost : 0;
-
+            const costBasisReduction = currentHoldings > 0 ? (unitsCount / currentHoldings) * currentCost : 0;
             marketBalance += usdAmount;
 
-            const { error: balErr } = await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
-            if (balErr) throw new Error("Balance update failed: " + balErr.message);
-
-            const { error: posErr } = await db.from('paper_positions').upsert({
+            await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
+            await db.from('paper_positions').upsert({
                 user_id: userId,
                 symbol: currentSymbol,
-                amount: Math.max(0, currentHoldings - unitsSold),
+                amount: Math.max(0, currentHoldings - unitsCount),
                 cost_basis: Math.max(0, currentCost - costBasisReduction),
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id,symbol' });
-            if (posErr) throw new Error("Position update failed: " + posErr.message);
 
-            await saveTradeLog('SELL', usdAmount, unitsSold, currentSymbol);
+            await saveTradeLog('SELL', usdAmount, unitsCount, currentSymbol);
         }
 
         amountInput.value = '';
         if (typeof renderTradeHistory === 'function') await renderTradeHistory();
         if (typeof updateTradingUI === 'function') updateTradingUI();
 
-        alert(`Successfully executed ${type} order!`);
+        alert(`Successfully executed ${type} order for ${unitsCount.toFixed(4)} ${currentSymbol} ($${usdAmount.toFixed(2)} USD)!`);
 
     } catch (err) {
         alert("Trade Error: " + err.message);

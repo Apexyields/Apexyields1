@@ -3797,7 +3797,6 @@ function executePaperTrade(type) {
         return;
     }
 
-    // Determine current active symbol (e.g., BTC, ETH, SOL) from your chart/state
     const currentSymbol = window.currentCryptoSymbol || 'BTC'; 
     const cryptoConfig = cryptoMap[currentSymbol];
     if (!cryptoConfig) return;
@@ -3808,10 +3807,10 @@ function executePaperTrade(type) {
         return;
     }
 
-    // Use the independent market paper balance
+    // Read sandbox market balance independently
     let marketBalance = parseFloat(localStorage.getItem('market_paper_balance'));
     if (isNaN(marketBalance)) {
-        marketBalance = 10000.00; // Default starting balance
+        marketBalance = 10000.00;
         localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
     }
 
@@ -3829,15 +3828,13 @@ function executePaperTrade(type) {
 
         const unitsBought = usdAmount / currentPrice;
 
-        // Deduct from sandbox balance only
+        // Modify only the isolated sandbox key
         marketBalance -= usdAmount;
         localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
 
-        // Update asset holdings and cost basis
         localStorage.setItem(storageKey, (currentHoldings + unitsBought).toFixed(6));
         localStorage.setItem(costKey, (currentCost + usdAmount).toFixed(2));
 
-        // Log trade history
         saveTradeLog('BUY', usdAmount, unitsBought.toFixed(4), currentSymbol);
 
     } else if (type === 'SELL') {
@@ -3851,19 +3848,15 @@ function executePaperTrade(type) {
         const unitsSold = usdAmount / currentPrice;
         const costBasisReduction = (unitsSold / currentHoldings) * currentCost;
 
-        // Add proceeds back to sandbox balance only
         marketBalance += usdAmount;
         localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
 
-        // Reduce asset holdings and cost basis proportionally
         localStorage.setItem(storageKey, Math.max(0, currentHoldings - unitsSold).toFixed(6));
         localStorage.setItem(costKey, Math.max(0, currentCost - costBasisReduction).toFixed(2));
 
-        // Log trade history
         saveTradeLog('SELL', usdAmount, unitsSold.toFixed(4), currentSymbol);
     }
 
-    // Clear input and refresh UI components
     amountInput.value = '';
     renderTradeHistory();
     if (typeof updateTradingUI === 'function') {
@@ -3871,6 +3864,21 @@ function executePaperTrade(type) {
     }
 }
 
+function saveTradeLog(type, usd, units, symbol) {
+    const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    logs.unshift({
+        type: type,
+        usd: usd.toFixed(2),
+        units: units,
+        symbol: symbol,
+        time: timeStr
+    });
+
+    if (logs.length > 50) logs.pop();
+    localStorage.setItem('paper_trade_history', JSON.stringify(logs));
+}
 // Helper function to handle logs
 function saveTradeLog(type, usd, units, symbol) {
     const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
@@ -3893,10 +3901,10 @@ function renderTradeHistory() {
     const historyContainer = document.getElementById('paperTradeHistory');
     if (!historyContainer) return;
 
-    // Independent sandbox cash balance for the market tab paper trading
+    // Use completely isolated sandbox cash balance (independent of Supabase user profile)
     let marketBalance = parseFloat(localStorage.getItem('market_paper_balance'));
     if (isNaN(marketBalance)) {
-        marketBalance = 10000.00; // Default starting balance for the standalone mini-app
+        marketBalance = 10000.00; // Default sandbox starting balance
         localStorage.setItem('market_paper_balance', marketBalance.toFixed(2));
     }
     
@@ -3987,7 +3995,7 @@ function renderTradeHistory() {
 
     historyContainer.innerHTML = logsHtml;
 
-    // 4. Margin Liquidation System (using the isolated balance)
+    // 4. Margin Liquidation System
     const riskBadge = document.getElementById('liquidationRiskBadge');
     
     if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance) {

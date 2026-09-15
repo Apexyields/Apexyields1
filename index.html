@@ -3727,6 +3727,16 @@ function updateTradingUI() {
         const holding = parseFloat(localStorage.getItem(cryptoMap[symbol].storageKey) || '0.0000');
         totalCryptoValue += holding * (cryptoPrices[symbol] || 0);
     }
+    // Sync mini chart card price headers with live Binance prices
+for (const symbol in cryptoMap) {
+    const cardPriceElem = document.getElementById(`card-price-${symbol}`);
+    if (cardPriceElem && cryptoPrices[symbol]) {
+        cardPriceElem.innerText = '$' + cryptoPrices[symbol].toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+}
 
     // Global Portfolio Net Worth & Total PnL (Top Header Only)
     const totalPortfolio = userBalance + totalCryptoValue;
@@ -3977,16 +3987,23 @@ function renderMultiCryptoCharts() {
 
     gridContainer.innerHTML = '';
 
+    const tvSymbols = {
+        'BTC': 'BINANCE:BTCUSDT',
+        'ETH': 'BINANCE:ETHUSDT',
+        'SOL': 'BINANCE:SOLUSDT',
+        'XRP': 'BINANCE:XRPUSDT',
+        'BNB': 'BINANCE:BNBUSDT'
+    };
+
     for (const symbol in cryptoMap) {
-        const coin = cryptoMap[symbol];
         const isActive = symbol === selectedAsset;
         const borderClass = isActive ? 'border-amber-500 shadow-md shadow-amber-500/10' : 'border-slate-800 hover:border-slate-700';
 
         const cardHtml = `
             <div onclick="selectAsset('${symbol}')" 
                  id="chart-card-${symbol}"
-                 class="crypto-chart-card cursor-pointer bg-slate-900 border ${borderClass} rounded-xl p-2 transition-all">
-                <div class="flex items-center justify-between mb-1 px-1">
+                 class="crypto-chart-card cursor-pointer bg-slate-900 border ${borderClass} rounded-xl p-3 transition-all">
+                <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-1.5">
                         <span class="font-bold text-sm text-white">${symbol}</span>
                         <span class="text-[10px] text-slate-400 font-mono">/ USD</span>
@@ -3995,32 +4012,18 @@ function renderMultiCryptoCharts() {
                         $${(cryptoPrices[symbol] || 0).toLocaleString()}
                     </span>
                 </div>
-                <!-- Embedded CoinGecko Mini Chart Widget -->
-                <div class="h-44 w-full overflow-hidden rounded-lg">
-                    <gecko-coin-price-chart-widget 
-                        locale="en" 
-                        outlined="true" 
-                        coin-id="${coin.id}" 
-                        initial-currency="usd">
-                    </gecko-coin-price-chart-widget>
+                <div class="h-44 w-full rounded-lg overflow-hidden">
+                    <iframe 
+                        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_${symbol}&symbol=${tvSymbols[symbol]}&interval=15&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=000000&theme=dark&style=1&timezone=Etc%2FUTC"
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no">
+                    </iframe>
                 </div>
             </div>
         `;
         gridContainer.insertAdjacentHTML('beforeend', cardHtml);
-    }
-}
-
-// 2. Update card highlight styles when switching assets
-function highlightActiveChartCard(selectedSymbol) {
-    document.querySelectorAll('.crypto-chart-card').forEach(card => {
-        card.classList.remove('border-amber-500', 'shadow-md', 'shadow-amber-500/10');
-        card.classList.add('border-slate-800');
-    });
-
-    const activeCard = document.getElementById(`chart-card-${selectedSymbol}`);
-    if (activeCard) {
-        activeCard.classList.remove('border-slate-800');
-        activeCard.classList.add('border-amber-500', 'shadow-md', 'shadow-amber-500/10');
     }
 }
   

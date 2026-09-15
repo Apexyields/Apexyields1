@@ -2060,10 +2060,15 @@ async function handleClaimPayout(packageId) {
         }
 
                 // 3. Handle settlement response
-        if (data && data.success) {
+                if (data && data.success) {
             alert(data.message);
             if (typeof fetchUserData === 'function') await fetchUserData();
             if (typeof initDashboard === 'function') await initDashboard();
+            
+            // Re-focus Packages tab so the user doesn't jump back to Market
+            if (typeof switchTab === 'function') switchTab('packages');
+            else if (typeof showTab === 'function') showTab('packages');
+            else if (typeof openTab === 'function') openTab('packages');
         } else {
             alert('Notice: ' + (data ? data.message : 'Claim failed without response message.'));
         }

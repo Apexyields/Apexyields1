@@ -453,17 +453,10 @@
         </div>
     </div>
 
-    <!-- Live CoinGecko Chart Widget -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 overflow-hidden shadow-lg">
-        <script src="https://widgets.coingecko.com/gecko-coin-price-chart-widget.js"></script>
-        <gecko-coin-price-chart-widget 
-            coin-id="bitcoin" 
-            currency="usd" 
-            height="350" 
-            locale="en" 
-            dark-mode="true" 
-            initial-currency="usd">
-        </gecko-coin-price-chart-widget>
+        <!-- Live Multi-Crypto Charts Container -->
+    <script src="https://widgets.coingecko.com/gecko-coin-price-chart-widget.js"></script>
+    <div id="cryptoChartsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <!-- Multi-coin chart cards render here via JavaScript -->
     </div>
     
     <!-- Invisible Legacy Compatibility Hooks -->

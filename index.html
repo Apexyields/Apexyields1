@@ -349,68 +349,61 @@
                 </div>
             </div>
             
-            <!-- TAB: PAPER TRADING -->
+<!-- TAB: MARKET & PAPER TRADING -->
 <div id="view-market" class="tab-view transition-all duration-200 ease-out hidden opacity-0 translate-y-2 space-y-4">
-    <!-- Header Badge & Portfolio Summary -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-        <div class="flex justify-between items-center">
+
+    <!-- Paper Trading Portfolio Overview -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
             <div>
-                <h3 class="text-base font-bold text-white flex items-center gap-2">
-                    📊 Paper Trading
+                <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>📊</span> Paper Trading
                 </h3>
-                <p class="text-xs text-slate-400">Simulate crypto trades with zero financial risk.</p>
+                <p class="text-[11px] text-slate-400">Simulate crypto trades with zero financial risk.</p>
             </div>
-            <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-full font-semibold">
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 DEMO MODE
             </span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
-            <!-- Live Total Portfolio & PnL Card -->
-            <div class="col-span-2 bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
-                <div>
-                    <p class="text-[11px] text-slate-400 font-medium">Live Total Portfolio Value</p>
-                    <div class="flex items-baseline gap-2">
-                        <span id="tradeTotalValue" class="text-lg font-bold text-white">$0.00</span>
-                        <span id="tradePnlBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00 (0.00%)</span>
-                    </div>
+        <!-- Net Worth & Cash Out -->
+        <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800/80 flex justify-between items-center">
+            <div>
+                <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block">Live Total Portfolio Value</span>
+                <div class="flex items-baseline gap-2 mt-0.5">
+                    <span id="tradeTotalValue" class="text-xl font-black text-white">$1,000.00</span>
+                    <span id="tradePnlBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+$0.00 (0.00%)</span>
                 </div>
-                <button type="button" onclick="cashOutPaperTrading()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-1.5 rounded-xl transition-all shadow-md shadow-emerald-500/10">
-                    💰 Cash Out
-                </button>
             </div>
+            <button type="button" onclick="cashOutPaperTrading()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition flex items-center gap-1 shadow-lg shadow-emerald-500/10">
+                💰 Cash Out
+            </button>
+        </div>
 
-            <!-- USD Balance Card -->
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 flex justify-between items-center">
+        <!-- Balances Grid -->
+        <div class="grid grid-cols-2 gap-2">
+            <div class="bg-slate-950/40 rounded-xl p-2.5 border border-slate-800/50 flex justify-between items-center">
                 <div>
-                    <p class="text-[11px] text-slate-400">Paper USD Balance</p>
-                    <p id="tradeUsdBalance" class="text-base font-bold text-emerald-400">$0.00</p>
+                    <span class="text-[10px] font-medium text-slate-400 block">Paper USD Balance</span>
+                    <span id="tradeUsdBalance" class="text-sm font-bold text-emerald-400">$1,000.00</span>
                 </div>
-                <button type="button" onclick="resetPaperBalance()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded-lg border border-slate-700/50 transition-all font-semibold">
+                <button type="button" onclick="resetPaperBalance()" class="text-[10px] text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition flex items-center gap-1">
                     ⚙️ Edit
                 </button>
             </div>
-
-            <!-- BTC Holdings Card -->
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 text-right">
-                <p class="text-[11px] text-slate-400">BTC Holdings</p>
-                <p id="tradeBtcHolding" class="text-base font-bold text-amber-400">0.0000 BTC</p>
-            </div>
-        </div>
-            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/50 text-right">
-                <p class="text-[11px] text-slate-400">BTC Holdings</p>
-                <p id="tradeBtcHolding" class="text-base font-bold text-amber-400">0.0000 BTC</p>
+            <div class="bg-slate-950/40 rounded-xl p-2.5 border border-slate-800/50">
+                <span class="text-[10px] font-medium text-slate-400 block">BTC Holdings</span>
+                <span id="tradeBtcHolding" class="text-sm font-bold text-amber-400">0.0000 BTC</span>
             </div>
         </div>
     </div>
 
-    <!-- Order Execution Box -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
-        <div class="flex justify-between items-center pb-2 border-b border-slate-800/80">
-            <div class="flex items-center gap-2">
-                <span class="text-lg">₿</span>
-                <span class="font-bold text-sm text-white">BTC / USD</span>
-            </div>
+    <!-- BTC/USD Trade Panel -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-white flex items-center gap-1">
+                <span>₿</span> BTC / USD
+            </span>
             <div class="text-right">
                 <span class="text-[10px] text-slate-400 block">MARKET PRICE</span>
                 <span id="btcPriceDisplay" class="text-xs font-bold text-emerald-400">$65,000.00</span>
@@ -418,36 +411,30 @@
         </div>
 
         <div>
-            <label class="text-[11px] text-slate-400 mb-1 block">Trade Amount ($)</label>
-            <input type="number" id="tradeAmountInput" placeholder="e.g. 100" 
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500" />
-            
-            <!-- Quick-Amount Percentage Buttons -->
-            <div class="grid grid-cols-3 gap-2 mt-2">
-                <button type="button" onclick="setTradePercent(25)" class="py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700/50 transition-all">25%</button>
-                <button type="button" onclick="setTradePercent(50)" class="py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700/50 transition-all">50%</button>
-                <button type="button" onclick="setTradePercent(100)" class="py-1.5 text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700/50 transition-all">MAX</button>
-            </div>
+            <label class="text-[10px] text-slate-400 block mb-1">Trade Amount ($)</label>
+            <input type="number" id="tradeAmountInput" placeholder="e.g. 100" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50">
         </div>
 
-        <div class="grid grid-cols-2 gap-3 pt-1">
-            <button type="button" onclick="executePaperTrade('BUY')" class="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs rounded-xl transition-all active:scale-[0.98]">
-                Buy BTC
-            </button>
-            <button type="button" onclick="executePaperTrade('SELL')" class="py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-all active:scale-[0.98]">
-                Sell BTC
-            </button>
+        <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="setTradePercent(25)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition">25%</button>
+            <button type="button" onclick="setTradePercent(50)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition">50%</button>
+            <button type="button" onclick="setTradePercent(100)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 transition">MAX</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" onclick="executePaperTrade('BUY')" class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition">Buy BTC</button>
+            <button type="button" onclick="executePaperTrade('SELL')" class="py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs transition">Sell BTC</button>
         </div>
     </div>
 
     <!-- Trade History Log Card -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg">
-        <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800/80">
-            <h4 class="text-xs font-bold text-slate-300">Order History</h4>
-            <button type="button" onclick="clearPaperTradeHistory()" class="text-[10px] text-slate-500 hover:text-rose-400">Clear Log</button>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+            <h4 class="text-xs font-bold text-white">Order History</h4>
+            <button type="button" onclick="clearPaperTradeHistory()" class="text-[10px] text-slate-500 hover:text-slate-300 transition">Clear Log</button>
         </div>
-        <div id="paperTradeHistory" class="space-y-2 max-h-36 overflow-y-auto text-xs text-slate-400 pr-1">
-            <p class="text-slate-500 italic text-center py-2">No virtual trades executed yet.</p>
+        <div id="paperTradeHistory" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <p class="text-slate-500 italic text-center py-2 text-xs">No virtual trades executed yet.</p>
         </div>
     </div>
 
@@ -461,12 +448,13 @@
         </iframe>
     </div>
 
-    <!-- Invisible Legacy Compatibility Hooks (Prevents Login JS Null Crash) -->
+    <!-- Invisible Legacy Compatibility Hooks -->
     <div class="hidden" style="display: none;">
         <span id="shareCountBadge"></span>
         <button id="shareBtn"></button>
         <table><tbody id="marketCoinList"></tbody></table>
     </div>
+
 </div>
 
             <!-- TAB 2: WALLET & PAYOUT -->

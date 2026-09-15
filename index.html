@@ -3801,7 +3801,7 @@ async function executePaperTrade(type) {
         return;
     }
 
-    const currentSymbol = window.currentCryptoSymbol || 'BTC'; 
+    const currentSymbol = window.currentCryptoSymbol || 'BTC';
     const cryptoConfig = cryptoMap[currentSymbol];
     if (!cryptoConfig) return;
 
@@ -3813,6 +3813,7 @@ async function executePaperTrade(type) {
 
     const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
+    // 1. Fetch paper wallet balance from Supabase
     const { data: profile, error } = await supabase
         .from('profiles')
         .select('paper_balance')
@@ -3826,11 +3827,16 @@ async function executePaperTrade(type) {
 
     let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
 
-    const storageKey = cryptoConfig.storageKey;
-    const costKey = cryptoConfig.costKey;
+    // 2. Fetch current position for this symbol directly from Supabase
+    const { data: posData } = await supabase
+        .from('paper_positions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('symbol', currentSymbol)
+        .maybeSingle();
 
-    let currentHoldings = parseFloat(localStorage.getItem(storageKey)) || 0;
-    let currentCost = parseFloat(localStorage.getItem(costKey)) || 0;
+    let currentHoldings = parseFloat(posData?.amount || 0);
+    let currentCost = parseFloat(posData?.cost_basis || 0);
 
     if (type === 'BUY') {
         if (usdAmount > marketBalance) {
@@ -3841,6 +3847,7 @@ async function executePaperTrade(type) {
         const unitsBought = usdAmount / currentPrice;
         marketBalance -= usdAmount;
 
+        // Update paper balance in profiles table
         const { error: updateError } = await supabase
             .from('profiles')
             .update({ paper_balance: marketBalance })
@@ -3851,10 +3858,19 @@ async function executePaperTrade(type) {
             return;
         }
 
-        localStorage.setItem(storageKey, (currentHoldings + unitsBought).toFixed(6));
-        localStorage.setItem(costKey, (currentCost + usdAmount).toFixed(2));
+        // Save position to paper_positions table
+        const newHoldings = currentHoldings + unitsBought;
+        const newCost = currentCost + usdAmount;
 
-        saveTradeLog('BUY', usdAmount, unitsBought.toFixed(4), currentSymbol);
+        await supabase.from('paper_positions').upsert({
+            user_id: userId,
+            symbol: currentSymbol,
+            amount: newHoldings,
+            cost_basis: newCost,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,symbol' });
+
+        await saveTradeLog('BUY', usdAmount, unitsBought.toFixed(4), currentSymbol);
 
     } else if (type === 'SELL') {
         const currentMktVal = currentHoldings * currentPrice;
@@ -3869,6 +3885,7 @@ async function executePaperTrade(type) {
 
         marketBalance += usdAmount;
 
+        // Update paper balance in profiles table
         const { error: updateError } = await supabase
             .from('profiles')
             .update({ paper_balance: marketBalance })
@@ -3879,65 +3896,69 @@ async function executePaperTrade(type) {
             return;
         }
 
-        localStorage.setItem(storageKey, Math.max(0, currentHoldings - unitsSold).toFixed(6));
-        localStorage.setItem(costKey, Math.max(0, currentCost - costBasisReduction).toFixed(2));
+        // Save position to paper_positions table
+        const newHoldings = Math.max(0, currentHoldings - unitsSold);
+        const newCost = Math.max(0, currentCost - costBasisReduction);
 
-        saveTradeLog('SELL', usdAmount, unitsSold.toFixed(4), currentSymbol);
+        await supabase.from('paper_positions').upsert({
+            user_id: userId,
+            symbol: currentSymbol,
+            amount: newHoldings,
+            cost_basis: newCost,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,symbol' });
+
+        await saveTradeLog('SELL', usdAmount, unitsSold.toFixed(4), currentSymbol);
     }
 
     amountInput.value = '';
-    renderTradeHistory();
+    await renderTradeHistory();
     if (typeof updateTradingUI === 'function') {
         updateTradingUI();
     }
 }
 
-function saveTradeLog(type, usd, units, symbol) {
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    logs.unshift({
-        type: type,
-        usd: usd.toFixed(2),
-        units: units,
-        symbol: symbol,
-        time: timeStr
-    });
+async function saveTradeLog(type, usdAmount, units, symbol) {
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+    const currentPrice = cryptoPrices[symbol] || 0;
 
-    if (logs.length > 50) logs.pop();
-    localStorage.setItem('paper_trade_history', JSON.stringify(logs));
+    // Persist log directly to Supabase
+    await supabase.from('paper_trades').insert({
+        user_id: userId,
+        symbol: symbol,
+        type: type,
+        usd_amount: parseFloat(usdAmount),
+        units: parseFloat(units),
+        price: parseFloat(currentPrice)
+    });
 }
 
 async function renderTradeHistory() {
     const historyContainer = document.getElementById('paperTradeHistory');
     if (!historyContainer) return;
 
-    let marketBalance = 10000.00;
-    const userId = localStorage.getItem('user_id');
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-    if (typeof supabase !== 'undefined' && userId) {
-        try {
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('paper_balance')
-                .eq('id', userId)
-                .maybeSingle();
+    // 1. Fetch Paper Balance & Active Positions parallelly
+    const [profileRes, positionsRes, tradesRes] = await Promise.all([
+        supabase.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+        supabase.from('paper_positions').select('*').eq('user_id', userId),
+        supabase.from('paper_trades').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20)
+    ]);
 
-            if (!error && profile && profile.paper_balance !== null) {
-                marketBalance = parseFloat(profile.paper_balance);
-            }
-        } catch (e) {
-            
-        }
-    }
+    const marketBalance = parseFloat(profileRes.data?.paper_balance || 10000.00);
+    const positions = positionsRes.data || [];
+    const logs = tradesRes.data || [];
 
     let totalUnrealizedPnL = 0;
     let holdingsHtml = '';
     let hasHoldings = false;
 
-    for (const symbol in cryptoMap) {
-        const holding = parseFloat(localStorage.getItem(cryptoMap[symbol].storageKey)) || 0;
-        const costBasis = parseFloat(localStorage.getItem(cryptoMap[symbol].costKey)) || 0;
+    // 2. Compute LIVE position PnL dynamically using real-time price feeds
+    for (const pos of positions) {
+        const holding = parseFloat(pos.amount);
+        const costBasis = parseFloat(pos.cost_basis);
+        const symbol = pos.symbol;
 
         if (holding > 0) {
             hasHoldings = true;
@@ -3986,27 +4007,24 @@ async function renderTradeHistory() {
             : '<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions open</p>';
     }
 
-    const logs = JSON.parse(localStorage.getItem('paper_trade_history')) || [];
+    // 3. Render Persistent Trade History Logs
     let logsHtml = '';
-
     if (logs.length === 0) {
         logsHtml = '<p class="text-slate-500 italic text-center py-2 text-xs">No trade history</p>';
     } else {
         logsHtml += '<div class="max-h-36 overflow-y-auto pr-1 space-y-1.5">';
-        for (let i = 0; i < logs.length; i++) {
-            const item = logs[i];
+        for (const item of logs) {
             const badgeClass = item.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
-            const displaySymbol = item.symbol || 'BTC';
-            const displayUnits = item.units || item.btc || '0.0000';
+            const formattedTime = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             logsHtml += `
                 <div class="flex justify-between items-center text-xs bg-slate-950/40 p-2 rounded-lg border border-slate-800/50">
                     <div class="flex items-center gap-2">
                         <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeClass}">${item.type}</span>
-                        <span class="text-white font-medium">$${item.usd}</span>
-                        <span class="text-slate-400 text-[10px]">${displayUnits} ${displaySymbol}</span>
+                        <span class="text-white font-medium">$${item.usd_amount}</span>
+                        <span class="text-slate-400 text-[10px]">${item.units} ${item.symbol}</span>
                     </div>
-                    <span class="text-slate-500 text-[9px]">${item.time}</span>
+                    <span class="text-slate-500 text-[9px]">${formattedTime}</span>
                 </div>
             `;
         }
@@ -4014,24 +4032,6 @@ async function renderTradeHistory() {
     }
 
     historyContainer.innerHTML = logsHtml;
-
-    const riskBadge = document.getElementById('liquidationRiskBadge');
-    
-    if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance) {
-        if (riskBadge) {
-            riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold border border-rose-500/40 animate-pulse";
-            riskBadge.innerText = "LIQUIDATING";
-        }
-        setTimeout(() => executeMarginLiquidation(), 300);
-    } else if (hasHoldings && totalUnrealizedPnL < 0 && Math.abs(totalUnrealizedPnL) >= marketBalance * 0.7) {
-        if (riskBadge) {
-            riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/40";
-            riskBadge.innerText = "HIGH RISK";
-        }
-    } else if (riskBadge) {
-        riskBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20";
-        riskBadge.innerText = "SAFE";
-    }
 }
 // Helper function to force liquidate all open positions
 function executeMarginLiquidation() {

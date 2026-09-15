@@ -4153,20 +4153,37 @@ async function cashOutPaperTrading() {
     if (typeof updateTradingUI === 'function') updateTradingUI();
 }
 
-function resetPaperBalance() {
-    const currentVal = localStorage.getItem('user_balance') || '1000.00';
+async function resetPaperBalance() {
+    const db = window.supabaseClient || window.supabase;
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+
+    const currentVal = localStorage.getItem('user_balance') || '100000.00';
     const input = prompt('Enter your desired Demo USD balance:', currentVal);
+
     if (input !== null) {
         const parsed = parseFloat(input);
         if (!isNaN(parsed) && parsed >= 0) {
-            localStorage.setItem('user_balance', parsed.toFixed(2));
-            localStorage.setItem('paper_initial_capital', parsed.toFixed(2));
-            for (const symbol in cryptoMap) {
-                localStorage.setItem(cryptoMap[symbol].costKey, '0.00');
+            // 1. Persist directly to Supabase
+            if (db && typeof db.from === 'function') {
+                const { error } = await db
+                    .from('profiles')
+                    .update({ paper_balance: parsed })
+                    .eq('id', userId);
+
+                if (error) {
+                    alert('Failed to update balance in Supabase: ' + error.message);
+                    return;
+                }
             }
-            updateTradingUI();
+
+            // 2. Sync local fallback state
+            localStorage.setItem('user_balance', parsed.toFixed(2));
+
+            // 3. Refresh UI
+            if (typeof updateTradingUI === 'function') updateTradingUI();
+            alert(`Paper balance updated to $${parsed.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
         } else {
-            alert('Please enter a valid numeric balance.');
+            alert('Please enter a valid positive number.');
         }
     }
 }

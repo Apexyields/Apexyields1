@@ -3737,60 +3737,77 @@ function selectAsset(symbol) {
     updateTradingUI();
 }
 
-function updateTradingUI() {
-    if (localStorage.getItem('user_balance') === null) localStorage.setItem('user_balance', '1000.00');
-    if (localStorage.getItem('paper_initial_capital') === null) localStorage.setItem('paper_initial_capital', '1000.00');
+async function updateTradingUI() {
+    const db = window.supabaseClient || window.supabase;
+    if (!db || typeof db.from !== 'function') return;
 
-    const userBalance = parseFloat(localStorage.getItem('user_balance') || '0.00');
-    const initialCapital = parseFloat(localStorage.getItem('paper_initial_capital') || '1000.00');
+    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+    const currentSymbol = window.currentCryptoSymbol || 'BTC';
+    
+    // 1. Get live market price for current symbol
+    const liveMarketPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) 
+        ? parseFloat(cryptoPrices[currentSymbol]) 
+        : 0;
 
-    let totalCryptoValue = 0;
-    for (const symbol in cryptoMap) {
-        const holding = parseFloat(localStorage.getItem(cryptoMap[symbol].storageKey) || '0.0000');
-        totalCryptoValue += holding * (cryptoPrices[symbol] || 0);
-    }
-    // Sync mini chart card price headers with live Binance prices
-for (const symbol in cryptoMap) {
-    const cardPriceElem = document.getElementById(`card-price-${symbol}`);
-    if (cardPriceElem && cryptoPrices[symbol]) {
-        cardPriceElem.innerText = '$' + cryptoPrices[symbol].toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
-}
+    // 2. Fetch fresh cash balance from Supabase
+    const { data: profile } = await db.from('profiles').select('paper_balance').eq('id', userId).single();
+    const paperBalance = parseFloat(profile?.paper_balance || 0);
 
-    // Global Portfolio Net Worth & Total PnL (Top Header Only)
-    const totalPortfolio = userBalance + totalCryptoValue;
-    const globalPnl = totalPortfolio - initialCapital;
-    const globalPnlPercent = initialCapital > 0 ? (globalPnl / initialCapital) * 100 : 0;
+    // 3. Fetch all active positions from Supabase
+    const { data: positions } = await db.from('paper_positions').select('*').eq('user_id', userId);
 
-    const activePrice = cryptoPrices[selectedAsset] || 0;
-    const activeHolding = parseFloat(localStorage.getItem(cryptoMap[selectedAsset].storageKey) || '0.0000');
+    let totalHoldingsVal = 0;
+    let totalCostBasis = 0;
+    let currentSymbolHoldings = 0;
 
-    const usdElem = document.getElementById('tradeUsdBalance');
-    const btcElem = document.getElementById('tradeBtcHolding');
-    const priceElem = document.getElementById('btcPriceDisplay');
-    const labelElem = document.getElementById('selectedAssetLabel');
-    const totalElem = document.getElementById('tradeTotalValue');
-    const pnlElem = document.getElementById('tradePnlBadge');
+    if (positions && positions.length > 0) {
+        for (const pos of positions) {
+            const amount = parseFloat(pos.amount || 0);
+            const costBasis = parseFloat(pos.cost_basis || 0);
+            const sym = pos.symbol;
 
-    if (usdElem) usdElem.innerText = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (btcElem) btcElem.innerText = `${activeHolding.toFixed(cryptoMap[selectedAsset].decimals)} ${selectedAsset}`;
-    if (priceElem) priceElem.innerText = '$' + activePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (labelElem) labelElem.innerText = `${selectedAsset} / USD`;
-    if (totalElem) totalElem.innerText = '$' + totalPortfolio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (amount > 0) {
+                if (sym === currentSymbol) currentSymbolHoldings = amount;
 
-    // Render Global Total PnL at the very top
-    if (pnlElem) {
-        const isPositive = globalPnl >= 0;
-        const sign = isPositive ? '+' : '';
-        pnlElem.innerText = `${sign}$${globalPnl.toFixed(2)} (${sign}${globalPnlPercent.toFixed(2)}%)`;
-        pnlElem.className = isPositive 
-            ? 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-            : 'text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20';
+                // Live valuation per asset
+                const symPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) 
+                    ? parseFloat(cryptoPrices[sym]) 
+                    : liveMarketPrice;
+
+                totalHoldingsVal += (amount * symPrice);
+                totalCostBasis += costBasis;
+            }
+        }
     }
 
+    // 4. Calculate Total Portfolio Metrics
+    const totalPortfolioValue = paperBalance + totalHoldingsVal;
+    const initialCapital = 100000.00; // Your base paper capital
+    const overallPnlUsd = totalPortfolioValue - initialCapital;
+    const overallPnlPct = (overallPnlUsd / initialCapital) * 100;
+
+    // 5. Update Top Header Cards
+    const paperBalDisplay = document.getElementById('paperUsdBalance') || document.querySelector('.paper-usd-balance');
+    if (paperBalDisplay) paperBalDisplay.innerText = `$${paperBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    const cryptoHoldingsDisplay = document.getElementById('btcHoldings') || document.querySelector('.btc-holdings');
+    if (cryptoHoldingsDisplay) cryptoHoldingsDisplay.innerText = `${currentSymbolHoldings.toFixed(4)} ${currentSymbol}`;
+
+    // 6. Update Live Portfolio Value Card
+    const totalValDisplay = document.getElementById('totalPortfolioValue') || document.querySelector('.total-portfolio-value');
+    if (totalValDisplay) totalValDisplay.innerText = `$${totalPortfolioValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    const totalPnlDisplay = document.getElementById('totalPortfolioPnl') || document.querySelector('.total-portfolio-pnl');
+    if (totalPnlDisplay) {
+        const sign = overallPnlUsd >= 0 ? '+' : '';
+        totalPnlDisplay.innerText = `${sign}$${overallPnlUsd.toFixed(2)} (${sign}${overallPnlPct.toFixed(2)}%)`;
+        totalPnlDisplay.className = `text-xs font-semibold ${overallPnlUsd >= 0 ? 'text-emerald-400' : 'text-rose-500'}`;
+    }
+
+    // 7. Refresh Position Cards with Live PnL
+    if (typeof renderActivePositions === 'function') {
+        renderActivePositions(positions);
+    }
 }
 
 // Helper to safely fetch whichever Supabase client instance exists

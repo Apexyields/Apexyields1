@@ -3737,76 +3737,92 @@ function selectAsset(symbol) {
     updateTradingUI();
 }
 
-async function updateTradingUI() {
-    const db = window.supabaseClient || window.supabase;
-    if (!db || typeof db.from !== 'function') return;
 
-    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
-    const currentSymbol = window.currentCryptoSymbol || 'BTC';
-    
-    // 1. Get live market price for current symbol
-    const liveMarketPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) 
-        ? parseFloat(cryptoPrices[currentSymbol]) 
-        : 0;
+        async function updateTradingUI() {
+    try {
+        const db = window.supabaseClient || window.supabase;
+        if (!db || typeof db.from !== 'function') return;
 
-    // 2. Fetch fresh cash balance from Supabase
-    const { data: profile } = await db.from('profiles').select('paper_balance').eq('id', userId).single();
-    const paperBalance = parseFloat(profile?.paper_balance || 0);
+        const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+        const currentSymbol = window.currentCryptoSymbol || 'BTC';
 
-    // 3. Fetch all active positions from Supabase
-    const { data: positions } = await db.from('paper_positions').select('*').eq('user_id', userId);
+        // 1. Fetch live paper balance from Supabase
+        const { data: profile } = await db
+            .from('profiles')
+            .select('paper_balance')
+            .eq('id', userId)
+            .single();
 
-    let totalHoldingsVal = 0;
-    let totalCostBasis = 0;
-    let currentSymbolHoldings = 0;
+        const paperBalance = (profile?.paper_balance !== undefined && profile?.paper_balance !== null)
+            ? parseFloat(profile.paper_balance) 
+            : 100000.00;
 
-    if (positions && positions.length > 0) {
-        for (const pos of positions) {
-            const amount = parseFloat(pos.amount || 0);
-            const costBasis = parseFloat(pos.cost_basis || 0);
-            const sym = pos.symbol;
+        // 2. Fetch active positions from Supabase
+        const { data: positions } = await db
+            .from('paper_positions')
+            .select('*')
+            .eq('user_id', userId);
 
-            if (amount > 0) {
-                if (sym === currentSymbol) currentSymbolHoldings = amount;
+        let totalHoldingsVal = 0;
+        let currentSymbolHoldings = 0;
 
-                // Live valuation per asset
-                const symPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) 
-                    ? parseFloat(cryptoPrices[sym]) 
-                    : liveMarketPrice;
+        if (positions && positions.length > 0) {
+            positions.forEach(pos => {
+                const amount = parseFloat(pos.amount || 0);
+                const sym = pos.symbol;
+                if (amount > 0) {
+                    if (sym === currentSymbol) currentSymbolHoldings = amount;
 
-                totalHoldingsVal += (amount * symPrice);
-                totalCostBasis += costBasis;
-            }
+                    const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) 
+                        ? parseFloat(cryptoPrices[sym]) 
+                        : 0;
+
+                    totalHoldingsVal += (amount * livePrice);
+                }
+            });
         }
-    }
 
-    // 4. Calculate Total Portfolio Metrics
-    const totalPortfolioValue = paperBalance + totalHoldingsVal;
-    const initialCapital = 100000.00; // Your base paper capital
-    const overallPnlUsd = totalPortfolioValue - initialCapital;
-    const overallPnlPct = (overallPnlUsd / initialCapital) * 100;
+        // 3. Compute Portfolio Totals
+        const totalPortfolioValue = paperBalance + totalHoldingsVal;
+        const baseCapital = 100000.00; 
+        const pnlUsd = totalPortfolioValue - baseCapital;
+        const pnlPct = (pnlUsd / baseCapital) * 100;
 
-    // 5. Update Top Header Cards
-    const paperBalDisplay = document.getElementById('paperUsdBalance') || document.querySelector('.paper-usd-balance');
-    if (paperBalDisplay) paperBalDisplay.innerText = `$${paperBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        // 4. Update the exact elements from your HTML screenshot
+        const elTotalVal = document.getElementById('tradeTotalValue');
+        const elTotalPnl = document.getElementById('tradePnlBadge');
+        const elPaperBal = document.getElementById('tradeUsdBalance');
+        const elBtcHold  = document.getElementById('tradeBtcHolding');
 
-    const cryptoHoldingsDisplay = document.getElementById('btcHoldings') || document.querySelector('.btc-holdings');
-    if (cryptoHoldingsDisplay) cryptoHoldingsDisplay.innerText = `${currentSymbolHoldings.toFixed(4)} ${currentSymbol}`;
+        if (elPaperBal) {
+            elPaperBal.innerText = `$${paperBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
 
-    // 6. Update Live Portfolio Value Card
-    const totalValDisplay = document.getElementById('totalPortfolioValue') || document.querySelector('.total-portfolio-value');
-    if (totalValDisplay) totalValDisplay.innerText = `$${totalPortfolioValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        if (elTotalVal) {
+            elTotalVal.innerText = `$${totalPortfolioValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
 
-    const totalPnlDisplay = document.getElementById('totalPortfolioPnl') || document.querySelector('.total-portfolio-pnl');
-    if (totalPnlDisplay) {
-        const sign = overallPnlUsd >= 0 ? '+' : '';
-        totalPnlDisplay.innerText = `${sign}$${overallPnlUsd.toFixed(2)} (${sign}${overallPnlPct.toFixed(2)}%)`;
-        totalPnlDisplay.className = `text-xs font-semibold ${overallPnlUsd >= 0 ? 'text-emerald-400' : 'text-rose-500'}`;
-    }
+        if (elTotalPnl) {
+            const sign = pnlUsd >= 0 ? '+' : '';
+            elTotalPnl.innerText = `${sign}$${pnlUsd.toFixed(2)} (${sign}${pnlPct.toFixed(2)}%)`;
+            elTotalPnl.className = `text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                pnlUsd >= 0 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+            }`;
+        }
 
-    // 7. Refresh Position Cards with Live PnL
-    if (typeof renderActivePositions === 'function') {
-        renderActivePositions(positions);
+        if (elBtcHold) {
+            elBtcHold.innerText = `${currentSymbolHoldings.toFixed(4)} ${currentSymbol}`;
+        }
+
+        // 5. Update Position List
+        if (typeof renderActivePositions === 'function') {
+            renderActivePositions(positions);
+        }
+
+    } catch (err) {
+        console.error("UI Update Error:", err);
     }
 }
 

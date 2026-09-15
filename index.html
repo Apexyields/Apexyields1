@@ -1845,42 +1845,34 @@ if (typeof renderPackageButtons === 'function') {
     }
 
     function switchTab(tabName) {
-    // 1. Hide all tab views and reset dock icons
-    document.querySelectorAll('.tab-view').forEach(view => {
-        view.classList.add('hidden', 'opacity-0', 'translate-y-2');
-        view.classList.remove('opacity-100', 'translate-y-0');
-    });
-    document.querySelectorAll('nav button').forEach(btn => {
-        btn.classList.remove('active-tab', 'text-blue-400', 'scale-105');
-        btn.classList.add('text-slate-400');
-    });
-
-    // 2. Show & animate active tab view
+    // Hide all tab views
+    document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+    
+    // Show target view
     const targetView = document.getElementById(`view-${tabName}`);
-    if (targetView) {
-        targetView.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            targetView.classList.add('opacity-100', 'translate-y-0');
-            targetView.classList.remove('opacity-0', 'translate-y-2');
-        });
-    }
+    if (targetView) targetView.classList.remove('hidden');
 
-    // 3. Highlight active dock button
+    // Reset all nav buttons to inactive slate color
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-amber-400');
+        btn.classList.add('text-slate-400');
+        const indicator = btn.querySelector('.tab-indicator');
+        if (indicator) {
+            indicator.classList.remove('bg-amber-500');
+            indicator.classList.add('bg-transparent');
+        }
+    });
+
+    // Highlight selected tab button with amber accent
     const activeBtn = document.getElementById(`tab-${tabName}`);
     if (activeBtn) {
         activeBtn.classList.remove('text-slate-400');
-        activeBtn.classList.add('active-tab', 'text-blue-400', 'scale-105');
-    }
-        if (tabName === 'referral' && typeof renderPackageButtons === 'function') {
-        renderPackageButtons();
-    }
-
-    // 4. Trigger tab-specific data rendering
-    if (tabName === 'referral') {
-        renderReferralHub();
-    } else if (tabName === 'market') {
-        renderCoinTable();
-        updateShareUI();
+        activeBtn.classList.add('text-amber-400');
+        const indicator = activeBtn.querySelector('.tab-indicator');
+        if (indicator) {
+            indicator.classList.remove('bg-transparent');
+            indicator.classList.add('bg-amber-500');
+        }
     }
 }
 

@@ -1844,38 +1844,38 @@ if (typeof renderPackageButtons === 'function') {
         updateUniversalPackageCounts();
     }
 
-    function switchTab(tabName) {
-    // Hide all tab views
-    document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+function switchTab(tabName) {
+    const allTabs = ['market', 'packages', 'wallet', 'referral', 'settings'];
     
-    // Show target view
-    const targetView = document.getElementById(`view-${tabName}`);
-    if (targetView) targetView.classList.remove('hidden');
-
-    // Reset all nav buttons to inactive slate color
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('text-amber-400');
-        btn.classList.add('text-slate-400');
-        const indicator = btn.querySelector('.tab-indicator');
-        if (indicator) {
-            indicator.classList.remove('bg-amber-500');
-            indicator.classList.add('bg-transparent');
+    allTabs.forEach(tab => {
+        const view = document.getElementById(`view-${tab}`);
+        const btn = document.getElementById(`tab-${tab}`);
+        
+        // Hide view
+        if (view) {
+            view.classList.add('hidden');
+        }
+        
+        // Reset button color
+        if (btn) {
+            btn.classList.remove('text-amber-400', 'font-semibold');
+            btn.classList.add('text-slate-400');
         }
     });
 
-    // Highlight selected tab button with amber accent
+    // Show selected view
+    const activeView = document.getElementById(`view-${tabName}`);
     const activeBtn = document.getElementById(`tab-${tabName}`);
+    
+    if (activeView) {
+        activeView.classList.remove('hidden');
+    }
+    
     if (activeBtn) {
         activeBtn.classList.remove('text-slate-400');
-        activeBtn.classList.add('text-amber-400');
-        const indicator = activeBtn.querySelector('.tab-indicator');
-        if (indicator) {
-            indicator.classList.remove('bg-transparent');
-            indicator.classList.add('bg-amber-500');
-        }
+        activeBtn.classList.add('text-amber-400', 'font-semibold');
     }
 }
-
 async function renderUserActiveSubscriptions() {
     const container = document.getElementById('userActiveSubscriptionsList');
     if (!container || !currentUser || !usersData[currentUser]) return;

@@ -1099,6 +1099,8 @@
                 }
             });
 
+            window.supabase = supabaseClient;
+
             // Helper function to process any pending referral once logged in
             async function processPendingReferral(userId) {
                 const pendingRef = localStorage.getItem('apex_pending_ref');

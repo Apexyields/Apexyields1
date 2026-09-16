@@ -3793,60 +3793,66 @@ function selectAsset(symbol) {
     if (typeof updateTradingUI === 'function') updateTradingUI();
 }
 
-        async function updateTradingUI() {
+  async function updateTradingUI() {
     try {
         const db = window.supabaseClient || window.supabase;
         if (!db || typeof db.from !== 'function') return;
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
         const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
-        // 1. Fetch live paper balance from Supabase
-        const { data: profile } = await db
-            .from('profiles')
-            .select('paper_balance')
-            .eq('id', userId)
-            .single();
 
-        const paperBalance = (profile?.paper_balance !== undefined && profile?.paper_balance !== null)
-            ? parseFloat(profile.paper_balance) 
-            : 100000.00;
+        // 1. Fetch paper balance & active positions
+        const [{ data: profile }, { data: positions }] = await Promise.all([
+            db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+            db.from('paper_positions').select('*').eq('user_id', userId)
+        ]);
 
-        // 2. Fetch active positions from Supabase
-        const { data: positions } = await db
-            .from('paper_positions')
-            .select('*')
-            .eq('user_id', userId);
-
-        let totalHoldingsVal = 0;
+        const paperBalance = profile?.paper_balance !== undefined ? parseFloat(profile.paper_balance) : 100000.00;
+        let totalPositionEquity = 0;
         let currentSymbolHoldings = 0;
 
+        // 2. Compute live position values (Longs & Shorts)
         if (positions && positions.length > 0) {
             positions.forEach(pos => {
-                const amount = parseFloat(pos.amount || 0);
+                const holding = parseFloat(pos.amount || 0);
+                const costBasis = parseFloat(pos.cost_basis || 0);
                 const sym = pos.symbol;
-                if (amount > 0) {
-                    if (sym === currentSymbol) currentSymbolHoldings = amount;
+                const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) ? parseFloat(cryptoPrices[sym]) : 0;
 
-                    const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) 
-                        ? parseFloat(cryptoPrices[sym]) 
-                        : 0;
+                if (sym === currentSymbol) {
+                    currentSymbolHoldings = holding;
+                }
 
-                    totalHoldingsVal += (amount * livePrice);
+                if (Math.abs(holding) > 0.000001) {
+                    if (holding > 0) { 
+                        // LONG POSITION
+                        const currentVal = holding * livePrice;
+                        totalPositionEquity += currentVal;
+                    } else { 
+                        // SHORT POSITION: Equity = Collateral + Floating PnL
+                        const absHolding = Math.abs(holding);
+                        const absCostBasis = Math.abs(costBasis);
+                        const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
+                        const shortPnl = (entryPrice - livePrice) * absHolding;
+                        
+                        totalPositionEquity += (absCostBasis + shortPnl);
+                    }
                 }
             });
         }
 
-        // 3. Compute Portfolio Totals
-        const totalPortfolioValue = paperBalance + totalHoldingsVal;
-        const baseCapital = 100000.00; 
+        // 3. Portfolio Net Worth & Total PnL Calculation
+        const totalPortfolioValue = paperBalance + totalPositionEquity;
+        const baseCapital = 100000.00;
         const pnlUsd = totalPortfolioValue - baseCapital;
         const pnlPct = (pnlUsd / baseCapital) * 100;
 
-        // 4. Update the exact elements from your HTML screenshot
+        // 4. Update DOM Elements
         const elTotalVal = document.getElementById('tradeTotalValue');
         const elTotalPnl = document.getElementById('tradePnlBadge');
         const elPaperBal = document.getElementById('tradeUsdBalance');
-        const elBtcHold  = document.getElementById('tradeBtcHolding');
+        const elHoldingsLabel = document.getElementById('tradeHoldingsLabel');
+        const elBtcHold = document.getElementById('tradeBtcHolding');
 
         if (elPaperBal) {
             elPaperBal.innerText = `$${paperBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -3858,24 +3864,30 @@ function selectAsset(symbol) {
 
         if (elTotalPnl) {
             const sign = pnlUsd >= 0 ? '+' : '';
+            const colorClass = pnlUsd >= 0 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+            elTotalPnl.className = `text-[10px] font-bold px-1.5 py-0.5 rounded border ${colorClass}`;
             elTotalPnl.innerText = `${sign}$${pnlUsd.toFixed(2)} (${sign}${pnlPct.toFixed(2)}%)`;
-            elTotalPnl.className = `text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                pnlUsd >= 0 
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-            }`;
+        }
+
+        if (elHoldingsLabel) {
+            elHoldingsLabel.innerText = `${currentSymbol} Holdings`;
         }
 
         if (elBtcHold) {
-            elBtcHold.innerText = `${currentSymbolHoldings.toFixed(4)} ${currentSymbol}`;
+            const isShort = currentSymbolHoldings < 0;
+            const prefix = isShort ? 'SHORT ' : '';
+            elBtcHold.innerText = `${prefix}${Math.abs(currentSymbolHoldings).toFixed(4)} ${currentSymbol}`;
         }
 
-        // 5. Update Position List
+        // 5. Update Active Positions & Trade History List
         if (typeof renderTradeHistory === 'function') {
-    await renderTradeHistory();
+            await renderTradeHistory();
         }
+
     } catch (err) {
-        console.error("UI Update Error:", err);
+        console.error('UI Update Error:', err);
     }
 }
 
@@ -3930,111 +3942,98 @@ async function executePaperTrade(type) {
             return;
         }
 
-        const currentSymbol = window.currentCryptoSymbol || 'BTC';
-        const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) ? parseFloat(cryptoPrices[currentSymbol]) : 0;
-        
+        // 1. Sync symbol across global state selectors
+        const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
+        const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) 
+            ? parseFloat(cryptoPrices[currentSymbol]) 
+            : 0;
+
         if (currentPrice <= 0) {
             alert('Waiting for live market price updates...');
             return;
         }
 
-        // 1. Detect Mode accurately (Checks global tradeMode variable or UI elements)
+        // 2. Select mode accurately (Crypto vs USD)
         let isCryptoMode = false;
         if (typeof tradeMode !== 'undefined') {
             isCryptoMode = (tradeMode === 'CRYPTO' || tradeMode === 'Crypto');
         } else {
             const labelText = document.getElementById('tradeAmountLabel')?.innerText || '';
-            const cryptoBtn = document.querySelector('.bg-amber-500, .bg-yellow-500, .active-mode'); // check active toggle styling
             isCryptoMode = labelText.toUpperCase().includes('CRYPTO') || labelText.includes(currentSymbol);
         }
 
-        // 2. Calculate USD Value & Units based on Mode
+        // 3. Calculate USD Value & Units
         let usdAmount = 0;
         let unitsCount = 0;
 
         if (isCryptoMode) {
-            // Input is in Units (e.g. 1 BTC -> $75,562.45 USD)
             unitsCount = rawInputVal;
             usdAmount = rawInputVal * currentPrice;
         } else {
-            // Input is in USD (e.g. $100 USD -> 0.00132 BTC)
             usdAmount = rawInputVal;
             unitsCount = rawInputVal / currentPrice;
         }
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-        const { data: profile, error: profileErr } = await db
-            .from('profiles')
-            .select('paper_balance')
-            .eq('id', userId)
-            .single();
+        // 4. Fetch user paper balance & existing position
+        const [{ data: profile, error: profileErr }, { data: posData }] = await Promise.all([
+            db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+            db.from('paper_positions').select('*').eq('user_id', userId).eq('symbol', currentSymbol).maybeSingle()
+        ]);
 
         if (profileErr || !profile) {
             alert('Error fetching paper balance from database.');
             return;
         }
 
-        let marketBalance = parseFloat(profile.paper_balance) || 10000.00;
-
-        const { data: posData } = await db
-            .from('paper_positions')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('symbol', currentSymbol)
-            .maybeSingle();
-
+        let marketBalance = parseFloat(profile.paper_balance || 100000.00);
         let currentHoldings = parseFloat(posData?.amount || 0);
         let currentCost = parseFloat(posData?.cost_basis || 0);
 
+        // 5. Execution Logic (Long vs Short)
         if (type === 'BUY') {
             if (usdAmount > marketBalance) {
-                alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}, Available: $${marketBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
                 return;
             }
-
             marketBalance -= usdAmount;
-
-            await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
-            await db.from('paper_positions').upsert({
-                user_id: userId,
-                symbol: currentSymbol,
-                amount: currentHoldings + unitsCount,
-                cost_basis: currentCost + usdAmount,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id,symbol' });
-
-            await saveTradeLog('BUY', usdAmount, unitsCount, currentSymbol);
-
+            currentHoldings += unitsCount;
+            currentCost += usdAmount;
         } else if (type === 'SELL') {
-            if (currentHoldings <= 0 || unitsCount > (currentHoldings + 0.000001)) {
-                alert(`You do not have enough ${currentSymbol} holdings to sell that amount! (Available: ${currentHoldings.toFixed(4)})`);
-                return;
-            }
-
-            const costBasisReduction = currentHoldings > 0 ? (unitsCount / currentHoldings) * currentCost : 0;
+            // Sells subtract units; if units drop below 0, it opens/expands a SHORT position
             marketBalance += usdAmount;
-
-            await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
-            await db.from('paper_positions').upsert({
-                user_id: userId,
-                symbol: currentSymbol,
-                amount: Math.max(0, currentHoldings - unitsCount),
-                cost_basis: Math.max(0, currentCost - costBasisReduction),
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id,symbol' });
-
-            await saveTradeLog('SELL', usdAmount, unitsCount, currentSymbol);
+            currentHoldings -= unitsCount;
+            currentCost -= usdAmount;
         }
 
-        amountInput.value = '';
-        if (typeof renderTradeHistory === 'function') await renderTradeHistory();
-        if (typeof updateTradingUI === 'function') updateTradingUI();
+        // 6. Persist to Supabase
+        await Promise.all([
+            db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId),
+            db.from('paper_positions').upsert({
+                user_id: userId,
+                symbol: currentSymbol,
+                amount: currentHoldings,
+                cost_basis: currentCost
+            }, { onConflict: 'user_id,symbol' }),
+            db.from('paper_trades').insert({
+                user_id: userId,
+                symbol: currentSymbol,
+                type: type,
+                amount_usd: usdAmount,
+                units: unitsCount,
+                price: currentPrice
+            })
+        ]);
 
-        alert(`Successfully executed ${type} order for ${unitsCount.toFixed(4)} ${currentSymbol} ($${usdAmount.toFixed(2)} USD)!`);
+        amountInput.value = '';
+        if (typeof updateTradingUI === 'function') {
+            await updateTradingUI();
+        }
 
     } catch (err) {
-        alert("Trade Error: " + err.message);
+        console.error('Error executing paper trade:', err);
+        alert('An error occurred while executing the trade.');
     }
 }
 
@@ -4048,7 +4047,6 @@ async function renderTradeHistory() {
 
     const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-    // 1. Fetch Paper Balance, Active Positions, and Trade Logs
     const [profileRes, positionsRes, tradesRes] = await Promise.all([
         db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
         db.from('paper_positions').select('*').eq('user_id', userId),
@@ -4061,32 +4059,37 @@ async function renderTradeHistory() {
     let holdingsHtml = '';
     let hasHoldings = false;
 
-    // 2. Compute LIVE position PnL dynamically using real-time price feeds
     for (const pos of positions) {
         const holding = parseFloat(pos.amount || 0);
-        const costBasis = parseFloat(pos.cost_basis || 0);
         const symbol = pos.symbol;
 
-        if (holding > 0.000001) {
+        if (Math.abs(holding) > 0.000001) {
             hasHoldings = true;
-            const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) 
-                ? parseFloat(cryptoPrices[symbol]) 
-                : 0;
+            const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) ? parseFloat(cryptoPrices[symbol]) : 0;
+            const isShort = holding < 0;
+            const absHolding = Math.abs(holding);
+            const absCostBasis = Math.abs(parseFloat(pos.cost_basis || 0));
 
-            const entryPrice = holding > 0 ? costBasis / holding : 0;
-            const currentMktVal = holding * currentPrice;
-            const indPnl = currentMktVal - costBasis;
-            const pnlPct = costBasis > 0 ? (indPnl / costBasis) * 100 : 0;
+            const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
+            const currentMktVal = absHolding * livePrice;
 
+            // Long PnL vs Short PnL Formula
+            const indPnl = isShort 
+                ? (entryPrice - livePrice) * absHolding 
+                : (livePrice - entryPrice) * absHolding;
+
+            const pnlPct = absCostBasis > 0 ? (indPnl / absCostBasis) * 100 : 0;
             const isPos = indPnl >= 0;
             const pnlColorClass = isPos ? 'text-emerald-400' : 'text-rose-400';
+            const positionBadge = isShort ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
 
             holdingsHtml += `
                 <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-1.5 mb-2">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-1.5">
                             <span class="font-bold text-white text-xs">${symbol}</span>
-                            <span class="text-[10px] text-slate-400">(${holding.toFixed(4)})</span>
+                            <span class="text-[9px] px-1 py-0.2 rounded font-bold border ${positionBadge}">${isShort ? 'SHORT' : 'LONG'}</span>
+                            <span class="text-[10px] text-slate-400">(${absHolding.toFixed(4)})</span>
                         </div>
                         <div class="text-right">
                             <span class="${pnlColorClass} font-bold text-xs">${isPos ? '+' : ''}$${indPnl.toFixed(2)}</span>
@@ -4114,7 +4117,7 @@ async function renderTradeHistory() {
             : `<p class="text-[11px] text-slate-500 italic text-center py-2">No active positions</p>`;
     }
 
-    // 3. Render Trade History Logs
+    // Render Logs
     if (historyContainer) {
         if (!logs || logs.length === 0) {
             historyContainer.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-2">No trade history</p>`;

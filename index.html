@@ -3942,7 +3942,6 @@ async function executePaperTrade(type) {
             return;
         }
 
-        // 1. Sync symbol across global state selectors
         const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
         const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) 
             ? parseFloat(cryptoPrices[currentSymbol]) 
@@ -3953,7 +3952,6 @@ async function executePaperTrade(type) {
             return;
         }
 
-        // 2. Select mode accurately (Crypto vs USD)
         let isCryptoMode = false;
         if (typeof tradeMode !== 'undefined') {
             isCryptoMode = (tradeMode === 'CRYPTO' || tradeMode === 'Crypto');
@@ -3962,21 +3960,11 @@ async function executePaperTrade(type) {
             isCryptoMode = labelText.toUpperCase().includes('CRYPTO') || labelText.includes(currentSymbol);
         }
 
-        // 3. Calculate USD Value & Units
-        let usdAmount = 0;
-        let unitsCount = 0;
-
-        if (isCryptoMode) {
-            unitsCount = rawInputVal;
-            usdAmount = rawInputVal * currentPrice;
-        } else {
-            usdAmount = rawInputVal;
-            unitsCount = rawInputVal / currentPrice;
-        }
+        let usdAmount = isCryptoMode ? (rawInputVal * currentPrice) : rawInputVal;
+        let unitsCount = isCryptoMode ? rawInputVal : (rawInputVal / currentPrice);
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-        // 4. Fetch user paper balance & existing position
         const [{ data: profile, error: profileErr }, { data: posData }] = await Promise.all([
             db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
             db.from('paper_positions').select('*').eq('user_id', userId).eq('symbol', currentSymbol).maybeSingle()
@@ -3989,42 +3977,66 @@ async function executePaperTrade(type) {
 
         let marketBalance = parseFloat(profile.paper_balance || 100000.00);
         let currentHoldings = parseFloat(posData?.amount || 0);
-        let currentCost = parseFloat(posData?.cost_basis || 0);
+        let currentCost = Math.abs(parseFloat(posData?.cost_basis || 0));
 
-        // 5. Execution Logic (Long vs Short)
         if (type === 'BUY') {
-            if (usdAmount > marketBalance) {
-                alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
-                return;
+            if (currentHoldings < 0) {
+                // Closing / Reducing a SHORT position
+                marketBalance -= usdAmount;
+                currentHoldings += unitsCount;
+                const absHoldings = Math.abs(currentHoldings);
+                currentCost = absHoldings > 0 ? (currentCost - usdAmount) : 0;
+            } else {
+                // Opening / Adding to a LONG position
+                if (usdAmount > marketBalance) {
+                    alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
+                    return;
+                }
+                marketBalance -= usdAmount;
+                currentHoldings += unitsCount;
+                currentCost += usdAmount;
             }
-            marketBalance -= usdAmount;
-            currentHoldings += unitsCount;
-            currentCost += usdAmount;
         } else if (type === 'SELL') {
-            // Sells subtract units; if units drop below 0, it opens/expands a SHORT position
-            marketBalance += usdAmount;
-            currentHoldings -= unitsCount;
-            currentCost -= usdAmount;
+            if (currentHoldings > 0) {
+                // Closing / Reducing a LONG position
+                marketBalance += usdAmount;
+                currentHoldings -= unitsCount;
+                currentCost = currentHoldings > 0 ? (currentCost - usdAmount) : 0;
+            } else {
+                // Opening / Adding to a SHORT position
+                marketBalance += usdAmount;
+                currentHoldings -= unitsCount; // Turns negative
+                currentCost += usdAmount;      // Cost basis remains positive total entry value
+            }
         }
 
-        // 6. Persist to Supabase
-        await Promise.all([
-            db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId),
-            db.from('paper_positions').upsert({
-                user_id: userId,
-                symbol: currentSymbol,
-                amount: currentHoldings,
-                cost_basis: currentCost
-            }, { onConflict: 'user_id,symbol' }),
-            db.from('paper_trades').insert({
-                user_id: userId,
-                symbol: currentSymbol,
-                type: type,
-                amount_usd: usdAmount,
-                units: unitsCount,
-                price: currentPrice
-            })
-        ]);
+        // Keep cost basis positive and clean up micro fractions near zero
+        if (Math.abs(currentHoldings) < 0.000001) {
+            currentHoldings = 0;
+            currentCost = 0;
+        } else {
+            currentCost = Math.max(0, currentCost);
+        }
+
+        const { error: dbErr } = await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
+        if (dbErr) throw dbErr;
+
+        const { error: posErr } = await db.from('paper_positions').upsert({
+            user_id: userId,
+            symbol: currentSymbol,
+            amount: currentHoldings,
+            cost_basis: currentCost
+        }, { onConflict: 'user_id,symbol' });
+        if (posErr) throw posErr;
+
+        await db.from('paper_trades').insert({
+            user_id: userId,
+            symbol: currentSymbol,
+            type: type,
+            amount_usd: usdAmount,
+            units: unitsCount,
+            price: currentPrice
+        });
 
         amountInput.value = '';
         if (typeof updateTradingUI === 'function') {
@@ -4033,7 +4045,7 @@ async function executePaperTrade(type) {
 
     } catch (err) {
         console.error('Error executing paper trade:', err);
-        alert('An error occurred while executing the trade.');
+        alert(`Trade failed: ${err.message || 'Database error'}`);
     }
 }
 
@@ -4310,14 +4322,10 @@ function renderMultiCryptoCharts() {
                  id="chart-card-${symbol}"
                  class="crypto-chart-card cursor-pointer bg-slate-900 border ${borderClass} rounded-xl p-3 transition-all">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-1.5">
-                        <span class="font-bold text-sm text-white">${symbol}</span>
-                        <span class="text-[10px] text-slate-400 font-mono">/ USD</span>
-                    </div>
-                    <span id="card-price-${symbol}" class="font-mono text-xs font-semibold text-emerald-400">
-                        $${(cryptoPrices[symbol] || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                </div>
+    <div class="flex items-center gap-1.5">
+        <span class="font-bold text-sm text-white">${symbol} / USD</span>
+    </div>
+</div>
                 <!-- TradingView Live Stream Container -->
                 <div class="h-60 w-full rounded-lg overflow-hidden bg-slate-950">
                     <iframe 

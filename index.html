@@ -3925,16 +3925,10 @@ async function saveTradeLog(type, usdAmount, units, symbol) {
 async function executePaperTrade(type) {
     try {
         const db = window.supabaseClient || window.supabase;
-        if (!db || typeof db.from !== 'function') {
-            alert('Trade Error: Supabase client is not initialized correctly.');
-            return;
-        }
+        if (!db || typeof db.from !== 'function') return;
 
         const amountInput = document.getElementById('tradeAmountInput') || document.getElementById('paperTradeAmount');
-        if (!amountInput) {
-            alert('Trade Error: Trade input element not found.');
-            return;
-        }
+        if (!amountInput) return;
 
         const rawInputVal = parseFloat(amountInput.value);
         if (isNaN(rawInputVal) || rawInputVal <= 0) {
@@ -3944,8 +3938,7 @@ async function executePaperTrade(type) {
 
         const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
         const currentPrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[currentSymbol]) 
-            ? parseFloat(cryptoPrices[currentSymbol]) 
-            : 0;
+            ? parseFloat(cryptoPrices[currentSymbol]) : 0;
 
         if (currentPrice <= 0) {
             alert('Waiting for live market price updates...');
@@ -3965,86 +3958,56 @@ async function executePaperTrade(type) {
 
         const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
 
-        const [{ data: profile, error: profileErr }, { data: posData }] = await Promise.all([
+        const [{ data: profile }, { data: posData }] = await Promise.all([
             db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
             db.from('paper_positions').select('*').eq('user_id', userId).eq('symbol', currentSymbol).maybeSingle()
         ]);
 
-        if (profileErr || !profile) {
-            alert('Error fetching paper balance from database.');
+        let paperBalance = parseFloat(profile?.paper_balance || 100000.00);
+
+        if (usdAmount > paperBalance) {
+            alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
             return;
         }
 
-        let marketBalance = parseFloat(profile.paper_balance || 100000.00);
         let currentHoldings = parseFloat(posData?.amount || 0);
         let currentCost = Math.abs(parseFloat(posData?.cost_basis || 0));
 
         if (type === 'BUY') {
-            if (currentHoldings < 0) {
-                // Closing / Reducing a SHORT position
-                marketBalance -= usdAmount;
-                currentHoldings += unitsCount;
-                const absHoldings = Math.abs(currentHoldings);
-                currentCost = absHoldings > 0 ? (currentCost - usdAmount) : 0;
-            } else {
-                // Opening / Adding to a LONG position
-                if (usdAmount > marketBalance) {
-                    alert(`Insufficient paper balance! Required: $${usdAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
-                    return;
-                }
-                marketBalance -= usdAmount;
-                currentHoldings += unitsCount;
-                currentCost += usdAmount;
-            }
+            // OPEN/ADD LONG
+            paperBalance -= usdAmount;
+            currentHoldings += unitsCount;
+            currentCost += usdAmount;
         } else if (type === 'SELL') {
-            if (currentHoldings > 0) {
-                // Closing / Reducing a LONG position
-                marketBalance += usdAmount;
-                currentHoldings -= unitsCount;
-                currentCost = currentHoldings > 0 ? (currentCost - usdAmount) : 0;
-            } else {
-                // Opening / Adding to a SHORT position
-                marketBalance += usdAmount;
-                currentHoldings -= unitsCount; // Turns negative
-                currentCost += usdAmount;      // Cost basis remains positive total entry value
-            }
+            // OPEN/ADD SHORT
+            paperBalance -= usdAmount;  // Lock margin collateral
+            currentHoldings -= unitsCount; // Negative amount denotes SHORT
+            currentCost += usdAmount;      // Entry collateral sum
         }
 
-        // Keep cost basis positive and clean up micro fractions near zero
-        if (Math.abs(currentHoldings) < 0.000001) {
-            currentHoldings = 0;
-            currentCost = 0;
-        } else {
-            currentCost = Math.max(0, currentCost);
-        }
-
-        const { error: dbErr } = await db.from('profiles').update({ paper_balance: marketBalance }).eq('id', userId);
-        if (dbErr) throw dbErr;
-
-        const { error: posErr } = await db.from('paper_positions').upsert({
-            user_id: userId,
-            symbol: currentSymbol,
-            amount: currentHoldings,
-            cost_basis: currentCost
-        }, { onConflict: 'user_id,symbol' });
-        if (posErr) throw posErr;
-
-        await db.from('paper_trades').insert({
-            user_id: userId,
-            symbol: currentSymbol,
-            type: type,
-            amount_usd: usdAmount,
-            units: unitsCount,
-            price: currentPrice
-        });
+        await Promise.all([
+            db.from('profiles').update({ paper_balance: paperBalance }).eq('id', userId),
+            db.from('paper_positions').upsert({
+                user_id: userId,
+                symbol: currentSymbol,
+                amount: currentHoldings,
+                cost_basis: currentCost
+            }, { onConflict: 'user_id,symbol' }),
+            db.from('paper_trades').insert({
+                user_id: userId,
+                symbol: currentSymbol,
+                type: type === 'BUY' ? 'OPEN LONG' : 'OPEN SHORT',
+                amount_usd: usdAmount,
+                units: unitsCount,
+                price: currentPrice
+            })
+        ]);
 
         amountInput.value = '';
-        if (typeof updateTradingUI === 'function') {
-            await updateTradingUI();
-        }
+        await updateTradingUI();
 
     } catch (err) {
-        console.error('Error executing paper trade:', err);
+        console.error('Error executing trade:', err);
         alert(`Trade failed: ${err.message || 'Database error'}`);
     }
 }
@@ -4096,30 +4059,35 @@ async function renderTradeHistory() {
             const positionBadge = isShort ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
 
             holdingsHtml += `
-                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-1.5 mb-2">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-bold text-white text-xs">${symbol}</span>
-                            <span class="text-[9px] px-1 py-0.2 rounded font-bold border ${positionBadge}">${isShort ? 'SHORT' : 'LONG'}</span>
-                            <span class="text-[10px] text-slate-400">(${absHolding.toFixed(4)})</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="${pnlColorClass} font-bold text-xs">${isPos ? '+' : ''}$${indPnl.toFixed(2)}</span>
-                            <span class="${pnlColorClass} text-[10px] font-semibold ml-1">(${isPos ? '+' : ''}${pnlPct.toFixed(2)}%)</span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/60 text-[10px]">
-                        <div>
-                            <span class="text-slate-500 block">Avg Entry</span>
-                            <span class="text-slate-300 font-mono font-medium">$${entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-slate-500 block">Current Value</span>
-                            <span class="text-slate-300 font-mono font-medium">$${currentMktVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                        </div>
-                    </div>
+    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-1.5 mb-2">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-1.5">
+                <span class="font-bold text-white text-xs">${symbol}</span>
+                <span class="text-[9px] px-1 py-0.2 rounded font-bold border ${positionBadge}">${isShort ? 'SHORT' : 'LONG'}</span>
+                <span class="text-[10px] text-slate-400">(${absHolding.toFixed(4)})</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="text-right">
+                    <span class="${pnlColorClass} font-bold text-xs">${isPos ? '+' : ''}$${indPnl.toFixed(2)}</span>
+                    <span class="${pnlColorClass} text-[10px] font-semibold ml-1">(${isPos ? '+' : ''}${pnlPct.toFixed(2)}%)</span>
                 </div>
-            `;
+                <button onclick="closePosition('${symbol}')" class="px-2 py-0.5 text-[10px] font-bold bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white rounded border border-rose-500/30 transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/60 text-[10px]">
+            <div>
+                <span class="text-slate-500 block">Avg Entry</span>
+                <span class="text-slate-300 font-mono font-medium">$${entryPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="text-right">
+                <span class="text-slate-500 block">Current Value</span>
+                <span class="text-slate-300 font-mono font-medium">$${currentMktVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+        </div>
+    </div>
+`;
         }
     }
 
@@ -4341,7 +4309,68 @@ function renderMultiCryptoCharts() {
         gridContainer.insertAdjacentHTML('beforeend', cardHtml);
     }
 }
-  
+
+        async function closePosition(symbol) {
+    try {
+        const db = window.supabaseClient || window.supabase;
+        if (!db || typeof db.from !== 'function') return;
+
+        const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+        const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) 
+            ? parseFloat(cryptoPrices[symbol]) : 0;
+
+        if (livePrice <= 0) {
+            alert('Cannot close position: waiting for live market price updates.');
+            return;
+        }
+
+        const [{ data: profile }, { data: posData }] = await Promise.all([
+            db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+            db.from('paper_positions').select('*').eq('user_id', userId).eq('symbol', symbol).maybeSingle()
+        ]);
+
+        if (!posData || Math.abs(parseFloat(posData.amount || 0)) < 0.000001) return;
+
+        let paperBalance = parseFloat(profile?.paper_balance || 100000.00);
+        const holding = parseFloat(posData.amount || 0);
+        const costBasis = Math.abs(parseFloat(posData.cost_basis || 0));
+        const absHolding = Math.abs(holding);
+        const isShort = holding < 0;
+
+        let payout = 0;
+        if (!isShort) {
+            // CLOSE LONG: Payout = Current market value
+            payout = absHolding * livePrice;
+        } else {
+            // CLOSE SHORT: Payout = Collateral + Short PnL
+            const entryPrice = absHolding > 0 ? costBasis / absHolding : 0;
+            const shortPnl = (entryPrice - livePrice) * absHolding;
+            payout = costBasis + shortPnl;
+        }
+
+        paperBalance += Math.max(0, payout);
+
+        // Delete position row so it completely disappears from Active Positions
+        await Promise.all([
+            db.from('profiles').update({ paper_balance: paperBalance }).eq('id', userId),
+            db.from('paper_positions').delete().eq('user_id', userId).eq('symbol', symbol),
+            db.from('paper_trades').insert({
+                user_id: userId,
+                symbol: symbol,
+                type: isShort ? 'CLOSE SHORT' : 'CLOSE LONG',
+                amount_usd: payout,
+                units: absHolding,
+                price: livePrice
+            })
+        ]);
+
+        await updateTradingUI();
+
+    } catch (err) {
+        console.error('Error closing position:', err);
+        alert(`Failed to close position: ${err.message || 'Database error'}`);
+    }
+}
 </script>
 </body>
 </html>

@@ -1672,7 +1672,6 @@ if (typeof renderPackageButtons === 'function') {
         const time = new Date().toLocaleTimeString('en-US', { hour12: false });
         systemData.auditLogs.unshift({ time, userId, type, details });
         saveData();
-        renderAuditLogs();
     }
 
     function formatCompactNumber(num) {
@@ -1686,14 +1685,10 @@ if (typeof renderPackageButtons === 'function') {
     }
 
     function getActivePackageCount() {
-        if (devManualOverrideCount !== null) {
-            return devManualOverrideCount;
-        }
-        if (!currentUser || !usersData[currentUser] || !usersData[currentUser].activeSubscriptions) {
-            return 0;
-        }
-        return usersData[currentUser].activeSubscriptions.filter(s => s.status === 'ACTIVE').length;
-    }
+        function getActivePackageCount() {
+    if (!currentUser || !usersData[currentUser]) return 0;
+    return usersData[currentUser].activeSubscriptions.filter(s => s.status === 'active').length;
+}
 
     function getPackageActiveUsers(pkgName) {
         let realCount = 0;

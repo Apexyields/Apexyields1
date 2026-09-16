@@ -1269,19 +1269,7 @@
                 return alert('Please enter both Username and Passcode.');
             }
 
-            // Admin Backdoor
-            if (password === '657961555') {
-                currentUser = 'admin';
-                localStorage.setItem('currentUser', currentUser);
-                document.getElementById('adminBtn').classList.remove('hidden');
-                document.getElementById('adminSettingsBox').classList.remove('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Administrator';
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-                initDashboard();
-                return;
-            }
-
+        
                     const email = username.includes('@') ? username : `${username}@apexyields.app`;
 
         if (supabaseClient) {
@@ -2858,48 +2846,6 @@ async function requestPayout() {
         }).join('');
 }
 
-    function toggleAdminPanel() {
-        const modal = document.getElementById('adminPanelModal');
-        modal.classList.toggle('hidden');
-        if (!modal.classList.contains('hidden')) renderAdminData();
-    }
-
-    function renderAdminData() {
-        document.getElementById('adminTRC20Input').value = systemData.addresses.TRC20 || '';
-        document.getElementById('adminERC20Input').value = systemData.addresses.ERC20 || '';
-        document.getElementById('adminSPLInput').value = systemData.addresses.SPL || '';
-        document.getElementById('adminBEP20Input').value = systemData.addresses.BEP20 || '';
-        document.getElementById('adminDevEmailInput').value = systemData.devEmail || '';
-        
-        renderAdminPendingDeposits();
-        renderAdminPendingPayouts();
-        renderAdminUserList();
-        renderAuditLogs();
-        renderDevPackageGrid();
-    }
-
-    function renderAdminPendingDeposits() {
-        const tbody = document.getElementById('adminPendingDepositsTable');
-        const badge = document.getElementById('pendingCountBadge');
-        if (!tbody) return;
-
-        badge.innerText = `${systemData.pendingDeposits.length} Pending`;
-
-        tbody.innerHTML = systemData.pendingDeposits.length === 0 ? 
-            `<tr><td colspan="4" class="p-2 text-center text-slate-500">No pending deposits requiring verification.</td></tr>` :
-            systemData.pendingDeposits.map((dep, index) => `
-                <tr>
-                    <td class="p-2 text-blue-400">${dep.userId}</td>
-                    <td class="p-2 text-slate-200">$${dep.amount} (${dep.network})</td>
-                    <td class="p-2 text-slate-400">${new Date(dep.submittedAt).toLocaleTimeString()}</td>
-                    <td class="p-2 text-right">
-                        <button onclick="approveDeposit(${index})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded font-bold mr-1">Approve</button>
-                        <button onclick="rejectDeposit(${index})" class="bg-rose-600 hover:bg-rose-500 text-white px-2 py-0.5 rounded font-bold">Reject</button>
-                    </td>
-                </tr>
-            `).join('');
-    }
-
     async function approveDeposit(index) {
     const dep = systemData.pendingDeposits[index];
     if (!dep) return;
@@ -2960,94 +2906,6 @@ async function requestPayout() {
         saveData();
         renderAdminPendingDeposits();
         alert(`Deposit rejected.`);
-    }
-
-    function renderAdminPendingPayouts() {
-        const tbody = document.getElementById('adminPendingPayoutsTable');
-        if (!tbody) return;
-
-        tbody.innerHTML = systemData.pendingPayouts.length === 0 ?
-            `<tr><td colspan="4" class="p-3 text-center text-slate-500">No pending payouts in queue.</td></tr>` :
-            systemData.pendingPayouts.map((pay, index) => `
-                <tr>
-                    <td class="p-2.5 text-blue-400">${pay.userId} (${pay.network})</td>
-                    <td class="p-2.5 font-bold text-slate-200">$${pay.amount}</td>
-                    <td class="p-2.5 font-mono text-slate-400 truncate max-w-[120px]">${pay.address}</td>
-                    <td class="p-2.5">
-                        <button onclick="completePayout(${index})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded font-bold">Mark Completed</button>
-                    </td>
-                </tr>
-            `).join('');
-    }
-
-    function completePayout(index) {
-        const pay = systemData.pendingPayouts[index];
-        if (!pay) return;
-
-        if (usersData[pay.userId] && usersData[pay.userId].payoutHistory) {
-            const match = usersData[pay.userId].payoutHistory.find(p => p.id === pay.id);
-            if (match) match.status = 'Completed';
-        }
-
-        systemData.pendingPayouts.splice(index, 1);
-        logEvent('admin', 'COMPLETE_PAYOUT', `Completed payout ${pay.id} of $${pay.amount} for user ${pay.userId}`);
-        saveData();
-        renderAdminPendingPayouts();
-        alert('Payout marked as completed.');
-    }
-
-    function renderAdminUserList() {
-        const container = document.getElementById('adminUserList');
-        if (!container) return;
-
-        const keys = Object.keys(usersData);
-        container.innerHTML = keys.length === 0 ? `<p class="text-slate-500 text-xs">No user accounts registered.</p>` :
-            keys.map(u => `
-                <div class="flex justify-between items-center bg-slate-900 p-2 rounded border border-slate-800 text-xs">
-                    <div>
-                        <span class="font-bold text-slate-200">${u}</span>
-                        <span class="text-slate-400 text-[10px] block">Balance: $${(usersData[u].balance || 0).toFixed(2)} | Refs: ${countQualifiedReferrals(usersData[u].refCode)}</span>
-                    </div>
-                    <button onclick="adminResetUserBalance('${u}')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-2 py-1 rounded text-[11px]">Add $100 Test</button>
-                </div>
-            `).join('');
-    }
-
-    function adminResetUserBalance(username) {
-        if (usersData[username]) {
-            usersData[username].balance = (usersData[username].balance || 0) + 100;
-            saveData();
-            renderAdminUserList();
-            alert(`Added $100 test funds to ${username}.`);
-        }
-    }
-
-    function saveAdminSettings() {
-    alert('Payment processing is managed automatically via NowPayments webhooks.');
-}
-
-function saveDevEmailSetting() {
-    alert('Email logging is handled via server-side API webhooks.');
-}
-
-function triggerDevEmailLog() {
-    alert('System events are logged directly in Supabase.');
-}
-
-    function renderAuditLogs() {
-        const tbody = document.getElementById('adminAuditLogTable');
-        if (!tbody) return;
-
-        tbody.innerHTML = systemData.auditLogs.length === 0 ?
-            `<tr><td colspan="4" class="p-2 text-center text-slate-500">Audit log empty.</td></tr>` :
-            systemData.auditLogs.slice(0, 30).map(log => `
-                <tr>
-                    <td class="p-2 text-slate-400">${log.time}</td>
-                    <td class="p-2 text-blue-400">${log.userId}</td>
-                    <td class="p-2 text-amber-400">${log.type}</td>
-                    <td class="p-2 text-slate-300">${log.details}</td>
-                </tr>
-            `).join('');
     }
 
 async function handlePackageLock(packageName, amount, dailyRate) {

@@ -2481,8 +2481,7 @@ async function handleDailyShare() {
     if (typeof closeDepositModal === 'function') closeDepositModal();
     if (typeof initDashboard === 'function') await initDashboard();
     if (typeof renderDepositHistory === 'function') renderDepositHistory();
-    alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting Master Admin approval.`);
-}
+    alert('Deposit of $${amt} USDT on ${net} submitted! Awaiting approval.');
 
     function renderDepositHistory() {
         const user = usersData[currentUser];

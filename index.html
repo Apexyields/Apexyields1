@@ -1891,7 +1891,7 @@ async function initDashboard() {
                 amount: Number(d.amount || 0),
                 network: d.network || '',
                 refId: d.ref_id || d.refId || '',
-                status: d.status || 'Pending Admin'
+                status: d.status || 'Pending Review'
             }));
         }
 
@@ -1909,7 +1909,7 @@ async function initDashboard() {
                 address: p.address || '',
                 network: p.network || '',
                 reference_id: p.reference_id || p.ref_id || '',
-                status: p.status || 'Pending Admin'
+                status: 'Pending Review',
             }));
         }
 

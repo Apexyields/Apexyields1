@@ -1287,17 +1287,19 @@ async function checkPersistedSession() {
     currentUser = savedUser;
 
     // Restore UI visibility based on user role
-    if (savedUser === 'admin') {
-        document.getElementById('adminBtn')?.classList.remove('hidden');
-        document.getElementById('adminSettingsBox')?.classList.remove('hidden');
-        const roleText = document.getElementById('userHeaderRole');
-        if (roleText) roleText.innerText = 'Administrator';
-    } else {
-        document.getElementById('adminBtn')?.classList.add('hidden');
-        document.getElementById('adminSettingsBox')?.classList.add('hidden');
-        const roleText = document.getElementById('userHeaderRole');
-        if (roleText) roleText.innerText = 'Standard User';
-    }
+    const adminBtn = document.getElementById('adminBtn');
+const adminBox = document.getElementById('adminSettingsBox');
+const roleText = document.getElementById('userHeaderRole');
+
+if (savedUser === 'admin') {
+    adminBtn?.classList.remove('hidden');
+    adminBox?.classList.remove('hidden');
+    if (roleText) roleText.innerText = 'Administrator';
+} else {
+    adminBtn?.classList.add('hidden');
+    adminBox?.classList.add('hidden');
+    if (roleText) roleText.innerText = 'Standard User';
+}
 
     // Bypasses auth screen immediately
     document.getElementById('authSection')?.classList.add('hidden');

@@ -2594,7 +2594,6 @@ async function requestPayout() {
         }
 
         systemData.pendingDeposits.splice(index, 1);
-        logEvent('admin', 'REJECT_DEPOSIT', `Rejected deposit ${dep.id} of $${dep.amount} for user ${dep.userId}`);
         saveData();
         alert(`Deposit rejected.`);
     }

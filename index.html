@@ -2706,13 +2706,13 @@ async function requestPayoutWithdrawal(packageId) {
 
     const payoutRef = 'PAY-' + Date.now();
 
-    // 2. Insert payout record into Supabase for admin review
+    // 2. Insert payout record into Supabase for review
     const { error: dbError } = await supabaseClient.from('payouts').insert({
         user_id: activeUserId,
         amount: payoutAmount,
         address: destinationAddress,
         network: selectedNetwork,
-        status: 'Pending Admin',
+        status: 'Pending Review',
         reference_id: payoutRef
     });
 

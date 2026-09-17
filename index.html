@@ -72,11 +72,7 @@
                 </button>
             </div>
         </div>
-    </div>
-
-                    <button id="adminBtn" onclick="toggleAdminPanel()" class="hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1">
-                        ⚡ <span>Control Panel</span>
-                    </button>
+    </div>                   
                 </div>
             </div>
         </header>
@@ -131,9 +127,6 @@
                     <span id="userHeaderRole" class="hidden"></span>
                     <span id="headerActiveCountText" class="hidden"></span>
 
-                    <button id="adminBtn" onclick="toggleAdminPanel()" class="hidden bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1">
-                        ⚡ <span>Control Panel</span>
-                    </button>
                 </div>
             </div>
         </header>
@@ -1940,14 +1933,6 @@ async function initDashboard() {
     }
 
     if (!currentUser) return;
-    
-
-    if (currentUser === 'admin') {
-        renderAdminData();
-        renderDynamicPackageCards(0);
-        updateUniversalPackageCounts();
-        return;
-    }
 
     if (!usersData[currentUser]) {
         usersData[currentUser] = {
@@ -2713,7 +2698,6 @@ async function requestPayout() {
 
     systemData.pendingDeposits.splice(index, 1);
     saveData();
-    if (typeof renderAdminData === 'function') renderAdminData();
     if (typeof initDashboard === 'function') await initDashboard();
     alert(`Deposit approved successfully for ${dep.userId}!`);
 }
@@ -2730,7 +2714,6 @@ async function requestPayout() {
         systemData.pendingDeposits.splice(index, 1);
         logEvent('admin', 'REJECT_DEPOSIT', `Rejected deposit ${dep.id} of $${dep.amount} for user ${dep.userId}`);
         saveData();
-        renderAdminPendingDeposits();
         alert(`Deposit rejected.`);
     }
 

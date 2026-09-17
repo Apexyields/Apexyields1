@@ -1202,9 +1202,10 @@
             if (!signInError && signInData.user) {
                 currentUser = username;
                 localStorage.setItem('currentUser', currentUser);
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
+                document.getElementById('adminBtn')?.classList.add('hidden');
+                document.getElementById('adminSettingsBox')?.classList.add('hidden');
+                const userHeaderRole = document.getElementById('userHeaderRole');
+                if (userHeaderRole) userHeaderRole.innerText = 'Standard User';
                 document.getElementById('authSection').classList.add('hidden');
                 document.getElementById('dashboardSection').classList.remove('hidden');
                 
@@ -1254,10 +1255,10 @@
                 if (profileError) console.error("Profile creation error:", profileError.message);
 
                 localStorage.removeItem('apex_pending_ref');
-
-                document.getElementById('adminBtn').classList.add('hidden');
-                document.getElementById('adminSettingsBox').classList.add('hidden');
-                document.getElementById('userHeaderRole').innerText = 'Standard User';
+                document.getElementById('adminBtn')?.classList.add('hidden');
+                document.getElementById('adminSettingsBox')?.classList.add('hidden');
+                const userHeaderRoleSignup = document.getElementById('userHeaderRole');
+                if (userHeaderRoleSignup) userHeaderRoleSignup.innerText = 'Standard User';
                 document.getElementById('authSection').classList.add('hidden');
                 document.getElementById('dashboardSection').classList.remove('hidden');
 

@@ -1685,7 +1685,6 @@ if (typeof renderPackageButtons === 'function') {
     }
 
     function getActivePackageCount() {
-        function getActivePackageCount() {
     if (!currentUser || !usersData[currentUser]) return 0;
     return usersData[currentUser].activeSubscriptions.filter(s => s.status === 'active').length;
 }
@@ -1698,10 +1697,6 @@ if (typeof renderPackageButtons === 'function') {
             }
         });
 
-        if (packageUserOverrides[pkgName] !== undefined && packageUserOverrides[pkgName] !== null) {
-            return packageUserOverrides[pkgName];
-        }
-
         return realCount;
     }
 
@@ -1711,54 +1706,6 @@ if (typeof renderPackageButtons === 'function') {
         if (textEl) {
             textEl.innerText = `${activeCount} Active`;
         }
-    }
-
-    function setDevActiveCount() {
-        const input = document.getElementById("dev-count-input");
-        const val = parseInt(input.value, 10);
-        if (!isNaN(val)) {
-            devManualOverrideCount = Math.max(0, val);
-            updateUniversalPackageCounts();
-        }
-    }
-
-    function setSinglePackageDevCount(pkgName, count) {
-        const val = parseInt(count, 10);
-        if (!isNaN(val)) {
-            packageUserOverrides[pkgName] = Math.max(0, val);
-            saveData();
-            renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
-        }
-    }
-
-    function quickAdjustCount(delta) {
-        const current = getActivePackageCount();
-        devManualOverrideCount = Math.max(0, current + delta);
-        const input = document.getElementById("dev-count-input");
-        if (input) input.value = devManualOverrideCount;
-        updateUniversalPackageCounts();
-    }
-
-    function resetDevOverride() {
-        devManualOverrideCount = null;
-        const input = document.getElementById("dev-count-input");
-        if (input) input.value = "";
-        updateUniversalPackageCounts();
-        
-        packageUserOverrides = {
-            'Micro Vault': 1420,
-            'Standard Vault': 2850,
-            'Starter Vault': 5100,
-            'Pro Vault': 12400,
-            'Executive Vault': 8300,
-            'Apex VIP Vault': 3100,
-            'Pro VIP Vault': 1800,
-            'Institutional Vault': 950,
-            'Apex Mega Vault': 410
-        };
-        saveData();
-        renderDynamicPackageCards(currentUser ? countQualifiedReferrals(usersData[currentUser]?.refCode) : 0);
-        renderDevPackageGrid();
     }
 
  async function countQualifiedReferrals(userId) {
@@ -1786,10 +1733,6 @@ if (typeof renderPackageButtons === 'function') {
     return data !== null ? data : 0;
 }
    
-
-
-
-
     function calculateAffiliateYield(initialDeposit, referralCount = 0) {
         const deposit = Math.max(0, Number(initialDeposit) || 0);
         const referrals = Math.max(0, Number(referralCount) || 0);

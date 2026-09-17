@@ -1548,11 +1548,7 @@ async function loadUserProfile() {
 
     function closeAnnouncementModal() {
         document.getElementById('announcementModal').classList.add('hidden');
-    }
-
-    // DEV OVERRIDE GLOBAL STATE
-    let devManualOverrideCount = null;
-
+        
     const extendedMarketCoins = [
         { name: "Bitcoin", symbol: "BTC" },
         { name: "Ethereum", symbol: "ETH" },
@@ -1565,18 +1561,6 @@ async function loadUserProfile() {
         { name: "Chainlink", symbol: "LINK" },
         { name: "Polkadot", symbol: "DOT" }
     ];
-
-    let packageUserOverrides = JSON.parse(localStorage.getItem('apex_package_user_overrides')) || {
-        'Micro Vault': 152,
-        'Standard Vault': 34,
-        'Starter Vault': 58,
-        'Pro Vault': 32,
-        'Executive Vault': 25,
-        'Apex VIP Vault': 7,
-        'Pro VIP Vault': 11,
-        'Institutional Vault': 4,
-        'Apex Mega Vault': 1
-    };
 
     let systemData = JSON.parse(localStorage.getItem('apex_system_data')) || {
         addresses: {},

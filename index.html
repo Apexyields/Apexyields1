@@ -1504,11 +1504,10 @@ async function loadUserProfile() {
     let currentUser = null;
     let selectedPackage = null;
 
-    function saveData() {
-        localStorage.setItem('apex_system_data', JSON.stringify(systemData));
-        localStorage.setItem('apex_users_data', JSON.stringify(usersData));
-        localStorage.setItem('apex_package_user_overrides', JSON.stringify(packageUserOverrides));
-    }
+function saveData() {
+    localStorage.setItem('apex_system_data', JSON.stringify(systemData));
+    localStorage.setItem('apex_users_data', JSON.stringify(usersData));
+}
 
     async function loadUserDataFromSupabase() {
     if (!supabaseClient) return;
@@ -2130,32 +2129,6 @@ if (refBadge) refBadge.innerText = `${qualifiedRefs} Active Refs (${tierInfo.cap
                 }
             }
         });
-    }
-
-    function renderDevPackageGrid() {
-        const container = document.getElementById('devPackageOverrideGrid');
-        if (!container) return;
-
-        const packages = [
-            'Micro Vault', 'Standard Vault', 'Starter Vault', 
-            'Pro Vault', 'Executive Vault', 'Apex VIP Vault', 
-            'Pro VIP Vault', 'Institutional Vault', 'Apex Mega Vault'
-        ];
-
-        container.innerHTML = packages.map(pkg => {
-            const currentCount = packageUserOverrides[pkg] !== undefined ? packageUserOverrides[pkg] : 0;
-            return `
-                <div class="flex items-center justify-between bg-slate-950 p-2 rounded border border-slate-800">
-                    <span class="truncate pr-2 text-slate-300 font-medium">${pkg}:</span>
-                    <div class="flex items-center gap-1">
-                        <input type="number" value="${currentCount}" 
-                            onchange="setSinglePackageDevCount('${pkg}', this.value)"
-                            class="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white font-mono focus:border-amber-500" />
-                        <span class="text-[10px] text-emerald-400 font-mono">(${formatCompactNumber(currentCount)})</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
     }
 
 async function renderPackageButtons() {

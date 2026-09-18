@@ -1110,10 +1110,9 @@
     document.getElementById('authSection')?.classList.add('hidden');
     document.getElementById('dashboardSection')?.classList.remove('hidden');
 
-    
     loadUserProfile();
-    initDashboard();
-   // checkAndShowWelcomeModal();
+    if (typeof initDashboard === 'function') initDashboard();
+    // checkAndShowWelcomeModal();
     return;
 }
 

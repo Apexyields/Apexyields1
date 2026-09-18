@@ -1168,7 +1168,7 @@ if (signUpData.user) {
             localStorage.setItem('currentUser', currentUser);
             document.getElementById('authSection')?.classList.add('hidden');
             document.getElementById('dashboardSection')?.classList.remove('hidden');
-            initDashboard();
+                if (typeof initDashboard === 'function') initDashboard();
         }
     } catch (err) {
         console.error("Critical login crash:", err);

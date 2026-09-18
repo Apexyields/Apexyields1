@@ -1270,9 +1270,12 @@ async function loadUserProfile() {
         .eq('user_id', user.id);
 
     if (userPackages && userPackages.length > 0) {
-        initVaultCountdownLoop(userPackages);
+        if (typeof initVaultCountdownLoop === 'function') {
+            initVaultCountdownLoop(userPackages);
+        } else {
+            console.warn('Vault countdown loop bypassed (function deleted).');
+        }
     }
-    console.log("Fetched Referrals Array:", referrals);
 
     // 4. Render 3-column rows into container with fallbacks
     const refContainer = document.getElementById('refNetworkTable') 

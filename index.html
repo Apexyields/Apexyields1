@@ -1879,15 +1879,19 @@ async function initDashboard() {
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-        if (deposits && deposits.length > 0) {
+            if (deposits && deposits.length > 0) {
             user.depositHistory = deposits.map(d => ({
                 id: d.id,
-                amount: Number(d.amount || 0),
-                network: d.network || '',
-                refId: d.ref_id || d.refId || '',
-                status: d.status || 'Pending Review'
+                amount: d.amount,
+                network: d.network,
+                status: d.status,
+                created_at: d.created_at
             }));
+        } else {
+            user.depositHistory = [];
         }
+    }
+} // Closes initDashboard()
 
         // 4. Sync payout history
         const { data: payouts } = await supabaseClient

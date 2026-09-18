@@ -1158,8 +1158,8 @@ if (signUpData.user) {
     localStorage.removeItem('apex_pending_ref');
     document.getElementById('authSection')?.classList.add('hidden');
     document.getElementById('dashboardSection')?.classList.remove('hidden');
-    loadUserProfile();
-    if (typeof initDashboard === 'function') initDashboard();
+    if (typeof loadUserProfile === 'function') try { await loadUserProfile(); } catch (e) { console.error(e); }
+if (typeof initDashboard === 'function') initDashboard();
     return;
 }
         } else {

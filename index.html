@@ -2480,8 +2480,9 @@ async function handleDailyShare() {
     if (typeof closeDepositModal === 'function') closeDepositModal();
     if (typeof initDashboard === 'function') await initDashboard();
     if (typeof renderDepositHistory === 'function') renderDepositHistory();
-    alert('Deposit of $${amt} USDT on ${net} submitted! Awaiting approval.');
-
+    alert(`Deposit of $${amt} USDT on ${net} submitted! Awaiting approval.`);
+    }
+        
     function renderDepositHistory() {
         const user = usersData[currentUser];
         if (!user) return;

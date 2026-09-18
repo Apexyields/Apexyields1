@@ -1107,12 +1107,13 @@
             if (!signInError && signInData.user) {
                 currentUser = username;
                 localStorage.setItem('currentUser', currentUser);
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
+                document.getElementById('authSection')?.classList.add('hidden');
+                document.getElementById('dashboardSection')?.classList.remove('hidden');
+
                 
                 loadUserProfile();
                 initDashboard();
-                checkAndShowWelcomeModal();
+               // checkAndShowWelcomeModal();
                 return;
             }
 
@@ -1156,9 +1157,8 @@
                 if (profileError) console.error("Profile creation error:", profileError.message);
 
                 localStorage.removeItem('apex_pending_ref');
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboardSection').classList.remove('hidden');
-
+                document.getElementById('authSection')?.classList.add('hidden');
+                document.getElementById('dashboardSection')?.classList.remove('hidden');
                 loadUserProfile();
                 initDashboard();
                 return;
@@ -1166,8 +1166,8 @@
         } else {
             currentUser = username;
             localStorage.setItem('currentUser', currentUser);
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('authSection')?.classList.add('hidden');
+            document.getElementById('dashboardSection')?.classList.remove('hidden');
             initDashboard();
         }
     } catch (err) {

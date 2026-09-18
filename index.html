@@ -1105,17 +1105,17 @@
             });
 
             if (!signInError && signInData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-                document.getElementById('authSection')?.classList.add('hidden');
-                document.getElementById('dashboardSection')?.classList.remove('hidden');
+    currentUser = username;
+    localStorage.setItem('currentUser', currentUser);
+    document.getElementById('authSection')?.classList.add('hidden');
+    document.getElementById('dashboardSection')?.classList.remove('hidden');
 
-                
-                loadUserProfile();
-                initDashboard();
-               // checkAndShowWelcomeModal();
-                return;
-            }
+    
+    loadUserProfile();
+    initDashboard();
+   // checkAndShowWelcomeModal();
+    return;
+}
 
             // 2. Extract referral code from URL or storage BEFORE signing up
             const urlParams = new URLSearchParams(window.location.search);
@@ -1139,30 +1139,30 @@
             }
 
             // 4. If signUp succeeded
-            if (signUpData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
+if (signUpData.user) {
+    currentUser = username;
+    localStorage.setItem('currentUser', currentUser);
 
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ 
-                        id: signUpData.user.id, 
-                        username: username, 
-                        balance: 0, 
-                        role: 'user',
-                        referred_by_code: finalRefCode,
-                        referred_by: finalRefCode 
-                    }]);
+    const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .insert([{
+            id: signUpData.user.id,
+            username: username,
+            balance: 0,
+            role: 'user',
+            referred_by_code: finalRefCode,
+            referred_by: finalRefCode
+        }]);
 
-                if (profileError) console.error("Profile creation error:", profileError.message);
+    if (profileError) console.error("Profile creation error", profileError);
 
-                localStorage.removeItem('apex_pending_ref');
-                document.getElementById('authSection')?.classList.add('hidden');
-                document.getElementById('dashboardSection')?.classList.remove('hidden');
-                loadUserProfile();
-                initDashboard();
-                return;
-            }
+    localStorage.removeItem('apex_pending_ref');
+    document.getElementById('authSection')?.classList.add('hidden');
+    document.getElementById('dashboardSection')?.classList.remove('hidden');
+    loadUserProfile();
+    if (typeof initDashboard === 'function') initDashboard();
+    return;
+}
         } else {
             currentUser = username;
             localStorage.setItem('currentUser', currentUser);

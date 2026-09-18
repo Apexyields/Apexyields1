@@ -1109,14 +1109,13 @@
     localStorage.setItem('currentUser', currentUser);
     document.getElementById('authSection')?.classList.add('hidden');
     document.getElementById('dashboardSection')?.classList.remove('hidden');
-
-    loadUserProfile();
-    if (typeof initDashboard === 'function') initDashboard();
+                if (typeof loadUserProfile === 'function') try { await loadUserProfile(); } catch (e) { console.error(e); }
+if (typeof initDashboard === 'function') initDashboard();
     // checkAndShowWelcomeModal();
     return;
 }
 
-            // 2. Extract referral code from URL or storage BEFORE signing up
+        // 2. Extract referral code from URL or storage BEFORE signing up
             const urlParams = new URLSearchParams(window.location.search);
             const finalRefCode = urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
 

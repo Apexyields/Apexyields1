@@ -4023,7 +4023,7 @@ function renderMultiCryptoCharts() {
         alert(`Failed to close position: ${err.message || 'Database error'}`);
     }
 }
-        async function submitSupportTicket() {
+async function submitSupportTicket() {
     const messageElem = document.getElementById('ticketMessage');
     const message = messageElem.value.trim();
     const submitBtn = document.getElementById('ticketSubmitBtn');
@@ -4037,7 +4037,7 @@ function renderMultiCryptoCharts() {
         submitBtn.innerText = "Sending...";
         submitBtn.disabled = true;
         
-        // 1. Log the ticket in the Supabase database
+        // 1. Log the ticket in the database
         const { error: insertError } = await supabaseClient
             .from('tickets')
             .insert([{ 
@@ -4048,9 +4048,8 @@ function renderMultiCryptoCharts() {
             
         if (insertError) throw insertError;
         
-        // 2. Trigger the Resend email via Supabase Edge Function
-        // IMPORTANT: Change 'send-email' to the exact name of your deployed Edge Function.
-        const { error: emailError } = await supabaseClient.functions.invoke('send-email', {
+        // 2. Trigger the Resend email via Edge Function
+        const { error: emailError } = await supabaseClient.functions.invoke('send-ticket-email', {
             body: { 
                 username: currentUser, 
                 message: message,

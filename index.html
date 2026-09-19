@@ -909,7 +909,7 @@
     </div>
 </div>
 </main>
-    <!-- Legal Document Modal -->
+<!-- Legal Document Modal -->
 <div id="legalModal" class="fixed inset-0 z-[70] hidden flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
         
@@ -924,54 +924,63 @@
             
             <!-- Terms of Service Content -->
             <div id="tosContent" class="hidden space-y-3">
-                <p><strong>Last Updated:</strong> [Insert Date]</p>
-                <p>Welcome to [App Name]. By accessing or using our platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.</p>
+                <p class="italic text-emerald-400 text-[12px]">This site is always being maintained to ensure optimal user experience.</p>
+                <p>Welcome to VectraLedger. By accessing or using our platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.</p>
+                
                 <h4 class="text-white font-bold mt-4">1. Account Registration and Security</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li><strong>Eligibility:</strong> You must be at least 18 years old and legally permitted in your jurisdiction to participate in digital asset transactions.</li>
-                    <li><strong>Account Safety:</strong> You are solely responsible for maintaining the confidentiality of your login credentials (username and passcode). [App Name] is not liable for any loss or damage arising from unauthorized access.</li>
+                    <li><strong>Account Safety:</strong> You are solely responsible for maintaining the confidentiality of your login credentials (username and passcode). VectraLedger is not liable for any loss or damage arising from unauthorized access.</li>
                 </ul>
+                
                 <h4 class="text-white font-bold mt-4">2. Deposits, Yields, and Platform Mechanics</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li><strong>Digital Assets:</strong> You are responsible for ensuring that deposits are sent on the correct network to the exact address provided. Funds sent to incorrect networks cannot be recovered.</li>
                     <li><strong>Yield Generation:</strong> Yields, percentage rates, and payout calculations are dynamic and subject to change based on platform mechanics and market conditions.</li>
                     <li><strong>No Financial Advice:</strong> Information provided on this platform does not constitute financial, investment, or trading advice.</li>
                 </ul>
+                
                 <h4 class="text-white font-bold mt-4">3. Referral Program</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li><strong>Legitimate Use:</strong> The referral system is designed to reward genuine user acquisition. Exploiting referral codes will result in the forfeiture of affiliate yields.</li>
                     <li><strong>Tier Caps:</strong> Referral bonuses and maximum allowed yields are strictly governed by the active tier structures.</li>
                 </ul>
+                
                 <h4 class="text-white font-bold mt-4">4. Assumption of Risk</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li><strong>Crypto Volatility:</strong> Digital assets are highly volatile. You acknowledge that participating carries inherent risks, including the potential loss of initial deposits.</li>
-                    <li><strong>Technical Failures:</strong> [App Name] is not liable for downtime, network congestion, or third-party infrastructure failures.</li>
+                    <li><strong>Technical Failures:</strong> VectraLedger is not liable for downtime, network congestion, or third-party infrastructure failures.</li>
                 </ul>
             </div>
             
             <!-- Privacy Policy Content -->
             <div id="privacyContent" class="hidden space-y-3">
-                <p><strong>Last Updated:</strong> [Insert Date]</p>
-                <p>Your privacy is important to us. This Privacy Policy explains how [App Name] collects, uses, and protects your information.</p>
+                <p class="italic text-emerald-400 text-[12px]">This site is always being maintained to ensure optimal user experience.</p>
+                <p>Your privacy is important to us. This Privacy Policy explains how VectraLedger collects, uses, and protects your information.</p>
+                
                 <h4 class="text-white font-bold mt-4">1. Information We Collect</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li><strong>Account Data:</strong> Usernames, email addresses, and passcodes used during registration.</li>
                     <li><strong>Financial Data:</strong> Deposit amounts, active vault yields, and public wallet addresses.</li>
                     <li><strong>Platform Activity:</strong> Referral connections and session data.</li>
                 </ul>
+                
                 <h4 class="text-white font-bold mt-4">2. How We Use Your Information</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li>To authenticate your account and maintain secure sessions.</li>
                     <li>To calculate yield distributions and track multi-chain deposits.</li>
                     <li>To prevent fraudulent activity and ensure platform compliance.</li>
                 </ul>
+                
                 <h4 class="text-white font-bold mt-4">3. Data Storage and Security</h4>
                 <ul class="list-disc pl-5 space-y-1 text-slate-400">
                     <li><strong>Infrastructure:</strong> We utilize secure third-party database providers to encrypt and store your authentication credentials.</li>
                     <li><strong>No Plaintext Passwords:</strong> Your passcode is encrypted upon creation; we do not have access to your raw password.</li>
                 </ul>
+                
                 <h4 class="text-white font-bold mt-4">4. Third-Party Sharing</h4>
                 <p class="text-slate-400">We do not sell, trade, or rent your personal identification information to others. We only share necessary technical data with our database and hosting providers strictly for operating the application.</p>
+                
                 <h4 class="text-white font-bold mt-4">5. Contact Us</h4>
                 <p class="text-slate-400">If you have any questions regarding these terms or need account assistance, please submit a support ticket directly through the Settings tab.</p>
             </div>
@@ -4028,8 +4037,8 @@ function renderMultiCryptoCharts() {
         submitBtn.innerText = "Sending...";
         submitBtn.disabled = true;
         
-        // Push ticket to Supabase
-        const { error } = await supabaseClient
+        // 1. Log the ticket in the Supabase database
+        const { error: insertError } = await supabaseClient
             .from('tickets')
             .insert([{ 
                 username: currentUser, 
@@ -4037,10 +4046,19 @@ function renderMultiCryptoCharts() {
                 status: 'open'
             }]);
             
-        if (error) throw error;
+        if (insertError) throw insertError;
         
-        // If your email trigger relies on the database insert, it fires now.
-        // Otherwise, add your specific email trigger function right here.
+        // 2. Trigger the Resend email via Supabase Edge Function
+        // IMPORTANT: Change 'send-email' to the exact name of your deployed Edge Function.
+        const { error: emailError } = await supabaseClient.functions.invoke('send-email', {
+            body: { 
+                username: currentUser, 
+                message: message,
+                subject: `New Support Ticket from ${currentUser}`
+            }
+        });
+        
+        if (emailError) throw new Error("Ticket logged, but email trigger failed.");
         
         alert("Support ticket submitted successfully. We will follow up via email shortly.");
         messageElem.value = ''; 

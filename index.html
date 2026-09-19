@@ -4033,11 +4033,10 @@ async function submitSupportTicket() {
     }
     
     try {
-        // UI Loading state
         submitBtn.innerText = "Sending...";
         submitBtn.disabled = true;
         
-        // 1. Log the ticket in the database
+        // 1. Insert the ticket into the database (this will auto-trigger the webhook)
         const { error: insertError } = await supabaseClient
             .from('tickets')
             .insert([{ 
@@ -4048,17 +4047,6 @@ async function submitSupportTicket() {
             
         if (insertError) throw insertError;
         
-        // 2. Trigger the Resend email via Edge Function
-        const { error: emailError } = await supabaseClient.functions.invoke('send-ticket-email', {
-            body: { 
-                username: currentUser, 
-                message: message,
-                subject: `New Support Ticket from ${currentUser}`
-            }
-        });
-        
-        if (emailError) throw new Error("Ticket logged, but email trigger failed.");
-        
         alert("Support ticket submitted successfully. We will follow up via email shortly.");
         messageElem.value = ''; 
         
@@ -4066,7 +4054,6 @@ async function submitSupportTicket() {
         console.error("Ticket submission failed:", error);
         alert("Failed to send ticket. " + error.message);
     } finally {
-        // Reset UI
         submitBtn.innerText = "Submit Ticket";
         submitBtn.disabled = false;
     }

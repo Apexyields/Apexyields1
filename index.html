@@ -138,6 +138,52 @@
                         + Deposit Funds
                     </button>
                 </div>
+                <!-- Package Detail Confirmation Modal -->
+<div id="package-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4">
+    
+    <!-- Modal Header -->
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <h3 id="modal-title" class="text-lg font-bold text-blue-400">Vault Details</h3>
+      <button onclick="closePackageModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+    </div>
+
+    <!-- Package Breakdown -->
+    <div class="space-y-2.5 text-sm">
+      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+        <span class="text-gray-400">Vault Tier</span>
+        <span id="modal-name" class="font-semibold text-white">Starter Vault</span>
+      </div>
+      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+        <span class="text-gray-400">Deposit Amount</span>
+        <span id="modal-amount" class="font-semibold text-emerald-400">$50.00 USDT</span>
+      </div>
+      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+        <span class="text-gray-400">Lock Duration</span>
+        <span id="modal-duration" class="font-semibold text-white">24 Hours</span>
+      </div>
+      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+        <span class="text-gray-400">Return Rate</span>
+        <span id="modal-return" class="font-semibold text-blue-400">+20%</span>
+      </div>
+      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+        <span class="text-gray-400">Est. Net Profit</span>
+        <span id="modal-profit" class="font-semibold text-emerald-400">+$10.00 USDT</span>
+      </div>
+    </div>
+
+    <!-- Confirmation Actions -->
+    <div class="grid grid-cols-2 gap-3 pt-2">
+      <button onclick="closePackageModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-gray-300 font-semibold py-2.5 rounded-xl transition-colors">
+        Cancel
+      </button>
+      <button id="modal-confirm-btn" onclick="executePackageLock()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl transition-colors">
+        Confirm Lock
+      </button>
+    </div>
+
+  </div>
+</div>
 
                 <!-- USER ACTIVE & PENDING SUBSCRIPTIONS -->
                 <div class="space-y-2">

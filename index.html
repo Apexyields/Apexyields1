@@ -2154,7 +2154,10 @@ async function renderPackageButtons() {
     if (typeof countQualifiedReferrals === 'function') {
         totalActiveRefs = await countQualifiedReferrals(activeUserId);
     }
-    updateAffiliateCapUI(totalActiveRefs);
+
+    if (typeof updateAffiliateCapUI === 'function') {
+        updateAffiliateCapUI(totalActiveRefs);
+    }
 
     // Fetch baseline values from user profile
     const { data: profile } = await supabaseClient
@@ -2177,16 +2180,20 @@ async function renderPackageButtons() {
         const baseline = baselines[pkgName];
         const hasNeverBought = (baseline === null || baseline === undefined);
 
+        const price = pkgName === 'Micro Vault' ? 25 : 50;
+        const profit = pkgName === 'Micro Vault' ? 5 : 10;
+
         if (hasNeverBought) {
             // State 1: Never bought before -> FIRST SLOT AVAILABLE
             if (badge) {
-                badge.innerText = "✨ First Slot Available";
-                badge.className = "mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/40 p-1.5 rounded-lg text-center";
+                badge.innerText = "⚡ First Slot Available";
+                badge.className = "mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-2 py-1 rounded-md inline-block";
             }
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = `Lock $${pkgName === 'Micro Vault' ? '25' : '50'} Package`;
-                btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition cursor-pointer";
+                btn.innerText = `Lock $${price} Package`;
+                btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-colors cursor-pointer";
+                btn.onclick = () => openPackageModal(pkgName, price, 20, '24 Hours', profit);
             }
         } else {
             // State 2: Purchased before -> Progress calculated against baseline
@@ -2195,27 +2202,29 @@ async function renderPackageButtons() {
             const progressToNext = progress % 3;
 
             if (badge) {
-                if (bankedSlots >= 2) {
+                if (bankedSlots >= 1) {
                     badge.innerText = `🔥 ${bankedSlots} Re-purchases Banked! (${progressToNext}/3 to next)`;
-                    badge.className = "mt-3 text-[11px] font-mono text-emerald-300 bg-emerald-950/50 border border-emerald-500/60 p-1.5 rounded-lg text-center font-bold animate-pulse";
+                    badge.className = "mt-3 text-[11px] font-mono text-emerald-300 bg-emerald-950/50 border border-emerald-500/50 px-2 py-1 rounded-md inline-block";
                 } else if (progress >= 3) {
                     badge.innerText = `⚡ Re-purchase Unlocked! (${progressToNext}/3 to next slot)`;
-                    badge.className = "mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/40 p-1.5 rounded-lg text-center font-semibold";
+                    badge.className = "mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-2 py-1 rounded-md inline-block";
                 } else {
                     badge.innerText = `⚡ Progress: ${progress}/3 Active Refs`;
-                    badge.className = "mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/40 p-1.5 rounded-lg text-center";
+                    badge.className = "mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/50 px-2 py-1 rounded-md inline-block";
                 }
             }
 
             if (btn) {
                 if (progress >= 3) {
                     btn.disabled = false;
-                    btn.innerText = bankedSlots > 1 ? `Re-Activate Package (${bankedSlots} Banked)` : 'Re-Activate Package';
-                    btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition cursor-pointer";
+                    btn.innerText = bankedSlots > 1 ? `Re-Activate Package (${bankedSlots} Banked)` : `Re-Activate Package`;
+                    btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-colors cursor-pointer";
+                    btn.onclick = () => openPackageModal(pkgName, price, 20, '24 Hours', profit);
                 } else {
                     btn.disabled = true;
                     btn.innerText = `Locked (${progress}/3 Refs Needed)`;
-                    btn.className = "mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-lg transition cursor-not-allowed opacity-60";
+                    btn.className = "mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-xl cursor-not-allowed";
+                    btn.onclick = null;
                 }
             }
         }
@@ -4106,56 +4115,68 @@ async function submitSupportTicket() {
     }
 }
         let pendingPackage = null;
-
-// 1. Open Modal with Details when clicking the package button
 function openPackageModal(name, price, returnRate, duration, profit) {
-  pendingPackage = { name, price, returnRate, duration, profit };
+    pendingPackage = { name, price, returnRate, duration, profit };
 
-  document.getElementById('modal-title').innerText = `${name} Summary`;
-  document.getElementById('modal-name').innerText = name;
-  document.getElementById('modal-amount').innerText = `$${price}.00 USDT`;
-  document.getElementById('modal-duration').innerText = duration || '24 Hours';
-  document.getElementById('modal-return').innerText = `+${returnRate}%`;
-  document.getElementById('modal-profit').innerText = `+$${profit}.00 USDT`;
+    const titleEl = document.getElementById('modal-title');
+    const nameEl = document.getElementById('modal-name');
+    const amountEl = document.getElementById('modal-amount');
+    const durationEl = document.getElementById('modal-duration');
+    const returnEl = document.getElementById('modal-return');
+    const profitEl = document.getElementById('modal-profit');
 
-  document.getElementById('package-modal').classList.remove('hidden');
+    if (titleEl) titleEl.innerText = `${name} Summary`;
+    if (nameEl) nameEl.innerText = name;
+    if (amountEl) amountEl.innerText = `$${price}.00 USDT`;
+    if (durationEl) durationEl.innerText = duration || '24 Hours';
+    if (returnEl) returnEl.innerText = `+${returnRate}%`;
+    if (profitEl) profitEl.innerText = `+$${profit}.00 USDT`;
+
+    const modal = document.getElementById('package-modal');
+    if (modal) modal.classList.remove('hidden');
 }
 
-// 2. Close Modal
 function closePackageModal() {
-  document.getElementById('package-modal').classList.add('hidden');
-  pendingPackage = null;
+    const modal = document.getElementById('package-modal');
+    if (modal) modal.classList.add('hidden');
+    pendingPackage = null;
 }
 
-// 3. Execute database lock on user confirmation
 async function executePackageLock() {
-  if (!pendingPackage) return;
+    if (!pendingPackage) return;
 
-  const btn = document.getElementById('modal-confirm-btn');
-  btn.disabled = true;
-  btn.innerText = 'Locking...';
+    const btn = document.getElementById('modal-confirm-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Locking...';
+    }
 
-  try {
-    // Perform your database insert / balance check here
-    const { data, error } = await supabaseClient
-      .from('user_packages')
-      .insert([{
-        package_name: pendingPackage.name,
-        amount: pendingPackage.price,
-        status: 'locked'
-      }]);
+    try {
+        const activeUserId = (await supabaseClient.auth.getUser()).data.user?.id;
+        const { data, error } = await supabaseClient
+            .from('user_packages')
+            .insert([{
+                user_id: activeUserId,
+                package_name: pendingPackage.name,
+                amount: pendingPackage.price,
+                status: 'locked'
+            }]);
 
-    if (error) throw error;
+        if (error) throw error;
 
-    closePackageModal();
-    alert(`Successfully locked ${pendingPackage.name}!`);
-  } catch (err) {
-    alert('Error locking package: ' + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerText = 'Confirm Lock';
-  }
+        closePackageModal();
+        alert(`Successfully locked ${pendingPackage.name}!`);
+        if (typeof renderPackageButtons === 'function') renderPackageButtons();
+    } catch (err) {
+        alert('Error locking package: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Confirm Lock';
+        }
+    }
 }
+
 </script>
 </body>
 </html>

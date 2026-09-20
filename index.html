@@ -4105,6 +4105,57 @@ async function submitSupportTicket() {
         submitBtn.disabled = false;
     }
 }
+        let pendingPackage = null;
+
+// 1. Open Modal with Details when clicking the package button
+function openPackageModal(name, price, returnRate, duration, profit) {
+  pendingPackage = { name, price, returnRate, duration, profit };
+
+  document.getElementById('modal-title').innerText = `${name} Summary`;
+  document.getElementById('modal-name').innerText = name;
+  document.getElementById('modal-amount').innerText = `$${price}.00 USDT`;
+  document.getElementById('modal-duration').innerText = duration || '24 Hours';
+  document.getElementById('modal-return').innerText = `+${returnRate}%`;
+  document.getElementById('modal-profit').innerText = `+$${profit}.00 USDT`;
+
+  document.getElementById('package-modal').classList.remove('hidden');
+}
+
+// 2. Close Modal
+function closePackageModal() {
+  document.getElementById('package-modal').classList.add('hidden');
+  pendingPackage = null;
+}
+
+// 3. Execute database lock on user confirmation
+async function executePackageLock() {
+  if (!pendingPackage) return;
+
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.disabled = true;
+  btn.innerText = 'Locking...';
+
+  try {
+    // Perform your database insert / balance check here
+    const { data, error } = await supabaseClient
+      .from('user_packages')
+      .insert([{
+        package_name: pendingPackage.name,
+        amount: pendingPackage.price,
+        status: 'locked'
+      }]);
+
+    if (error) throw error;
+
+    closePackageModal();
+    alert(`Successfully locked ${pendingPackage.name}!`);
+  } catch (err) {
+    alert('Error locking package: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = 'Confirm Lock';
+  }
+}
 </script>
 </body>
 </html>

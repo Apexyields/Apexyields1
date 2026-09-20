@@ -1797,21 +1797,20 @@ async function renderUserActiveSubscriptions() {
             : { totalPayout: deposit * 1.2, effectiveRate: 20 };
 
         const payout = Number(yieldData.totalPayout || 0);
-                        let durationDays = Number(sub.duration_days);
-
-if (!durationDays || isNaN(durationDays)) {
-    if (deposit === 25 || pkgName === 'Micro Vault') {
+                        let durationDays = Number(sub.duration_days || sub.durationDays || 0);
+if (!durationDays || isNaN(durationDays) || durationDays === 0) {
+    if (pkgName === 'Micro Vault' || deposit === 25) {
         durationDays = 3;
-    } else if ([50, 100, 500].includes(deposit) || ['Standard Vault', 'Starter Vault', 'Pro Vault'].includes(pkgName)) {
+    } else if (['Standard Vault', 'Starter Vault', 'Pro Vault'].includes(pkgName) || [50, 100, 500].includes(deposit)) {
         durationDays = 15;
-    } else if ([1000, 2500].includes(deposit) || ['Executive Vault', 'Apex VIP Vault'].includes(pkgName)) {
+    } else if (['Executive Vault', 'Apex VIP Vault'].includes(pkgName) || [1000, 2500].includes(deposit)) {
         durationDays = 90;
-    } else if ([5000, 10000].includes(deposit) || ['Pro VIP Vault', 'Institutional Vault'].includes(pkgName)) {
+    } else if (['Pro VIP Vault', 'Institutional Vault'].includes(pkgName) || [5000, 10000].includes(deposit)) {
         durationDays = 180;
-    } else if (deposit === 50000 || pkgName === 'Apex Mega Vault') {
+    } else if (pkgName === 'Apex Mega Vault' || deposit === 50000) {
         durationDays = 365;
     } else {
-        durationDays = 30;
+        durationDays = 15; // Changed fallback from 30 to 15
     }
 }
 

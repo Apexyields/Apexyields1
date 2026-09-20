@@ -1797,35 +1797,33 @@ async function renderUserActiveSubscriptions() {
             : { totalPayout: deposit * 1.2, effectiveRate: 20 };
 
         const payout = Number(yieldData.totalPayout || 0);
-                        let durationDays = Number(sub.duration_days || sub.durationDays || 0);
+                        // 1. Get raw duration from db or fallback by package name
+let durationDays = Number(sub.duration_days || sub.durationDays || 0);
+
 if (!durationDays || isNaN(durationDays) || durationDays === 0) {
-    if (pkgName === 'Micro Vault' || deposit === 25) {
-        durationDays = 3;
-    } else if (['Standard Vault', 'Starter Vault', 'Pro Vault'].includes(pkgName) || [50, 100, 500].includes(deposit)) {
-        durationDays = 15;
-    } else if (['Executive Vault', 'Apex VIP Vault'].includes(pkgName) || [1000, 2500].includes(deposit)) {
-        durationDays = 90;
-    } else if (['Pro VIP Vault', 'Institutional Vault'].includes(pkgName) || [5000, 10000].includes(deposit)) {
-        durationDays = 180;
-    } else if (pkgName === 'Apex Mega Vault' || deposit === 50000) {
-        durationDays = 365;
-    } else {
-        durationDays = 15; // Changed fallback from 30 to 15
-    }
+    const pkgName = sub.package_name || sub.packageName || '';
+    if (pkgName === 'Micro Vault') durationDays = 3;
+    else if (['Standard Vault', 'Starter Vault', 'Pro Vault'].includes(pkgName)) durationDays = 15;
+    else if (['Executive Vault', 'Apex VIP Vault'].includes(pkgName)) durationDays = 90;
+    else if (['Pro VIP Vault', 'Institutional Vault'].includes(pkgName)) durationDays = 180;
+    else if (pkgName === 'Apex Mega Vault') durationDays = 365;
+    else durationDays = 15; // HARD FALLBACK IS NOW 15 INSTEAD OF 30
 }
 
-                // 2. Calculate accurate end time using created_at + durationDays
-                let endTimeMs = 0;
-                const rawStart = sub.created_at || sub.start_date;
-
-                if (rawStart) {
-                    const cleanStartStr = String(rawStart).replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
-                    const startTime = new Date(cleanStartStr).getTime();
-                    if (!isNaN(startTime)) {
-                        endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000);
-                    }
-                }
-        if (isNaN(endTimeMs)) endTimeMs = 0;
+// 2. Calculate accurate end time using matures_at first, then created_at + durationDays
+let endTimeMs = 0;
+if (sub.matures_at) {
+    endTimeMs = new Date(sub.matures_at).getTime();
+} else {
+    const rawStart = sub.start_date || sub.created_at;
+    if (rawStart) {
+        const cleanStartStr = String(rawStart).replace(" ", "T").replace(/(\.\d{3})\d+/, "$1");
+        const startTime = new Date(cleanStartStr).getTime();
+        if (!isNaN(startTime)) {
+            endTimeMs = startTime + (durationDays * 24 * 60 * 60 * 1000);
+        }
+    }
+}
 
         const statusUpper = (sub.status || '').toUpperCase();
 

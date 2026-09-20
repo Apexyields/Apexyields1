@@ -126,7 +126,6 @@
                 </div>
             </div>
         </header>
-
             <!-- TAB 1: PACKAGES -->
             <div id="view-packages" class="tab-view hidden transition-all duration-200 ease-out space-y-4">
                 <div class="bg-gradient-to-r from-blue-900/40 to-slate-900 border border-blue-500/20 rounded-2xl p-4 flex justify-between items-center">
@@ -138,52 +137,53 @@
                         + Deposit Funds
                     </button>
                 </div>
+                
                 <!-- Package Detail Confirmation Modal -->
-<div id="package-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
-  <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4">
-    
-    <!-- Modal Header -->
-    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-      <h3 id="modal-title" class="text-lg font-bold text-blue-400">Vault Details</h3>
-      <button onclick="closePackageModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
-    </div>
+                <div id="package-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+                  <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4">
+                    
+                    <!-- Modal Header -->
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 id="modal-title" class="text-lg font-bold text-blue-400">Vault Details</h3>
+                      <button onclick="closePackageModal()" class="text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+                    </div>
 
-    <!-- Package Breakdown -->
-    <div class="space-y-2.5 text-sm">
-      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
-        <span class="text-gray-400">Vault Tier</span>
-        <span id="modal-name" class="font-semibold text-white">Starter Vault</span>
-      </div>
-      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
-        <span class="text-gray-400">Deposit Amount</span>
-        <span id="modal-amount" class="font-semibold text-emerald-400">$50.00 USDT</span>
-      </div>
-      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
-        <span class="text-gray-400">Lock Duration</span>
-        <span id="modal-duration" class="font-semibold text-white">24 Hours</span>
-      </div>
-      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
-        <span class="text-gray-400">Return Rate</span>
-        <span id="modal-return" class="font-semibold text-blue-400">+20%</span>
-      </div>
-      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
-        <span class="text-gray-400">Est. Net Profit</span>
-        <span id="modal-profit" class="font-semibold text-emerald-400">+$10.00 USDT</span>
-      </div>
-    </div>
+                    <!-- Package Breakdown -->
+                    <div class="space-y-2.5 text-sm">
+                      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+                        <span class="text-gray-400">Vault Tier</span>
+                        <span id="modal-name" class="font-semibold text-white">Starter Vault</span>
+                      </div>
+                      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+                        <span class="text-gray-400">Deposit Amount</span>
+                        <span id="modal-amount" class="font-semibold text-emerald-400">$50.00 USDT</span>
+                      </div>
+                      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+                        <span class="text-gray-400">Lock Duration</span>
+                        <span id="modal-duration" class="font-semibold text-white">24 Hours</span>
+                      </div>
+                      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+                        <span class="text-gray-400">Return Rate</span>
+                        <span id="modal-return" class="font-semibold text-blue-400">+20%</span>
+                      </div>
+                      <div class="flex justify-between py-1.5 border-b border-slate-800/60">
+                        <span class="text-gray-400">Est. Net Profit</span>
+                        <span id="modal-profit" class="font-semibold text-emerald-400">+$10.00 USDT</span>
+                      </div>
+                    </div>
 
-    <!-- Confirmation Actions -->
-    <div class="grid grid-cols-2 gap-3 pt-2">
-      <button onclick="closePackageModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-gray-300 font-semibold py-2.5 rounded-xl transition-colors">
-        Cancel
-      </button>
-      <button id="modal-confirm-btn" onclick="executePackageLock()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl transition-colors">
-        Confirm Lock
-      </button>
-    </div>
+                    <!-- Confirmation Actions -->
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                      <button onclick="closePackageModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-gray-300 font-semibold py-2.5 rounded-xl transition-colors">
+                        Cancel
+                      </button>
+                      <button id="modal-confirm-btn" onclick="executePackageLock()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl transition-colors">
+                        Confirm Lock
+                      </button>
+                    </div>
 
-  </div>
-</div>
+                  </div>
+                </div>
 
                 <!-- USER ACTIVE & PENDING SUBSCRIPTIONS -->
                 <div class="space-y-2">
@@ -225,7 +225,7 @@
                                 ⚡ Loading progress...
                             </div>
                         </div>
-                        <button id="btn-Micro Vault" onclick="promptInvestPackage('Micro Vault', 25, '3 Days')" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Micro Vault" onclick="openPackageModal('Micro Vault', 25, 20, '3 Days', 5)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
                             Lock $25 Package
                         </button>
                     </div>
@@ -248,7 +248,7 @@
                                 ⚡ Loading progress...
                             </div>
                         </div>
-                        <button id="btn-Standard Vault" onclick="promptInvestPackage('Standard Vault', 50, '15 Days')" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Standard Vault" onclick="openPackageModal('Standard Vault', 50, 20, '15 Days', 10)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
                             Lock $50 Package
                         </button>
                     </div>
@@ -266,7 +266,7 @@
                             </div>
                             <p id="desc-Starter Vault" class="text-xs text-slate-400 mt-2">15-Day Lockup. Yields +$20.00 net profit.</p>
                         </div>
-                        <button id="btn-Starter Vault" onclick="promptInvestPackage('Starter Vault', 100, '15 Days')" class="mt-4 w-full bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Starter Vault" onclick="openPackageModal('Starter Vault', 100, 20, '15 Days', 20)" class="mt-4 w-full bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
                             Lock $100 Package
                         </button>
                     </div>
@@ -284,7 +284,7 @@
                             </div>
                             <p id="desc-Pro Vault" class="text-xs text-slate-400 mt-2">15-Day Lockup. Fixed $500 Tier Base Rate (20%). Yields +$100.00 net profit.</p>
                         </div>
-                        <button id="btn-Pro Vault" onclick="promptInvestPackage('Pro Vault', 500, '15 Days')" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Pro Vault" onclick="openPackageModal('Pro Vault', 500, 20, '15 Days', 100)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
                             Lock $500 Package
                         </button>
                     </div>
@@ -302,7 +302,7 @@
                             </div>
                             <p id="desc-Executive Vault" class="text-xs text-slate-400 mt-2">3-Month Fixed Lockup. Scaled by affiliate referrals (30% - 50% Cap).</p>
                         </div>
-                        <button id="btn-Executive Vault" onclick="promptInvestPackage('Executive Vault', 1000, '3 Months (90 Days)')" class="mt-4 w-full bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Executive Vault" onclick="openPackageModal('Executive Vault', 1000, 30, '3 Months (90 Days)', 300)" class="mt-4 w-full bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
                             Lock $1,000 Package
                         </button>
                     </div>
@@ -320,7 +320,7 @@
                             </div>
                             <p id="desc-Apex VIP Vault" class="text-xs text-slate-400 mt-2">3-Month Fixed Lockup. Bounded by 50% dynamic affiliate cap.</p>
                         </div>
-                        <button id="btn-Apex VIP Vault" onclick="promptInvestPackage('Apex VIP Vault', 2500, '3 Months (90 Days)')" class="mt-4 w-full bg-amber-600/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Apex VIP Vault" onclick="openPackageModal('Apex VIP Vault', 2500, 30, '3 Months (90 Days)', 750)" class="mt-4 w-full bg-amber-600/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 text-xs font-bold py-2 rounded-lg transition">
                             Lock $2,500 Package
                         </button>
                     </div>
@@ -338,7 +338,7 @@
                             </div>
                             <p id="desc-Pro VIP Vault" class="text-xs text-slate-400 mt-2">6-Month Fixed Lockup. Multi-tiered referral scaling.</p>
                         </div>
-                        <button id="btn-Pro VIP Vault" onclick="promptInvestPackage('Pro VIP Vault', 5000, '6 Months (180 Days)')" class="mt-4 w-full bg-indigo-600/20 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Pro VIP Vault" onclick="openPackageModal('Pro VIP Vault', 5000, 30, '6 Months (180 Days)', 1500)" class="mt-4 w-full bg-indigo-600/20 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 text-xs font-bold py-2 rounded-lg transition">
                             Lock $5,000 Package
                         </button>
                     </div>
@@ -356,7 +356,7 @@
                             </div>
                             <p id="desc-Institutional Vault" class="text-xs text-slate-400 mt-2">6-Month Fixed Lockup. Capped at 50% max yield ceiling.</p>
                         </div>
-                        <button id="btn-Institutional Vault" onclick="promptInvestPackage('Institutional Vault', 10000, '6 Months (180 Days)')" class="mt-4 w-full bg-indigo-600/20 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 text-xs font-bold py-2 rounded-lg transition">
+                        <button id="btn-Institutional Vault" onclick="openPackageModal('Institutional Vault', 10000, 30, '6 Months (180 Days)', 3000)" class="mt-4 w-full bg-indigo-600/20 hover:bg-indigo-500 text-indigo-300 hover:text-slate-950 border border-indigo-500/30 text-xs font-bold py-2 rounded-lg transition">
                             Lock $10,000 Package
                         </button>
                     </div>
@@ -376,13 +376,13 @@
                             </div>
                             <p id="desc-Apex Mega Vault" class="text-xs text-slate-300 mt-2">12-Month Enterprise Lockup. Premium Tier bounded by dynamic affiliate cap.</p>
                         </div>
-                        <button id="btn-Apex Mega Vault" onclick="promptInvestPackage('Apex Mega Vault', 50000, '12 Months (365 Days)')" class="mt-4 w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs py-2.5 rounded-lg transition shadow-lg shadow-amber-500/20">
+                        <button id="btn-Apex Mega Vault" onclick="openPackageModal('Apex Mega Vault', 50000, 30, '12 Months (365 Days)', 15000)" class="mt-4 w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs py-2.5 rounded-lg transition shadow-lg shadow-amber-500/20">
                             Lock $50,000 Package
                         </button>
                     </div>
 
                 </div>
-            </div>
+            </div>   
             
 <!-- TAB: MARKET & PAPER TRADING -->
 <div id="view-market" class="tab-view hidden space-y-3">

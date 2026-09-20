@@ -4154,29 +4154,37 @@ async function executePackageLock() {
     confirmBtn.innerText = "Locking...";
 
     try {
-        // Get current authenticated user
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) throw new Error("Authentication error. Please log in again.");
 
-        // Attempt to parse days from the string (e.g., "15 Days" -> 15, "3 Months (90 Days)" -> 90)
-        let parsedDays = 1;
-        const dayMatch = currentVaultSelection.durationText.match(/\((\d+)\s*Days\)/);
+        // 1. Parse duration cleanly (handles "15 Days", "3 Days", "3 Months (90 Days)")
+        let parsedDays = 15; // fallback
+        const dayMatch = currentVaultSelection.durationText.match(/\d+/);
         if (dayMatch) {
-            parsedDays = parseInt(dayMatch[1]);
-        } else {
-            parsedDays = parseInt(currentVaultSelection.durationText) || 1;
+            parsedDays = parseInt(dayMatch[0]);
+            // If text contains "Month", convert months to days
+            if (currentVaultSelection.durationText.toLowerCase().includes('month') && !currentVaultSelection.durationText.includes('(')) {
+                parsedDays = parsedDays * 30;
+            }
         }
 
-        // Insert exactly matching the SQL schema columns
+        // 2. Calculate exact maturity date timestamp based on parsed days
+        const startDate = new Date();
+        const maturesAt = new Date(startDate.getTime() + (parsedDays * 24 * 60 * 60 * 1000)).toISOString();
+
+        // 3. Insert record into Supabase with calculated matures_at
         const { error } = await supabase
             .from('user_packages')
             .insert([{
-                user_id: user.id,                                   // NO NULL
-                package_name: currentVaultSelection.package_name,   // NO NULL
-                amount_locked: currentVaultSelection.amount_locked, // NO NULL (Fixes your error)
-                duration_days: parsedDays,                          // YES NULL
-                max_payout: currentVaultSelection.amount_locked + currentVaultSelection.estProfit, // YES NULL
-                daily_rate: currentVaultSelection.returnRate        // NO NULL (defaults to 0 if omitted, but safe to pass)
+                user_id: user.id,
+                package_name: currentVaultSelection.package_name,
+                amount_locked: currentVaultSelection.amount_locked,
+                duration_days: parsedDays,
+                matures_at: maturesAt, // Sends exact maturity timestamp
+                start_date: startDate.toISOString(),
+                max_payout: currentVaultSelection.amount_locked + currentVaultSelection.estProfit,
+                daily_rate: currentVaultSelection.returnRate,
+                status: 'active'
             }]);
 
         if (error) throw error;
@@ -4184,14 +4192,13 @@ async function executePackageLock() {
         alert("Vault Locked Successfully!");
         closePackageModal();
 
-        // Optional: Call your refresh function here if you have one to update the UI balances
-        // e.g., fetchUserData();
+        // Refresh package list if function exists
+        if (typeof loadUserSubscriptions === 'function') loadUserSubscriptions();
 
     } catch (err) {
         console.error("Lock error:", err);
         alert(`Error locking package: ${err.message}`);
     } finally {
-        // Reset button
         confirmBtn.disabled = false;
         confirmBtn.innerText = "Confirm Lock";
     }

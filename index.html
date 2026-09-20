@@ -4114,66 +4114,86 @@ async function submitSupportTicket() {
         submitBtn.disabled = false;
     }
 }
-        let pendingPackage = null;
-function openPackageModal(name, price, returnRate, duration, profit) {
-    pendingPackage = { name, price, returnRate, duration, profit };
+// Global state to hold package details for Supabase
+let currentVaultSelection = null;
 
-    const titleEl = document.getElementById('modal-title');
-    const nameEl = document.getElementById('modal-name');
-    const amountEl = document.getElementById('modal-amount');
-    const durationEl = document.getElementById('modal-duration');
-    const returnEl = document.getElementById('modal-return');
-    const profitEl = document.getElementById('modal-profit');
+function openPackageModal(packageName, amount, returnRate, durationText, estProfit) {
+    // 1. Save data to global state using exact Supabase column mapping expectations
+    currentVaultSelection = {
+        package_name: packageName,
+        amount_locked: amount,
+        returnRate: returnRate,
+        durationText: durationText,
+        estProfit: estProfit
+    };
 
-    if (titleEl) titleEl.innerText = `${name} Summary`;
-    if (nameEl) nameEl.innerText = name;
-    if (amountEl) amountEl.innerText = `$${price}.00 USDT`;
-    if (durationEl) durationEl.innerText = duration || '24 Hours';
-    if (returnEl) returnEl.innerText = `+${returnRate}%`;
-    if (profitEl) profitEl.innerText = `+$${profit}.00 USDT`;
+    // 2. Populate UI
+    document.getElementById('modal-name').innerText = packageName;
+    document.getElementById('modal-amount').innerText = `$${amount.toFixed(2)} USDT`;
+    document.getElementById('modal-duration').innerText = durationText;
+    document.getElementById('modal-return').innerText = `+${returnRate}%`;
+    document.getElementById('modal-profit').innerText = `+$${estProfit.toFixed(2)} USDT`;
 
-    const modal = document.getElementById('package-modal');
-    if (modal) modal.classList.remove('hidden');
+    // 3. Show Modal
+    document.getElementById('package-modal').classList.remove('hidden');
 }
 
 function closePackageModal() {
-    const modal = document.getElementById('package-modal');
-    if (modal) modal.classList.add('hidden');
-    pendingPackage = null;
+    document.getElementById('package-modal').classList.add('hidden');
+    currentVaultSelection = null; // Clear state on close
 }
 
 async function executePackageLock() {
-    if (!pendingPackage) return;
-
-    const btn = document.getElementById('modal-confirm-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerText = 'Locking...';
+    if (!currentVaultSelection) {
+        alert("No package selected.");
+        return;
     }
 
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = "Locking...";
+
     try {
-        const activeUserId = (await supabaseClient.auth.getUser()).data.user?.id;
-        const { data, error } = await supabaseClient
+        // Get current authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) throw new Error("Authentication error. Please log in again.");
+
+        // Attempt to parse days from the string (e.g., "15 Days" -> 15, "3 Months (90 Days)" -> 90)
+        let parsedDays = 1;
+        const dayMatch = currentVaultSelection.durationText.match(/\((\d+)\s*Days\)/);
+        if (dayMatch) {
+            parsedDays = parseInt(dayMatch[1]);
+        } else {
+            parsedDays = parseInt(currentVaultSelection.durationText) || 1;
+        }
+
+        // Insert exactly matching the SQL schema columns
+        const { error } = await supabase
             .from('user_packages')
             .insert([{
-                user_id: activeUserId,
-                package_name: pendingPackage.name,
-                amount: pendingPackage.price,
-                status: 'locked'
+                user_id: user.id,                                   // NO NULL
+                package_name: currentVaultSelection.package_name,   // NO NULL
+                amount_locked: currentVaultSelection.amount_locked, // NO NULL (Fixes your error)
+                duration_days: parsedDays,                          // YES NULL
+                max_payout: currentVaultSelection.amount_locked + currentVaultSelection.estProfit, // YES NULL
+                daily_rate: currentVaultSelection.returnRate        // NO NULL (defaults to 0 if omitted, but safe to pass)
             }]);
 
         if (error) throw error;
 
+        alert("Vault Locked Successfully!");
         closePackageModal();
-        alert(`Successfully locked ${pendingPackage.name}!`);
-        if (typeof renderPackageButtons === 'function') renderPackageButtons();
+
+        // Optional: Call your refresh function here if you have one to update the UI balances
+        // e.g., fetchUserData();
+
     } catch (err) {
-        alert('Error locking package: ' + err.message);
+        console.error("Lock error:", err);
+        alert(`Error locking package: ${err.message}`);
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerText = 'Confirm Lock';
-        }
+        // Reset button
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "Confirm Lock";
     }
 }
 

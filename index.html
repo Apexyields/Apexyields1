@@ -1906,7 +1906,7 @@ async function handleClaimPayout(packageId) {
         const { data: { user }, error: authErr } = await supabase.auth.getUser();
         if (authErr || !user) throw new Error("Authentication required.");
 
-        // 2. Fetch current package record from Supabase
+        // 2. Fetch current package record
         const { data: pkg, error: fetchErr } = await supabase
             .from('user_packages')
             .select('*')
@@ -1915,32 +1915,33 @@ async function handleClaimPayout(packageId) {
 
         if (fetchErr || !pkg) throw new Error("Could not find package details.");
 
-        // Guard: Block multi-clicks if status is already claimed
         const currentStatus = String(pkg.status || '').toLowerCase();
         if (currentStatus === 'claimed' || currentStatus === 'completed') {
             alert("Notice: This package has already been claimed.");
             return;
         }
 
-        // 3. Calculate exact payout amount
+        // 3. Determine payout amount
         let payoutAmount = Number(pkg.max_payout || pkg.payout || pkg.payout_amount || 0);
         if (!payoutAmount || payoutAmount <= 0) {
             const deposit = Number(pkg.amount_locked || pkg.amount || 100);
             payoutAmount = deposit * 1.20;
         }
 
-        // 4. Mark package status as 'claimed' in Supabase
-        const { error: updatePkgErr } = await supabase
+        // 4. Update package status in Supabase
+        const { data: updatedRows, error: updatePkgErr } = await supabase
             .from('user_packages')
             .update({ 
                 status: 'claimed',
                 updated_at: new Date().toISOString()
             })
-            .eq('id', packageId);
+            .eq('id', packageId)
+            .select();
 
         if (updatePkgErr) throw updatePkgErr;
 
-        // 5. Credit payout directly to user balance in Supabase
+        // 5. Update user balance in Supabase
+        let newTotalBalance = 0;
         const { data: profile } = await supabase
             .from('profiles')
             .select('balance')
@@ -1949,34 +1950,48 @@ async function handleClaimPayout(packageId) {
 
         if (profile) {
             const currentBal = Number(profile.balance || 0);
-            const updatedBal = currentBal + payoutAmount;
+            newTotalBalance = currentBal + payoutAmount;
 
             await supabase
                 .from('profiles')
                 .update({ 
-                    balance: updatedBal,
+                    balance: newTotalBalance,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', user.id);
         }
 
-        // 6. Mutate local array immediately so package disappears from list[span_1](start_span)[span_1](end_span)
+        // 6. Update local in-memory state directly
         if (typeof usersData !== 'undefined' && currentUser && usersData[currentUser]) {
             if (Array.isArray(usersData[currentUser].user_packages)) {
                 usersData[currentUser].user_packages = usersData[currentUser].user_packages.filter(
-                    p => (p.id || p.package_id) !== packageId
+                    p => p.id !== packageId
                 );
+            }
+            if (newTotalBalance > 0) {
+                usersData[currentUser].balance = newTotalBalance;
             }
         }
 
-        // 7. Success popup + reload to reflect new balance and clear card
+        // 7. Update Balance DOM element in header without full reload
+        const balanceElements = document.querySelectorAll('.active-balance, #active-balance, [data-balance]');
+        balanceElements.forEach(el => {
+            if (el) el.textContent = `$${newTotalBalance.toFixed(2)}`;
+        });
+
+        // 8. Re-render active packages list seamlessly
+        if (typeof renderUserActiveSubscriptions === 'function') {
+            await renderUserActiveSubscriptions();
+        } else if (typeof loadUserData === 'function') {
+            await loadUserData();
+        }
+
         alert(`Successfully claimed $${payoutAmount.toFixed(2)} USDT!`);
-        
-        location.reload();
 
     } catch (err) {
         console.error("Claim error:", err);
         alert(`Claim failed: ${err.message}`);
+    } finally {
         if (claimBtn) {
             claimBtn.disabled = false;
             claimBtn.innerText = "Claim";

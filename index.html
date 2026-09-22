@@ -1890,39 +1890,47 @@ const actionHTML = (endTimeMs > now && remainingMs > 0)
     }).join('');
 }
 async function handleClaimPayout(packageId) {
+    const claimBtn = event?.target;
+    if (claimBtn) {
+        claimBtn.disabled = true;
+        claimBtn.innerText = "Claiming...";
+    }
+
     try {
         if (!packageId || packageId === 'undefined' || packageId === 'null') {
             alert("Notice: Invalid package ID.");
             return;
         }
 
-        // 1. Fetch package record from Supabase
+        // 1. Get current authenticated user
+        const { data: { user }, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !user) throw new Error("Authentication required.");
+
+        // 2. Fetch current package record from Supabase
         const { data: pkg, error: fetchErr } = await supabase
             .from('user_packages')
             .select('*')
             .eq('id', packageId)
             .single();
 
-        if (fetchErr || !pkg) {
-            alert("Notice: Could not find package details.");
+        if (fetchErr || !pkg) throw new Error("Could not find package details.");
+
+        // Guard: Prevent double-claiming if status is already claimed
+        const currentStatus = String(pkg.status || '').toLowerCase();
+        if (currentStatus === 'claimed' || currentStatus === 'completed') {
+            alert("Notice: This package has already been claimed.");
             return;
         }
 
-        // 2. Derive payout amount using existing table columns (max_payout -> payout -> payout_amount -> deposit * 1.2)
+        // 3. Determine exact payout amount
         let payoutAmount = Number(pkg.max_payout || pkg.payout || pkg.payout_amount || 0);
-        
         if (!payoutAmount || payoutAmount <= 0) {
             const deposit = Number(pkg.amount_locked || pkg.amount || 100);
             payoutAmount = deposit * 1.20;
         }
 
-        if (payoutAmount <= 0) {
-            alert("Notice: Invalid payout amount.");
-            return;
-        }
-
-        // 3. Mark package as claimed using existing 'updated_at' column
-        const { error: updateErr } = await supabase
+        // 4. Mark package status as 'claimed' in Supabase
+        const { error: updatePkgErr } = await supabase
             .from('user_packages')
             .update({ 
                 status: 'claimed',
@@ -1930,15 +1938,44 @@ async function handleClaimPayout(packageId) {
             })
             .eq('id', packageId);
 
-        if (updateErr) throw updateErr;
+        if (updatePkgErr) throw updatePkgErr;
+
+        // 5. Fetch and credit Active Balance in Supabase 'profiles' table
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('balance')
+            .eq('id', user.id)
+            .single();
+
+        if (profile) {
+            const currentBal = Number(profile.balance || 0);
+            const updatedBal = currentBal + payoutAmount;
+
+            await supabase
+                .from('profiles')
+                .update({ 
+                    balance: updatedBal,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
+        }
+
+        // 6. Update local memory cache so package disappears from list immediately
+        if (typeof usersData !== 'undefined' && currentUser && usersData[currentUser]) {
+            const pkgArr = usersData[currentUser].user_packages || [];
+            const localPkg = pkgArr.find(p => p.id === packageId);
+            if (localPkg) {
+                localPkg.status = 'claimed';
+            }
+        }
 
         alert(`Successfully claimed $${payoutAmount.toFixed(2)} USDT!`);
 
-        // Refresh package list UI
-        if (typeof renderUserActiveSubscriptions === 'function') {
-            await renderUserActiveSubscriptions();
-        } else if (typeof loadUserData === 'function') {
+        // 7. Reload application data to update balance UI and package list
+        if (typeof loadUserData === 'function') {
             await loadUserData();
+        } else if (typeof renderUserActiveSubscriptions === 'function') {
+            await renderUserActiveSubscriptions();
         } else {
             location.reload();
         }
@@ -1946,6 +1983,11 @@ async function handleClaimPayout(packageId) {
     } catch (err) {
         console.error("Claim error:", err);
         alert(`Claim failed: ${err.message}`);
+    } finally {
+        if (claimBtn) {
+            claimBtn.disabled = false;
+            claimBtn.innerText = "Claim";
+        }
     }
 }
         

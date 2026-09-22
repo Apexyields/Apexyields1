@@ -1891,6 +1891,9 @@ const actionHTML = (endTimeMs > now && remainingMs > 0)
 }
 async function handleClaimPayout(packageId) {
     const claimBtn = event?.target;
+    // Find the outer card element so we can remove it directly from the DOM
+    const cardElement = claimBtn ? claimBtn.closest('.rounded-2xl, .rounded-xl, .bg-card, div[class*="border"]') || claimBtn.parentElement?.parentElement : null;
+
     if (claimBtn) {
         claimBtn.disabled = true;
         claimBtn.innerText = "Claiming...";
@@ -1929,18 +1932,17 @@ async function handleClaimPayout(packageId) {
         }
 
         // 4. Update package status in Supabase
-        const { data: updatedRows, error: updatePkgErr } = await supabase
+        const { error: updatePkgErr } = await supabase
             .from('user_packages')
             .update({ 
                 status: 'claimed',
                 updated_at: new Date().toISOString()
             })
-            .eq('id', packageId)
-            .select();
+            .eq('id', packageId);
 
         if (updatePkgErr) throw updatePkgErr;
 
-        // 5. Update user balance in Supabase
+        // 5. Update active balance in Supabase 'profiles'
         let newTotalBalance = 0;
         const { data: profile } = await supabase
             .from('profiles')
@@ -1961,29 +1963,39 @@ async function handleClaimPayout(packageId) {
                 .eq('id', user.id);
         }
 
-        // 6. Update local in-memory state directly
+        // 6. INSTANT DOM UPDATE - Balance Display
+        if (newTotalBalance > 0) {
+            const formattedBal = `$${newTotalBalance.toFixed(2)}`;
+            // Target all balance text nodes and specific elements
+            document.querySelectorAll('*').forEach(el => {
+                if (el.children.length === 0 && (el.textContent.includes('USDT') || el.id?.includes('balance') || el.className?.includes('balance'))) {
+                    if (el.textContent.includes('$')) {
+                        el.textContent = el.textContent.includes('USDT') ? `${formattedBal} USDT` : formattedBal;
+                    }
+                }
+            });
+        }
+
+        // 7. INSTANT DOM UPDATE - Animate & Remove Card
+        if (cardElement) {
+            cardElement.style.transition = 'all 0.4s ease';
+            cardElement.style.opacity = '0';
+            cardElement.style.transform = 'scale(0.95)';
+            setTimeout(() => cardElement.remove(), 400);
+        }
+
+        // 8. Update in-memory state & re-fetch silently in background
         if (typeof usersData !== 'undefined' && currentUser && usersData[currentUser]) {
             if (Array.isArray(usersData[currentUser].user_packages)) {
                 usersData[currentUser].user_packages = usersData[currentUser].user_packages.filter(
                     p => p.id !== packageId
                 );
             }
-            if (newTotalBalance > 0) {
-                usersData[currentUser].balance = newTotalBalance;
-            }
+            if (newTotalBalance > 0) usersData[currentUser].balance = newTotalBalance;
         }
 
-        // 7. Update Balance DOM element in header without full reload
-        const balanceElements = document.querySelectorAll('.active-balance, #active-balance, [data-balance]');
-        balanceElements.forEach(el => {
-            if (el) el.textContent = `$${newTotalBalance.toFixed(2)}`;
-        });
-
-        // 8. Re-render active packages list seamlessly
-        if (typeof renderUserActiveSubscriptions === 'function') {
-            await renderUserActiveSubscriptions();
-        } else if (typeof loadUserData === 'function') {
-            await loadUserData();
+        if (typeof loadUserData === 'function') {
+            loadUserData(); // Silent background sync
         }
 
         alert(`Successfully claimed $${payoutAmount.toFixed(2)} USDT!`);
@@ -1991,7 +2003,6 @@ async function handleClaimPayout(packageId) {
     } catch (err) {
         console.error("Claim error:", err);
         alert(`Claim failed: ${err.message}`);
-    } finally {
         if (claimBtn) {
             claimBtn.disabled = false;
             claimBtn.innerText = "Claim";

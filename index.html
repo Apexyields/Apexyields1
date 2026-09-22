@@ -1915,14 +1915,14 @@ async function handleClaimPayout(packageId) {
 
         if (fetchErr || !pkg) throw new Error("Could not find package details.");
 
-        // Guard: Prevent double-claiming if status is already claimed
+        // Guard: Block multi-clicks if status is already claimed
         const currentStatus = String(pkg.status || '').toLowerCase();
         if (currentStatus === 'claimed' || currentStatus === 'completed') {
             alert("Notice: This package has already been claimed.");
             return;
         }
 
-        // 3. Determine exact payout amount
+        // 3. Calculate exact payout amount
         let payoutAmount = Number(pkg.max_payout || pkg.payout || pkg.payout_amount || 0);
         if (!payoutAmount || payoutAmount <= 0) {
             const deposit = Number(pkg.amount_locked || pkg.amount || 100);
@@ -1940,7 +1940,7 @@ async function handleClaimPayout(packageId) {
 
         if (updatePkgErr) throw updatePkgErr;
 
-        // 5. Fetch and credit Active Balance in Supabase 'profiles' table
+        // 5. Credit payout directly to user balance in Supabase
         const { data: profile } = await supabase
             .from('profiles')
             .select('balance')
@@ -1960,30 +1960,23 @@ async function handleClaimPayout(packageId) {
                 .eq('id', user.id);
         }
 
-        // 6. Update local memory cache so package disappears from list immediately
+        // 6. Mutate local array immediately so package disappears from list[span_1](start_span)[span_1](end_span)
         if (typeof usersData !== 'undefined' && currentUser && usersData[currentUser]) {
-            const pkgArr = usersData[currentUser].user_packages || [];
-            const localPkg = pkgArr.find(p => p.id === packageId);
-            if (localPkg) {
-                localPkg.status = 'claimed';
+            if (Array.isArray(usersData[currentUser].user_packages)) {
+                usersData[currentUser].user_packages = usersData[currentUser].user_packages.filter(
+                    p => (p.id || p.package_id) !== packageId
+                );
             }
         }
 
+        // 7. Success popup + reload to reflect new balance and clear card
         alert(`Successfully claimed $${payoutAmount.toFixed(2)} USDT!`);
-
-        // 7. Reload application data to update balance UI and package list
-        if (typeof loadUserData === 'function') {
-            await loadUserData();
-        } else if (typeof renderUserActiveSubscriptions === 'function') {
-            await renderUserActiveSubscriptions();
-        } else {
-            location.reload();
-        }
+        
+        location.reload();
 
     } catch (err) {
         console.error("Claim error:", err);
         alert(`Claim failed: ${err.message}`);
-    } finally {
         if (claimBtn) {
             claimBtn.disabled = false;
             claimBtn.innerText = "Claim";

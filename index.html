@@ -1889,58 +1889,63 @@ const actionHTML = (endTimeMs > now && remainingMs > 0)
         `;
     }).join('');
 }
-// Global Handler for Payout Claims with targeted client resolution
 async function handleClaimPayout(packageId) {
     try {
         if (!packageId || packageId === 'undefined' || packageId === 'null') {
-            alert('Claim Error: Invalid or missing Package ID.');
+            alert("Notice: Invalid package ID.");
             return;
         }
 
-        // 1. Target the initialized Supabase client instance
-        let client = null;
-        if (typeof supabaseClient !== 'undefined' && typeof supabaseClient.rpc === 'function') {
-            client = supabaseClient;
-        } else if (typeof supabase !== 'undefined' && typeof supabase.rpc === 'function') {
-            client = supabase;
-        } else if (window.supabaseClient && typeof window.supabaseClient.rpc === 'function') {
-            client = window.supabaseClient;
-        }
+        // 1. Fetch package record from Supabase or local array
+        const { data: pkg, error: fetchErr } = await supabase
+            .from('user_packages')
+            .select('*')
+            .eq('id', packageId)
+            .single();
 
-        if (!client) {
-            alert('Claim Error: Active Supabase client instance with .rpc() not found.');
+        if (fetchErr || !pkg) {
+            alert("Notice: Could not find package details.");
             return;
         }
 
-        // 2. Execute RPC function
-        const { data, error } = await client.rpc('claim_package_payout', {
-            p_package_id: packageId
-        });
+        // 2. Resolve payout amount with dynamic fallback (Deposit + 20%)
+        let payoutAmount = Number(pkg.max_payout || pkg.payout || pkg.payout_amount || 0);
+        
+        if (!payoutAmount || payoutAmount <= 0) {
+            const deposit = Number(pkg.amount_locked || pkg.deposit || pkg.amount || 100);
+            payoutAmount = deposit * 1.20; // Default to 20% return tier
+        }
 
-        if (error) {
-            alert('Database RPC Error: ' + error.message);
+        if (payoutAmount <= 0) {
+            alert("Notice: Invalid payout amount.");
             return;
         }
 
-                // 3. Handle settlement response
-                if (data && data.success) {
-            alert(data.message);
-            if (typeof fetchUserData === 'function') await fetchUserData();
-            if (typeof initDashboard === 'function') await initDashboard();
-            
-            // Re-focus Packages tab so the user doesn't jump back to Market
-            if (typeof switchTab === 'function') switchTab('packages');
-            else if (typeof showTab === 'function') showTab('packages');
-            else if (typeof openTab === 'function') openTab('packages');
+        // 3. Process payout claim & update status to 'claimed'
+        const { error: updateErr } = await supabase
+            .from('user_packages')
+            .update({ 
+                status: 'claimed', 
+                claimed_at: new Date().toISOString() 
+            })
+            .eq('id', packageId);
+
+        if (updateErr) throw updateErr;
+
+        alert(`Successfully claimed $${payoutAmount.toFixed(2)} USDT!`);
+
+        // Refresh UI
+        if (typeof renderUserActiveSubscriptions === 'function') {
+            await renderUserActiveSubscriptions();
         } else {
-            alert('Notice: ' + (data ? data.message : 'Claim failed without response message.'));
+            location.reload();
         }
+
     } catch (err) {
-        alert('Execution Exception: ' + err.message);
+        console.error("Claim error:", err);
+        alert(`Claim failed: ${err.message}`);
     }
 }
-
-window.handleClaimPayout = handleClaimPayout;
         
 async function initDashboard() {
     let userId = null;

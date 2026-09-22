@@ -1896,7 +1896,7 @@ async function handleClaimPayout(packageId) {
             return;
         }
 
-        // 1. Fetch package record from Supabase or local array
+        // 1. Fetch package record from Supabase
         const { data: pkg, error: fetchErr } = await supabase
             .from('user_packages')
             .select('*')
@@ -1908,12 +1908,12 @@ async function handleClaimPayout(packageId) {
             return;
         }
 
-        // 2. Resolve payout amount with dynamic fallback (Deposit + 20%)
+        // 2. Derive payout amount using existing table columns (max_payout -> payout -> payout_amount -> deposit * 1.2)
         let payoutAmount = Number(pkg.max_payout || pkg.payout || pkg.payout_amount || 0);
         
         if (!payoutAmount || payoutAmount <= 0) {
-            const deposit = Number(pkg.amount_locked || pkg.deposit || pkg.amount || 100);
-            payoutAmount = deposit * 1.20; // Default to 20% return tier
+            const deposit = Number(pkg.amount_locked || pkg.amount || 100);
+            payoutAmount = deposit * 1.20;
         }
 
         if (payoutAmount <= 0) {
@@ -1921,12 +1921,12 @@ async function handleClaimPayout(packageId) {
             return;
         }
 
-        // 3. Process payout claim & update status to 'claimed'
+        // 3. Mark package as claimed using existing 'updated_at' column
         const { error: updateErr } = await supabase
             .from('user_packages')
             .update({ 
-                status: 'claimed', 
-                claimed_at: new Date().toISOString() 
+                status: 'claimed',
+                updated_at: new Date().toISOString()
             })
             .eq('id', packageId);
 
@@ -1934,9 +1934,11 @@ async function handleClaimPayout(packageId) {
 
         alert(`Successfully claimed $${payoutAmount.toFixed(2)} USDT!`);
 
-        // Refresh UI
+        // Refresh package list UI
         if (typeof renderUserActiveSubscriptions === 'function') {
             await renderUserActiveSubscriptions();
+        } else if (typeof loadUserData === 'function') {
+            await loadUserData();
         } else {
             location.reload();
         }

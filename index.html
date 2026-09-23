@@ -86,7 +86,16 @@
                 <input type="password" id="loginPasscode" placeholder="Password / Passcode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <input type="text" id="loginRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
                 <button onclick="handleLogin(event)" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">Sign In / Register</button>
-            </div>
+                <!-- FORGOT PASSWORD BUTTON -->
+<div class="mt-4 text-center">
+    <button 
+        type="button" 
+        onclick="window.triggerPasswordReset()" 
+        class="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+    >
+        Forgot your passcode?
+    </button>
+</div>
         </section>
 
         <!-- DASHBOARD CONTAINER -->
@@ -782,9 +791,26 @@
                     <div class="text-xs space-y-2">
                         <div class="flex justify-between"><span class="text-slate-400">Active User ID:</span> <span id="settingsUserId" class="font-mono text-slate-200">--</span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Security Passcode:</span> <span id="settingsUserWallet" class="font-mono text-slate-200">••••••••</span></div>
-                    </div>
-                </div>
-
+                        <!-- UPDATE PASSWORD SECTION -->
+<div class="mt-4 pt-4 border-t border-slate-800">
+    <h4 class="text-sm font-semibold text-slate-300 mb-3">Update Security Passcode</h4>
+    <div class="flex flex-col gap-3">
+        <input 
+            type="password" 
+            id="newPasswordInput" 
+            placeholder="Enter new passcode (min 6 chars)" 
+            class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 outline-none transition-all"
+        >
+        <button 
+            type="button" 
+            onclick="window.updatePassword()" 
+            class="w-full py-3 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 font-semibold rounded-xl text-sm transition-all cursor-pointer active:scale-95"
+        >
+            Save New Passcode
+        </button>
+        <p id="passwordUpdateMsg" class="text-xs text-center hidden"></p>
+    </div>
+</div>
                 <!-- Settings Ticket UI -->
 <div class="mt-6 border-t border-slate-800 pt-4">
     <h3 class="text-sm font-bold text-white mb-2">Support Ticket</h3>
@@ -4291,6 +4317,69 @@ async function executePackageLock() {
         confirmBtn.disabled = false;
         confirmBtn.innerText = "Confirm Lock";
     }
+}
+        // -----------------------------------------
+// 1. FORGOT PASSWORD (Sends Recovery Email)
+// -----------------------------------------
+window.triggerPasswordReset = async function() {
+    const email = prompt("Enter your account email address to receive a reset link:");
+    if (!email) return;
+
+    try {
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + window.location.pathname, // Redirects back to app
+        });
+
+        if (error) throw error;
+        alert("Recovery link sent! Please check your email inbox.");
+    } catch (err) {
+        alert("Error sending recovery link: " + err.message);
+    }
+};
+
+// -----------------------------------------
+// 2. CHANGE PASSWORD (Updates Securely in DB)
+// -----------------------------------------
+window.updatePassword = async function() {
+    const newPassword = document.getElementById('newPasswordInput').value;
+    const msgEl = document.getElementById('passwordUpdateMsg');
+    
+    if (!newPassword || newPassword.length < 6) {
+        msgEl.textContent = "Passcode must be at least 6 characters.";
+        msgEl.className = "text-xs mt-2 text-red-400 block text-center";
+        return;
+    }
+
+    try {
+        // Supabase securely updates the authenticated user's password
+        const { data, error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+
+        if (error) throw error;
+
+        // Success handling
+        msgEl.textContent = "Passcode updated successfully!";
+        msgEl.className = "text-xs mt-2 text-green-400 block text-center";
+        document.getElementById('newPasswordInput').value = ''; // Clear input
+
+    } catch (err) {
+        msgEl.textContent = err.message;
+        msgEl.className = "text-xs mt-2 text-red-400 block text-center";
+    }
+};
+
+// -----------------------------------------
+// 3. LISTEN FOR RECOVERY EVENT
+// -----------------------------------------
+// Add this inside your existing DOMContentLoaded or Auth state listener
+if (typeof supabase !== 'undefined') {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+            alert("Secure recovery successful! Please navigate to Settings to update your passcode immediately.");
+            // Optional: Force app to switch to the Settings view tab here
+        }
+    });
 }
 
 </script>

@@ -1250,7 +1250,9 @@ async function handleLogin(e) {
 
     if (data.user) {
         currentUser = usernameInput;
-        localStorage.setItem('currentUser', currentUser);
+window.currentUserId = data.user.id;
+localStorage.setItem('user_id', data.user.id);
+localStorage.setItem('currentUser', currentUser);
 
         document.getElementById('authSection')?.classList.add('hidden');
         document.getElementById('dashboardSection')?.classList.remove('hidden');
@@ -1312,7 +1314,9 @@ async function handleSignUp(e) {
 
     if (data.user) {
         currentUser = usernameInput;
-        localStorage.setItem('currentUser', currentUser);
+window.currentUserId = data.user.id;
+localStorage.setItem('user_id', data.user.id);
+localStorage.setItem('currentUser', currentUser);
 
         await client.from('profiles').insert([{
             id: data.user.id,

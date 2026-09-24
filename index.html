@@ -1301,6 +1301,30 @@ async function handleLogin(event) {
     console.error("Login error:", err);
     alert(`Authentication failed for [${authEmail}]: ${err.message}`);
     }
+    if (!userInput.includes('@')) {
+    const { data: profile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('email')
+        .ilike('username', userInput)
+        .maybeSingle();
+
+    if (profileErr) {
+        alert("RLS / DB Error: " + profileErr.message);
+        return;
+    }
+
+    if (!profile) {
+        alert(`No profile row matched username "${userInput}" in database.`);
+        return;
+    }
+
+    if (!profile.email) {
+        alert(`Profile found for "${userInput}", but email column is empty/null.`);
+        return;
+    }
+
+    // Email successfully resolved from database
+    authEmail = profile.email;
 }
         // AUTO-RESTORE SESSION ON REFRESH
 async function checkPersistedSession() {

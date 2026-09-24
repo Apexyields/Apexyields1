@@ -1255,51 +1255,82 @@
         }
     }
 
-async function handleLogin(event) {
-    if (event) event.preventDefault();
-
-    const userInput = document.getElementById('loginUsername').value.trim();
-    const passcode = document.getElementById('loginPasscode').value;
-
-    if (!userInput || !passcode) {
-        alert("Please enter your account identifier and passcode.");
-        return;
-    }
-
-    let authEmail = userInput;
-
+async function handleLogin(e) {
     try {
-        // Look up email by username in profiles
-        if (!userInput.includes('@')) {
-            const { data: profile, error: profileErr } = await supabase
-                .from('profiles')
-                .select('email')
-                .ilike('username', userInput)
-                .maybeSingle();
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        } else if (window.event) {
+            window.event.returnValue = false;
+        }
 
-            if (profile && profile.email) {
-                authEmail = profile.email;
-            } else {
-                authEmail = `${userInput.toLowerCase()}@apexyields.app`;
+        const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
+
+        const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
+        const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
+
+        const username = usernameElem ? usernameElem.value.trim() : '';
+        const password = passcodeElem ? passcodeElem.value.trim() : '';
+
+        if (!username || !password) {
+            return alert('Please enter both Username and Passcode.');
+        }
+
+        let email = username;
+
+        // If user typed a username without '@', look up their email in profiles
+        if (!username.includes('@') && client) {
+            try {
+                const { data: profile } = await client
+                    .from('profiles')
+                    .select('email')
+                    .ilike('username', username)
+                    .maybeSingle();
+
+                if (profile && profile.email) {
+                    email = profile.email;
+                } else {
+                    // Fallback to legacy domain
+                    email = `${username.toLowerCase()}@apexyields.app`;
+                }
+            } catch (pErr) {
+                console.warn("Profile lookup notice:", pErr);
+                email = `${username.toLowerCase()}@apexyields.app`;
             }
         }
 
-        // Authenticate with Supabase
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: authEmail,
-            password: passcode,
-        });
+        if (client) {
+            const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
 
-        if (error) throw error;
+            if (signInError) {
+                return alert("Authentication failed: " + signInError.message);
+            }
 
-        alert("Logged in successfully!");
-        window.location.reload(); // Reload to activate session
+            if (signInData.user) {
+                currentUser = username;
+                localStorage.setItem('currentUser', currentUser);
 
+                // Switch UI views from Auth to Dashboard
+                document.getElementById('authSection')?.classList.add('hidden');
+                document.getElementById('dashboardSection')?.classList.remove('hidden');
+
+                if (typeof loadUserProfile === 'function') {
+                    try { await loadUserProfile(); } catch (err) { console.error(err); }
+                }
+                if (typeof initDashboard === 'function') {
+                    initDashboard();
+                }
+                return;
+            }
+        }
     } catch (err) {
-        console.error("Login error:", err);
-        alert(`Authentication failed for [${authEmail}]: ${err.message}`);
+        console.error("Critical login crash:", err);
+        alert("Unexpected error: " + err.message);
     }
 }
+window.handleLogin = handleLogin;
         // AUTO-RESTORE SESSION ON REFRESH
 async function checkPersistedSession() {
     const savedUser = localStorage.getItem('currentUser');

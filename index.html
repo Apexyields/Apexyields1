@@ -1255,7 +1255,7 @@
         }
     }
 
-    async function handleLogin(event) {
+async function handleLogin(event) {
     if (event) event.preventDefault();
 
     const userInput = document.getElementById('loginUsername').value.trim();
@@ -1269,24 +1269,24 @@
     let authEmail = userInput;
 
     try {
-        // If the user did NOT type an email address, look up their email by username
+        // If the user typed a username (no '@' symbol)
         if (!userInput.includes('@')) {
             const { data: profile, error: profileErr } = await supabase
                 .from('profiles')
                 .select('email')
-                .eq('username', userInput)
+                .ilike('username', userInput)
                 .maybeSingle();
 
-            if (profileErr || !profile || !profile.email) {
-                alert("Account username not found.");
-                return;
+            if (profile && profile.email) {
+                // Real email linked in profiles
+                authEmail = profile.email;
+            } else {
+                // LEGACY FALLBACK: Use synthetic email created during original signup
+                authEmail = `${userInput.toLowerCase()}@vectraledger.live`;
             }
-
-            // Resolved username to real email
-            authEmail = profile.email;
         }
 
-        // Authenticate with Supabase using the resolved email
+        // Authenticate with Supabase Auth
         const { data, error } = await supabase.auth.signInWithPassword({
             email: authEmail,
             password: passcode,
@@ -1294,9 +1294,8 @@
 
         if (error) throw error;
 
-        // Login successful
         alert("Logged in successfully!");
-        // Refresh session / switch view...
+        // Reload session or switch tab
 
     } catch (err) {
         console.error("Login error:", err);

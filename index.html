@@ -1202,49 +1202,99 @@
     // 1. AUTHENTICATION (Sign Up & Sign In)
     // ==========================================
 
-    async function signUpUser(email, password, username) {
-    if (!supabaseClient) return alert("Supabase is not initialized correctly.");
-    
-    // 1. Extract pending referral code from URL or storage
-    const urlParams = new URLSearchParams(window.location.search);
-    const pendingRef = urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
-
-    // 2. Submit sign up with referral metadata attached
-    const { data, error } = await supabaseClient.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-            data: {
-                referred_by_code: pendingRef
-            }
+    async function handleSignUp(e) {
+    try {
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        } else if (window.event) {
+            window.event.returnValue = false;
         }
-    });
 
-    if (error) {
-        alert("Sign up failed: " + error.message);
-        return;
-    }
+        const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
+        if (!client) return alert("Supabase is not initialized correctly.");
 
-    // 3. Create profile record and save referral code link
-    if (data.user) {
-        const { error: profileError } = await supabaseClient
+        const usernameElem = document.getElementById('signUpUsername');
+        const emailElem = document.getElementById('signUpEmail');
+        const passcodeElem = document.getElementById('signUpPasscode');
+        const refCodeElem = document.getElementById('signUpRefCode');
+
+        const username = usernameElem ? usernameElem.value.trim() : '';
+        const email = emailElem ? emailElem.value.trim() : '';
+        const password = passcodeElem ? passcodeElem.value.trim() : '';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const pendingRef = (refCodeElem && refCodeElem.value.trim()) || urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
+
+        if (!username || !email || !password) {
+            return alert("Please fill in your Username, Email, and Passcode.");
+        }
+
+        if (!email.includes('@')) {
+            return alert("Please enter a valid email address.");
+        }
+
+        // 1. Check if username is already taken
+        const { data: existingUser } = await client
             .from('profiles')
-            .insert([{ 
-                id: data.user.id, 
-                username: username, 
-                balance: 0, 
-                role: 'user',
-                referred_by_code: pendingRef
-            }]);
+            .select('username')
+            .ilike('username', username)
+            .maybeSingle();
 
-        if (profileError) console.error("Profile creation error:", profileError.message);
+        if (existingUser) {
+            return alert("This username is already taken. Please choose another.");
+        }
 
-        localStorage.removeItem('apex_pending_ref');
+        // 2. Submit sign up to Supabase Auth with real email
+        const { data, error } = await client.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    username: username,
+                    referred_by_code: pendingRef
+                }
+            }
+        });
+
+        if (error) {
+            return alert("Sign up failed: " + error.message);
+        }
+
+        // 3. Create profile record saving BOTH username and real email
+        if (data.user) {
+            currentUser = username;
+            localStorage.setItem('currentUser', currentUser);
+
+            const { error: profileError } = await client
+                .from('profiles')
+                .insert([{
+                    id: data.user.id,
+                    username: username,
+                    email: email, // Saved for username lookups & recovery emails
+                    balance: 0,
+                    role: 'user',
+                    referred_by_code: pendingRef,
+                    referred_by: pendingRef
+                }]);
+
+            if (profileError) console.error("Profile creation error:", profileError.message);
+
+            localStorage.removeItem('apex_pending_ref');
+            alert("Account created successfully!");
+
+            // Transition UI to dashboard
+            document.getElementById('authSection')?.classList.add('hidden');
+            document.getElementById('dashboardSection')?.classList.remove('hidden');
+
+            if (typeof loadUserProfile === 'function') try { await loadUserProfile(); } catch (err) { console.error(err); }
+            if (typeof initDashboard === 'function') initDashboard();
+        }
+    } catch (err) {
+        console.error("Sign up error:", err);
+        alert("Unexpected error: " + err.message);
     }
-
-    alert("Account created successfully! Check your email to confirm.");
 }
-
+window.handleSignUp = handleSignUp;
 
     async function loginUser(email, password) {
         if (!supabaseClient) return alert("Supabase is not initialized correctly.");
@@ -4408,6 +4458,48 @@ supabase.auth.onAuthStateChange((event, session) => {
         if (typeof loadUserData === 'function') loadUserData();
     }
 });
+        // 1. Password Reset Handler
+async function handleForgotPassword(userInput) {
+    const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
+    if (!client) return alert("Supabase is not initialized correctly.");
+
+    let targetEmail = userInput.trim();
+
+    // If typed input is a username, fetch real email from public.profiles
+    if (!targetEmail.includes('@')) {
+        const { data: profile, error } = await client
+            .from('profiles')
+            .select('email')
+            .ilike('username', targetEmail)
+            .maybeSingle();
+
+        if (error || !profile || !profile.email) {
+            return alert("Username not found or no email is associated with this account.");
+        }
+        targetEmail = profile.email;
+    }
+
+    // Trigger password reset email from Supabase
+    const { error } = await client.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: 'https://vectraledger.live/#reset-password'
+    });
+
+    if (error) {
+        alert("Error sending recovery email: " + error.message);
+    } else {
+        alert(`Password reset link sent to ${targetEmail}`);
+    }
+}
+
+// 2. Connects to the "Forgot your passcode?" button in HTML
+window.triggerPasswordReset = function() {
+    const userInput = prompt("Enter your Username or Email address to reset your passcode:");
+    if (userInput && userInput.trim()) {
+        handleForgotPassword(userInput);
+    }
+};
+
+window.handleForgotPassword = handleForgotPassword;
 </script>
 </body>
 </html>

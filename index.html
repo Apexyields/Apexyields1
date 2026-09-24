@@ -1298,8 +1298,8 @@ async function handleLogin(event) {
         // Reload session or switch tab
 
     } catch (err) {
-        console.error("Login error:", err);
-        alert("Authentication failed: " + err.message);
+    console.error("Login error:", err);
+    alert(`Authentication failed for [${authEmail}]: ${err.message}`);
     }
 }
         // AUTO-RESTORE SESSION ON REFRESH

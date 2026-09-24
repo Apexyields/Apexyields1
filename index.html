@@ -82,18 +82,23 @@
             <h2 class="text-xl font-bold">Account Access</h2>
             <p class="text-xs text-slate-400">Enter your credentials to manage your yield portfolio.</p>
                 <div class="space-y-3 max-w-xs mx-auto">
-      <input type="text" id="signUpUsername" placeholder="Username / Account ID" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
-      
-      <input type="email" id="signUpEmail" placeholder="Email Address (Required for Reset)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
-      
-      <input type="password" id="signUpPasscode" placeholder="Password / Passcode" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
-      
-      <input type="text" id="signUpRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-      
-      <button onclick="handleSignUp(event)" id="signUpBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg font-semibold text-xs transition-colors">
-        Create Account / Sign In
-      </button>
-    </div>
+  <input type="text" id="signUpUsername" placeholder="Username / Account ID" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
+  
+  <input type="email" id="signUpEmail" placeholder="Email Address (Required for New Accounts)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+  
+  <input type="password" id="signUpPasscode" placeholder="Password / Passcode" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
+  
+  <input type="text" id="signUpRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+  
+  <div class="flex gap-2 pt-1">
+    <button type="button" onclick="handleLogin(event)" id="loginBtn" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-lg font-semibold text-xs transition-colors">
+      Log In
+    </button>
+    <button type="button" onclick="handleSignUp(event)" id="signUpBtn" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg font-semibold text-xs transition-colors">
+      Sign Up
+    </button>
+  </div>
+</div>
                 <!-- FORGOT PASSWORD BUTTON -->
 <div class="mt-4 text-center">
     <button 
@@ -1196,11 +1201,9 @@
             }
         }
     });
-
-
-// ==========================================
-// 1. LOGIN (Ignores email field; keeps testref7 working)
-// ==========================================
+        // ========================================================
+// 1. LOG IN (For existing accounts like testref7 - NO EMAIL NEEDED)
+// ========================================================
 async function handleLogin(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
@@ -1211,12 +1214,12 @@ async function handleLogin(e) {
     const passwordInput = (document.getElementById('signUpPasscode') || document.getElementById('loginPasscode'))?.value.trim();
 
     if (!usernameInput || !passwordInput) {
-        return alert("Please enter both Username and Passcode to log in.");
+        return alert("Please enter both Username and Passcode.");
     }
 
     let authEmail = usernameInput;
 
-    // Resolve email for usernames (e.g. testref7)
+    // Look up email in public.profiles or fall back to legacy test domain
     if (!usernameInput.includes('@')) {
         try {
             const { data: profile } = await client
@@ -1228,14 +1231,14 @@ async function handleLogin(e) {
             if (profile && profile.email) {
                 authEmail = profile.email;
             } else {
-                // Fallback for testref7 and legacy accounts
                 authEmail = `${usernameInput.toLowerCase()}@apexyields.app`;
             }
-        } catch (pErr) {
+        } catch (err) {
             authEmail = `${usernameInput.toLowerCase()}@apexyields.app`;
         }
     }
 
+    // STRICT LOGIN ONLY - Will never create a new account
     const { data, error } = await client.auth.signInWithPassword({
         email: authEmail,
         password: passwordInput
@@ -1256,12 +1259,11 @@ async function handleLogin(e) {
         if (typeof initDashboard === 'function') initDashboard();
     }
 }
-window.handleLogin = handleLogin;
 
 
-// ==========================================
-// 2. SIGN UP (Mandatory email for new accounts)
-// ==========================================
+// ========================================================
+// 2. SIGN UP (For NEW accounts only - REQUIRES REAL EMAIL)
+// ========================================================
 async function handleSignUp(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
@@ -1273,16 +1275,15 @@ async function handleSignUp(e) {
     const passwordInput = (document.getElementById('signUpPasscode') || document.getElementById('loginPasscode'))?.value.trim();
     const refCodeInput = document.getElementById('signUpRefCode')?.value.trim();
 
-    // Strictly enforce all fields for new signups
     if (!usernameInput || !emailInput || !passwordInput) {
-        return alert("Email address is required for new account registration.");
+        return alert("To create a NEW account, Username, Email, and Passcode are required.");
     }
 
     if (!emailInput.includes('@')) {
-        return alert("Please enter a valid email address so you can recover your password if needed.");
+        return alert("Please enter a valid Email Address for registration.");
     }
 
-    // Check if username is already taken
+    // Prevent duplicate usernames
     const { data: existingUser } = await client
         .from('profiles')
         .select('username')
@@ -1290,13 +1291,12 @@ async function handleSignUp(e) {
         .maybeSingle();
 
     if (existingUser) {
-        return alert("This username is already taken. If this is your test account, use the Log In button instead.");
+        return alert("This username is already registered. Click 'Log In' instead.");
     }
 
     const urlParams = new URLSearchParams(window.location.search);
     const pendingRef = refCodeInput || urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
 
-    // Register new user with real email
     const { data, error } = await client.auth.signUp({
         email: emailInput,
         password: passwordInput,
@@ -1308,15 +1308,12 @@ async function handleSignUp(e) {
         }
     });
 
-    if (error) {
-        return alert("Sign up failed: " + error.message);
-    }
+    if (error) return alert("Sign up failed: " + error.message);
 
     if (data.user) {
         currentUser = usernameInput;
         localStorage.setItem('currentUser', currentUser);
 
-        // Store real email in profile for password resets
         await client.from('profiles').insert([{
             id: data.user.id,
             username: usernameInput,
@@ -1337,10 +1334,11 @@ async function handleSignUp(e) {
         if (typeof initDashboard === 'function') initDashboard();
     }
 }
-window.handleSignUp = handleSignUp;
 
+// Global Exports
+window.handleLogin = handleLogin;
 window.loginUser = handleLogin;
-
+window.handleSignUp = handleSignUp;
 
         // AUTO-RESTORE SESSION ON REFRESH
 async function checkPersistedSession() {

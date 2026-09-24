@@ -3606,13 +3606,23 @@ function selectAsset(symbol) {
     if (typeof fetchLiveCryptoPrices === 'function') fetchLiveCryptoPrices();
     if (typeof updateTradingUI === 'function') updateTradingUI();
 }
+        // Helper to dynamically get the active logged-in Supabase user ID
+function getActiveUserId() {
+    const client = typeof supabaseClient !== 'undefined' ? supabaseClient : window.supabase;
+    // 1. Try currently active Supabase session
+    const sessionUser = client?.auth?.session?.()?.user?.id || client?.auth?.user?.()?.id;
+    if (sessionUser) return sessionUser;
 
+    // 2. Fall back to current user profile ID or localStorage
+    return window.currentUserId || localStorage.getItem('user_id') || null;
+}
   async function updateTradingUI() {
     try {
         const db = window.supabaseClient || window.supabase;
         if (!db || typeof db.from !== 'function') return;
 
-        const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+         const userId = getActiveUserId();
+if (!userId) return;
         const currentSymbol = selectedAsset || window.currentCryptoSymbol || 'BTC';
 
         // 1. Fetch paper balance & active positions
@@ -3719,7 +3729,8 @@ async function saveTradeLog(type, usdAmount, units, symbol) {
     const db = getDbClient();
     if (!db) return;
 
-    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+    const userId = getActiveUserId();
+if (!userId) return;
     const currentPrice = cryptoPrices[symbol] || 0;
 
     try {
@@ -3770,7 +3781,8 @@ async function executePaperTrade(type) {
         let usdAmount = isCryptoMode ? (rawInputVal * currentPrice) : rawInputVal;
         let unitsCount = isCryptoMode ? rawInputVal : (rawInputVal / currentPrice);
 
-        const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+        const userId = getActiveUserId();
+if (!userId) return alert("Please log in to trade.");
 
         const [{ data: profile }, { data: posData }] = await Promise.all([
             db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
@@ -3834,7 +3846,8 @@ async function renderTradeHistory() {
     const db = window.supabaseClient || window.supabase;
     if (!db || typeof db.from !== 'function') return;
 
-    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+    const userId = getActiveUserId();
+if (!userId) return;
 
     const [profileRes, positionsRes, tradesRes] = await Promise.all([
         db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
@@ -3990,7 +4003,8 @@ function clearPaperTradeHistory() {
 
 async function cashOutPaperTrading() {
     const db = getDbClient();
-    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+    const userId = getActiveUserId();
+if (!userId) return alert("User session not found.");
     
     let totalCashedOutUsd = 0;
 
@@ -4042,8 +4056,8 @@ async function cashOutPaperTrading() {
 
 async function resetPaperBalance() {
     const db = window.supabaseClient || window.supabase;
-    const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
-
+    const userId = getActiveUserId();
+if (!userId) return alert("User session not found.");
     const currentVal = localStorage.getItem('user_balance') || '100000.00';
     const input = prompt('Enter your desired Demo USD balance:', currentVal);
 

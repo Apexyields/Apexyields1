@@ -1198,196 +1198,150 @@
     });
 
 
-    // ==========================================
-    // 1. AUTHENTICATION (Sign Up & Sign In)
-    // ==========================================
+// ==========================================
+// 1. LOGIN (Ignores email field; keeps testref7 working)
+// ==========================================
+async function handleLogin(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
-    async function handleSignUp(e) {
-    try {
-        if (e && typeof e.preventDefault === 'function') {
-            e.preventDefault();
-        } else if (window.event) {
-            window.event.returnValue = false;
-        }
+    const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
+    if (!client) return alert("Supabase is not initialized correctly.");
 
-        const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
-        if (!client) return alert("Supabase is not initialized correctly.");
+    const usernameInput = (document.getElementById('signUpUsername') || document.getElementById('loginUsername'))?.value.trim();
+    const passwordInput = (document.getElementById('signUpPasscode') || document.getElementById('loginPasscode'))?.value.trim();
 
-        const usernameElem = document.getElementById('signUpUsername');
-        const emailElem = document.getElementById('signUpEmail');
-        const passcodeElem = document.getElementById('signUpPasscode');
-        const refCodeElem = document.getElementById('signUpRefCode');
+    if (!usernameInput || !passwordInput) {
+        return alert("Please enter both Username and Passcode to log in.");
+    }
 
-        const username = usernameElem ? usernameElem.value.trim() : '';
-        const email = emailElem ? emailElem.value.trim() : '';
-        const password = passcodeElem ? passcodeElem.value.trim() : '';
+    let authEmail = usernameInput;
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const pendingRef = (refCodeElem && refCodeElem.value.trim()) || urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
-
-        if (!username || !email || !password) {
-            return alert("Please fill in your Username, Email, and Passcode.");
-        }
-
-        if (!email.includes('@')) {
-            return alert("Please enter a valid email address.");
-        }
-
-        // 1. Check if username is already taken
-        const { data: existingUser } = await client
-            .from('profiles')
-            .select('username')
-            .ilike('username', username)
-            .maybeSingle();
-
-        if (existingUser) {
-            return alert("This username is already taken. Please choose another.");
-        }
-
-        // 2. Submit sign up to Supabase Auth with real email
-        const { data, error } = await client.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    username: username,
-                    referred_by_code: pendingRef
-                }
-            }
-        });
-
-        if (error) {
-            return alert("Sign up failed: " + error.message);
-        }
-
-        // 3. Create profile record saving BOTH username and real email
-        if (data.user) {
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-
-            const { error: profileError } = await client
+    // Resolve email for usernames (e.g. testref7)
+    if (!usernameInput.includes('@')) {
+        try {
+            const { data: profile } = await client
                 .from('profiles')
-                .insert([{
-                    id: data.user.id,
-                    username: username,
-                    email: email, // Saved for username lookups & recovery emails
-                    balance: 0,
-                    role: 'user',
-                    referred_by_code: pendingRef,
-                    referred_by: pendingRef
-                }]);
+                .select('email')
+                .ilike('username', usernameInput)
+                .maybeSingle();
 
-            if (profileError) console.error("Profile creation error:", profileError.message);
-
-            localStorage.removeItem('apex_pending_ref');
-            alert("Account created successfully!");
-
-            // Transition UI to dashboard
-            document.getElementById('authSection')?.classList.add('hidden');
-            document.getElementById('dashboardSection')?.classList.remove('hidden');
-
-            if (typeof loadUserProfile === 'function') try { await loadUserProfile(); } catch (err) { console.error(err); }
-            if (typeof initDashboard === 'function') initDashboard();
+            if (profile && profile.email) {
+                authEmail = profile.email;
+            } else {
+                // Fallback for testref7 and legacy accounts
+                authEmail = `${usernameInput.toLowerCase()}@apexyields.app`;
+            }
+        } catch (pErr) {
+            authEmail = `${usernameInput.toLowerCase()}@apexyields.app`;
         }
-    } catch (err) {
-        console.error("Sign up error:", err);
-        alert("Unexpected error: " + err.message);
+    }
+
+    const { data, error } = await client.auth.signInWithPassword({
+        email: authEmail,
+        password: passwordInput
+    });
+
+    if (error) {
+        return alert("Login failed: " + error.message);
+    }
+
+    if (data.user) {
+        currentUser = usernameInput;
+        localStorage.setItem('currentUser', currentUser);
+
+        document.getElementById('authSection')?.classList.add('hidden');
+        document.getElementById('dashboardSection')?.classList.remove('hidden');
+
+        if (typeof loadUserProfile === 'function') try { await loadUserProfile(); } catch (err) {}
+        if (typeof initDashboard === 'function') initDashboard();
+    }
+}
+window.handleLogin = handleLogin;
+
+
+// ==========================================
+// 2. SIGN UP (Mandatory email for new accounts)
+// ==========================================
+async function handleSignUp(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
+    if (!client) return alert("Supabase is not initialized correctly.");
+
+    const usernameInput = (document.getElementById('signUpUsername') || document.getElementById('loginUsername'))?.value.trim();
+    const emailInput = document.getElementById('signUpEmail')?.value.trim();
+    const passwordInput = (document.getElementById('signUpPasscode') || document.getElementById('loginPasscode'))?.value.trim();
+    const refCodeInput = document.getElementById('signUpRefCode')?.value.trim();
+
+    // Strictly enforce all fields for new signups
+    if (!usernameInput || !emailInput || !passwordInput) {
+        return alert("Email address is required for new account registration.");
+    }
+
+    if (!emailInput.includes('@')) {
+        return alert("Please enter a valid email address so you can recover your password if needed.");
+    }
+
+    // Check if username is already taken
+    const { data: existingUser } = await client
+        .from('profiles')
+        .select('username')
+        .ilike('username', usernameInput)
+        .maybeSingle();
+
+    if (existingUser) {
+        return alert("This username is already taken. If this is your test account, use the Log In button instead.");
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const pendingRef = refCodeInput || urlParams.get('ref') || localStorage.getItem('apex_pending_ref') || null;
+
+    // Register new user with real email
+    const { data, error } = await client.auth.signUp({
+        email: emailInput,
+        password: passwordInput,
+        options: {
+            data: {
+                username: usernameInput,
+                referred_by_code: pendingRef
+            }
+        }
+    });
+
+    if (error) {
+        return alert("Sign up failed: " + error.message);
+    }
+
+    if (data.user) {
+        currentUser = usernameInput;
+        localStorage.setItem('currentUser', currentUser);
+
+        // Store real email in profile for password resets
+        await client.from('profiles').insert([{
+            id: data.user.id,
+            username: usernameInput,
+            email: emailInput,
+            balance: 0,
+            role: 'user',
+            referred_by_code: pendingRef,
+            referred_by: pendingRef
+        }]);
+
+        localStorage.removeItem('apex_pending_ref');
+        alert("Account created successfully!");
+
+        document.getElementById('authSection')?.classList.add('hidden');
+        document.getElementById('dashboardSection')?.classList.remove('hidden');
+
+        if (typeof loadUserProfile === 'function') try { await loadUserProfile(); } catch (err) {}
+        if (typeof initDashboard === 'function') initDashboard();
     }
 }
 window.handleSignUp = handleSignUp;
 
-    async function loginUser(email, password) {
-        if (!supabaseClient) return alert("Supabase is not initialized correctly.");
+window.loginUser = handleLogin;
 
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
 
-        if (error) {
-            alert("Login failed: " + error.message);
-        } else {
-            alert("Logged in!");
-            loadUserProfile();
-        }
-    }
-
-async function handleLogin(e) {
-    try {
-        if (e && typeof e.preventDefault === 'function') {
-            e.preventDefault();
-        } else if (window.event) {
-            window.event.returnValue = false;
-        }
-
-        const client = typeof supabaseClient !== 'undefined' ? supabaseClient : supabase;
-
-        const usernameElem = document.getElementById('loginUsername') || document.getElementById('login-email') || document.getElementById('email');
-        const passcodeElem = document.getElementById('loginPasscode') || document.getElementById('login-password') || document.getElementById('password');
-
-        const username = usernameElem ? usernameElem.value.trim() : '';
-        const password = passcodeElem ? passcodeElem.value.trim() : '';
-
-        if (!username || !password) {
-            return alert('Please enter both Username and Passcode.');
-        }
-
-        let email = username;
-
-        // If user typed a username without '@', look up their email in profiles
-        if (!username.includes('@') && client) {
-            try {
-                const { data: profile } = await client
-                    .from('profiles')
-                    .select('email')
-                    .ilike('username', username)
-                    .maybeSingle();
-
-                if (profile && profile.email) {
-                    email = profile.email;
-                } else {
-                    // Fallback to legacy domain
-                    email = `${username.toLowerCase()}@apexyields.app`;
-                }
-            } catch (pErr) {
-                console.warn("Profile lookup notice:", pErr);
-                email = `${username.toLowerCase()}@apexyields.app`;
-            }
-        }
-
-        if (client) {
-            const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
-
-            if (signInError) {
-                return alert("Authentication failed: " + signInError.message);
-            }
-
-            if (signInData.user) {
-                currentUser = username;
-                localStorage.setItem('currentUser', currentUser);
-
-                // Switch UI views from Auth to Dashboard
-                document.getElementById('authSection')?.classList.add('hidden');
-                document.getElementById('dashboardSection')?.classList.remove('hidden');
-
-                if (typeof loadUserProfile === 'function') {
-                    try { await loadUserProfile(); } catch (err) { console.error(err); }
-                }
-                if (typeof initDashboard === 'function') {
-                    initDashboard();
-                }
-                return;
-            }
-        }
-    } catch (err) {
-        console.error("Critical login crash:", err);
-        alert("Unexpected error: " + err.message);
-    }
-}
-window.handleLogin = handleLogin;
         // AUTO-RESTORE SESSION ON REFRESH
 async function checkPersistedSession() {
     const savedUser = localStorage.getItem('currentUser');

@@ -1298,7 +1298,20 @@ async function handleLogin(event) {
         if (error) throw error;
 
         alert("Logged in successfully!");
-        window.location.reload();
+
+        // Hide auth modal/overlay if visible
+        const authOverlay = document.getElementById('authModal') || 
+                            document.getElementById('authSection') || 
+                            document.getElementById('loginContainer');
+        if (authOverlay) authOverlay.classList.add('hidden');
+
+        // Switch view to dashboard
+        if (typeof switchTab === 'function') switchTab('dashboard');
+        if (typeof showDashboard === 'function') showDashboard();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
+        // Load dashboard user data
+        if (typeof loadUserData === 'function') loadUserData();
 
     } catch (err) {
         console.error("Login error:", err);

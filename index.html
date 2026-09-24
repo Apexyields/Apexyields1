@@ -1269,7 +1269,7 @@ async function handleLogin(event) {
     let authEmail = userInput;
 
     try {
-        // If user typed a username (no '@' symbol), look up their email in profiles
+        // Look up email by username in profiles
         if (!userInput.includes('@')) {
             const { data: profile, error: profileErr } = await supabase
                 .from('profiles')
@@ -1277,19 +1277,14 @@ async function handleLogin(event) {
                 .ilike('username', userInput)
                 .maybeSingle();
 
-            if (profileErr) {
-                console.warn("Profiles lookup notice:", profileErr);
-            }
-
             if (profile && profile.email) {
                 authEmail = profile.email;
             } else {
-                // Legacy fallback for accounts created under apexyields.app
                 authEmail = `${userInput.toLowerCase()}@apexyields.app`;
             }
         }
 
-        // Authenticate with Supabase Auth
+        // Authenticate with Supabase
         const { data, error } = await supabase.auth.signInWithPassword({
             email: authEmail,
             password: passcode,
@@ -1298,20 +1293,7 @@ async function handleLogin(event) {
         if (error) throw error;
 
         alert("Logged in successfully!");
-
-        // Hide auth modal/overlay if visible
-        const authOverlay = document.getElementById('authModal') || 
-                            document.getElementById('authSection') || 
-                            document.getElementById('loginContainer');
-        if (authOverlay) authOverlay.classList.add('hidden');
-
-        // Switch view to dashboard
-        if (typeof switchTab === 'function') switchTab('dashboard');
-        if (typeof showDashboard === 'function') showDashboard();
-        if (typeof renderDashboard === 'function') renderDashboard();
-
-        // Load dashboard user data
-        if (typeof loadUserData === 'function') loadUserData();
+        window.location.reload(); // Reload to activate session
 
     } catch (err) {
         console.error("Login error:", err);
@@ -4376,6 +4358,18 @@ async function handleRegister(email, username, password, refCode = null) {
         if (profileErr) throw profileErr;
     }
 }
+        // Automatically load Dashboard whenever an active session exists
+supabase.auth.onAuthStateChange((event, session) => {
+    if (session) {
+        // Hide login view / modal if present
+        const loginEl = document.getElementById('loginModal') || document.getElementById('loginView');
+        if (loginEl) loginEl.classList.add('hidden');
+
+        // Switch active view to dashboard
+        if (typeof switchTab === 'function') switchTab('dashboard');
+        if (typeof loadUserData === 'function') loadUserData();
+    }
+});
 </script>
 </body>
 </html>

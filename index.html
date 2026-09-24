@@ -4335,7 +4335,32 @@ if (typeof supabase !== 'undefined') {
         }
     });
 }
+async function handleRegister(email, username, password, refCode = null) {
+    // 1. Create auth user in Supabase
+    const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+            data: { username: username } // Stores in auth.users user_metadata
+        }
+    });
 
+    if (authErr) throw authErr;
+
+    // 2. Link username and email in your public profiles table
+    if (authData.user) {
+        const { error: profileErr } = await supabase
+            .from('profiles')
+            .upsert({
+                id: authData.user.id,
+                username: username,
+                email: email,
+                referred_by: refCode
+            });
+
+        if (profileErr) throw profileErr;
+    }
+}
 </script>
 </body>
 </html>

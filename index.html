@@ -81,12 +81,19 @@
             <div class="text-3xl">🔐</div>
             <h2 class="text-xl font-bold">Account Access</h2>
             <p class="text-xs text-slate-400">Enter your credentials to manage your yield portfolio.</p>
-            <div class="space-y-3 max-w-xs mx-auto">
-                <input type="text" id="loginUsername" placeholder="Username / Account ID" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                <input type="password" id="loginPasscode" placeholder="Password / Passcode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                <input type="text" id="loginRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                <button onclick="handleLogin(event)" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm py-2 rounded-lg transition shadow-lg shadow-blue-600/20">Sign In / Register</button>
-            </div>
+                <div class="space-y-3 max-w-xs mx-auto">
+      <input type="text" id="signUpUsername" placeholder="Username / Account ID" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
+      
+      <input type="email" id="signUpEmail" placeholder="Email Address (Required for Reset)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
+      
+      <input type="password" id="signUpPasscode" placeholder="Password / Passcode" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
+      
+      <input type="text" id="signUpRefCode" placeholder="Referral Code (Optional)" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+      
+      <button onclick="handleSignUp(event)" id="signUpBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg font-semibold text-xs transition-colors">
+        Create Account / Sign In
+      </button>
+    </div>
                 <!-- FORGOT PASSWORD BUTTON -->
 <div class="mt-4 text-center">
     <button 

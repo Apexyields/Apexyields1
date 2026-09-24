@@ -1269,7 +1269,7 @@ async function handleLogin(event) {
     let authEmail = userInput;
 
     try {
-        // If the user typed a username (no '@' symbol)
+        // If user typed a username (no '@' symbol), look up their email in profiles
         if (!userInput.includes('@')) {
             const { data: profile, error: profileErr } = await supabase
                 .from('profiles')
@@ -1277,12 +1277,15 @@ async function handleLogin(event) {
                 .ilike('username', userInput)
                 .maybeSingle();
 
+            if (profileErr) {
+                console.warn("Profiles lookup notice:", profileErr);
+            }
+
             if (profile && profile.email) {
-                // Real email linked in profiles
                 authEmail = profile.email;
             } else {
-                // LEGACY FALLBACK: Use synthetic email created during original signup
-                authEmail = `${userInput.toLowerCase()}@vectraledger.live`;
+                // Legacy fallback for accounts created under apexyields.app
+                authEmail = `${userInput.toLowerCase()}@apexyields.app`;
             }
         }
 
@@ -1295,36 +1298,12 @@ async function handleLogin(event) {
         if (error) throw error;
 
         alert("Logged in successfully!");
-        // Reload session or switch tab
+        window.location.reload();
 
     } catch (err) {
-    console.error("Login error:", err);
-    alert(`Authentication failed for [${authEmail}]: ${err.message}`);
+        console.error("Login error:", err);
+        alert(`Authentication failed for [${authEmail}]: ${err.message}`);
     }
-    if (!userInput.includes('@')) {
-    const { data: profile, error: profileErr } = await supabase
-        .from('profiles')
-        .select('email')
-        .ilike('username', userInput)
-        .maybeSingle();
-
-    if (profileErr) {
-        alert("RLS / DB Error: " + profileErr.message);
-        return;
-    }
-
-    if (!profile) {
-        alert(`No profile row matched username "${userInput}" in database.`);
-        return;
-    }
-
-    if (!profile.email) {
-        alert(`Profile found for "${userInput}", but email column is empty/null.`);
-        return;
-    }
-
-    // Email successfully resolved from database
-    authEmail = profile.email;
 }
         // AUTO-RESTORE SESSION ON REFRESH
 async function checkPersistedSession() {

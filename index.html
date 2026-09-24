@@ -3025,8 +3025,9 @@ async function triggerSimulatedDeposit(userId, amount) {
 
 // Example usage attached to a button listener:
 document.getElementById('btn-simulate-deposit')?.addEventListener('click', async () => {
-  const userId = 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
-  await triggerSimulatedDeposit(userId, 50.00);
+  const userId = getActiveUserId();
+if (!userId) return alert("Please log in to simulate a deposit.");
+await triggerSimulatedDeposit(userId, 50.00);
 });
 
 async function buyPackage(packageName, amount, dailyRoi) {
@@ -4143,7 +4144,8 @@ function renderMultiCryptoCharts() {
         const db = window.supabaseClient || window.supabase;
         if (!db || typeof db.from !== 'function') return;
 
-        const userId = localStorage.getItem('user_id') || 'd44d15de-da41-4a7f-9be0-5720a48c8b42';
+        const userId = getActiveUserId();
+if (!userId) return alert("Session expired. Please log in again.");
         const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) 
             ? parseFloat(cryptoPrices[symbol]) : 0;
 

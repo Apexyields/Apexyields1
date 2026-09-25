@@ -1972,7 +1972,7 @@ updated_at: new Date().toISOString()
 console.warn("Blocked simultaneous claim.");
 return; // Stops the script before it can update the balance below
 }
-        // 5. Update active balance in Supabase 'profiles'
+     // 5. Update active balance in Supabase 'profiles'
         let newTotalBalance = 0;
         const { data: profile } = await supabase
             .from('profiles')

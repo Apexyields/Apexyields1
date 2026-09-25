@@ -1968,9 +1968,9 @@ updated_at: new Date().toISOString()
 .neq('status', 'claimed') // The bouncer: blocks simultaneous clicks
 .select()
 .single();
-​if (updatePkgErr || !lockedPkg) {
-console.warn("Blocked simultaneous claim.");
-return; // Stops the script before it can update the balance below
+if (updatePkgErr || !lockedPkg) {
+    console.warn("Blocked simultaneous claim.");
+    return;
 }
      // 5. Update active balance in Supabase 'profiles'
         let newTotalBalance = 0;

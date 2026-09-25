@@ -1957,17 +1957,21 @@ async function handleClaimPayout(packageId) {
             payoutAmount = deposit * 1.20;
         }
 
-        // 4. Update package status in Supabase
-        const { error: updatePkgErr } = await supabase
-            .from('user_packages')
-            .update({ 
-                status: 'claimed',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', packageId);
-
-        if (updatePkgErr) throw updatePkgErr;
-
+        // 4. Update package status in Supabase (ATOMIC LOCK)
+const { data: lockedPkg, error: updatePkgErr } = await supabase
+.from('user_packages')
+.update({
+status: 'claimed',
+updated_at: new Date().toISOString()
+})
+.eq('id', packageId)
+.neq('status', 'claimed') // The bouncer: blocks simultaneous clicks
+.select()
+.single();
+​if (updatePkgErr || !lockedPkg) {
+console.warn("Blocked simultaneous claim.");
+return; // Stops the script before it can update the balance below
+}
         // 5. Update active balance in Supabase 'profiles'
         let newTotalBalance = 0;
         const { data: profile } = await supabase

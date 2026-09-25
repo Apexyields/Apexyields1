@@ -1915,10 +1915,10 @@ const actionHTML = (endTimeMs > now && remainingMs > 0)
         `;
     }).join('');
 }
-async function handleClaimPayout(packageId) {
-    const claimBtn = event?.target;
+async function handleClaimPayout(packageId, btnElement) {
     // Find the outer card element so we can remove it directly from the DOM
-    const cardElement = claimBtn ? claimBtn.closest('.rounded-2xl, .rounded-xl, .bg-card, div[class*="border"]') || claimBtn.parentElement?.parentElement : null;
+    const claimBtn = btnElement || (typeof event !== 'undefined' ? event?.target : null);
+    const cardElement = claimBtn ? claimBtn.closest('.rounded-2xl, .rounded-xl, .bg-card, div[class*="border"]') : null;
 
     if (claimBtn) {
         claimBtn.disabled = true;

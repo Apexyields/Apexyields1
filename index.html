@@ -230,48 +230,50 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="packageGrid">
                     
                     <!-- PACKAGE 1: NOVICE -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
-                        <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="font-bold text-base">Micro Vault</span>
-                                <span id="rate-Micro Vault" class="bg-slate-500/10 text-slate-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
-                            </div>
-                            <div class="flex justify-between items-baseline mb-1">
-                                <div class="text-2xl font-black text-slate-100">$25.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
-                            </div>
-                            <p id="desc-Micro Vault" class="text-xs text-slate-400 mt-2">3-Day Lockup. Yields +$5.00 net profit.</p>
-                            
-                            <!-- Dynamic Referral Badge Container -->
-                            <div id="badge-Micro Vault" class="mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/40 p-1.5 rounded-lg text-center hidden">
-                                ⚡ Loading progress...
-                            </div>
-                        </div>
-                        <button id="btn-Micro Vault" onclick="openPackageModal('Micro Vault', 25, 20, '3 Days', 5)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
-                            Lock $25 Package
-                        </button>
-                    </div>
+<div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+  <div>
+    <div class="flex justify-between items-start mb-2">
+      <span class="font-bold text-base">Micro Vault</span>
+      <span id="rate-Micro Vault" class="bg-blue-500/10 text-slate-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
+    </div>
+    <div class="flex justify-between items-baseline mb-1">
+      <div class="text-2xl font-black text-slate-100">$25.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+    </div>
+    <p id="desc-Micro Vault" class="text-xs text-slate-400 mt-2">3-Day Lockup. Yields $5.00 net profit.</p>
+    
+    <!-- Dynamic Referral Badge Container -->
+    <div id="badge-Micro Vault" class="mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/40 p-1.5 rounded-lg text-center hidden">
+      Loading progress...
+    </div>
+  </div>
+  
+  <button id="btn-Micro Vault" onclick="openPackageModal('Micro Vault', 25, 20, '3 Days', 5)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+    Lock $25 Package
+  </button>
+</div>
 
                     <!-- PACKAGE 2: BASIC -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
-                        <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="font-bold text-base">Standard Vault</span>
-                                <span id="rate-Standard Vault" class="bg-blue-500/10 text-blue-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
-                            </div>
-                            <div class="flex justify-between items-baseline mb-1">
-                                <div class="text-2xl font-black text-slate-100">$50.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
-                            </div>
-                            <p id="desc-Standard Vault" class="text-xs text-slate-400 mt-2">15-Day Lockup. Yields +$10.00 net profit.</p>
-                            
-                            <!-- Dynamic Referral Badge Container -->
-                            <div id="badge-Standard Vault" class="mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/40 p-1.5 rounded-lg text-center hidden">
-                                ⚡ Loading progress...
-                            </div>
-                        </div>
-                        <button id="btn-Standard Vault" onclick="openPackageModal('Standard Vault', 50, 20, '15 Days', 10)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
-                            Lock $50 Package
-                        </button>
-                    </div>
+<div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+  <div>
+    <div class="flex justify-between items-start mb-2">
+      <span class="font-bold text-base">Standard Vault</span>
+      <span id="rate-Standard Vault" class="bg-blue-500/10 text-blue-400 text-xs px-2 py-0.5 rounded font-mono">+20% Return</span>
+    </div>
+    <div class="flex justify-between items-baseline mb-1">
+      <div class="text-2xl font-black text-slate-100">$50.00 <span class="text-xs font-normal text-slate-400">USDT</span></div>
+    </div>
+    <p id="desc-Standard Vault" class="text-xs text-slate-400 mt-2">3-Day Lockup. Yields $10.00 net profit.</p>
+    
+    <!-- Dynamic Referral Badge Container -->
+    <div id="badge-Standard Vault" class="mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/40 p-1.5 rounded-lg text-center hidden">
+      Loading progress...
+    </div>
+  </div>
+  
+  <button id="btn-Standard Vault" onclick="openPackageModal('Standard Vault', 50, 20, '3 Days', 10)" class="mt-4 w-full bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-bold py-2 rounded-lg transition">
+    Lock $50 Package
+  </button>
+</div>
 
                     <!-- PACKAGE 3: STARTER -->
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
@@ -2279,20 +2281,20 @@ async function renderPackageButtons() {
         // First buy is AVAILABLE if bought 0 times or baseline is unset
         const hasNeverBought = (timesBought === 0) || (baseline === null || baseline === undefined);
 
-        const price = pkgName === 'Micro Vault' ? 25 : 50;
+                const price = pkgName === 'Micro Vault' ? 25 : 50;
         const profit = pkgName === 'Micro Vault' ? 5 : 10;
 
         if (hasNeverBought) {
             // State 1: Never bought before -> FIRST SLOT AVAILABLE
             if (badge) {
                 badge.innerText = '⚡ First Slot Available';
-                badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded w-fit';
+                badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-3 py-1 rounded-full inline-block';
             }
             if (btn) {
                 btn.disabled = false;
                 btn.innerText = `Lock $${price} Package`;
-                btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition-colors cursor-pointer';
-                btn.onclick = () => openPackageModal(pkgName, price, '3 Days', profit);
+                btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition';
+                btn.onclick = () => openPackageModal(pkgName, price, 20, '3 Days', profit);
             }
         } else {
             // State 2: Purchased before -> Calculate progress against baseline
@@ -2304,32 +2306,31 @@ async function renderPackageButtons() {
             if (badge) {
                 if (bankedSlots > 1) {
                     badge.innerText = `🔥 (${bankedSlots}) Re-purchases Banked! (${progressToNext}/3 to next)`;
-                    badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded w-fit';
+                    badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-3 py-1 rounded-full inline-block';
                 } else if (progress >= 3) {
                     badge.innerText = `⚡ Re-purchase Unlocked! (${progressToNext}/3 to next slot)`;
-                    badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded w-fit';
+                    badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-3 py-1 rounded-full inline-block';
                 } else {
                     badge.innerText = `⚡ Progress: ${progress}/3 Active Refs`;
-                    badge.className = 'mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-500/20 px-2 py-1 rounded w-fit';
+                    badge.className = 'mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/50 px-3 py-1 rounded-full inline-block';
                 }
             }
 
             if (btn) {
                 if (progress >= 3) {
                     btn.disabled = false;
-                    btn.innerText = bankedSlots > 1 ? `Re-Activate Package (${bankedSlots} Banked)` : `Re-Activate Package`;
-                    btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition-colors cursor-pointer';
-                    btn.onclick = () => openPackageModal(pkgName, price, '3 Days', profit);
+                    btn.innerText = bankedSlots > 1 ? `Re-Activate Package (${bankedSlots} Banked)` : 'Re-Activate Package';
+                    btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg transition';
+                    btn.onclick = () => openPackageModal(pkgName, price, 20, '3 Days', profit);
                 } else {
                     btn.disabled = true;
                     btn.innerText = `Locked (${progress}/3 Refs Needed)`;
-                    btn.className = 'mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded cursor-not-allowed';
+                    btn.className = 'mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-lg cursor-not-allowed';
                     btn.onclick = null;
                 }
             }
         }
     });
-}
 
    async function claimBonus() {
     const user = usersData[currentUser] || { refCode: 'APEX-000000' };

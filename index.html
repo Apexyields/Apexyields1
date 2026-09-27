@@ -1753,13 +1753,19 @@ async function countQualifiedReferrals(userId) {
         updateUniversalPackageCounts();
     }
 function switchTab(tabName) {
-    // Save the active tab to browser memory
-    localStorage.setItem('activeDashboardTab', tabName);
-    
     const tabs = ['market', 'packages', 'wallet', 'referral', 'settings'];
+    
+    // Guard Check: If the requested tab doesn't exist, force it to 'market'
+    if (!tabs.includes(tabName)) {
+        tabName = 'market';
+    }
+
+    // Save the validated tab to browser memory
+    localStorage.setItem('activeDashboardTab', tabName);
     
     tabs.forEach(t => {
         const view = document.getElementById(`view-${t}`);
+// ... keep the rest of your loop exactly as it is ...
         const btn = document.getElementById(`tab-${t}`);
         
         if (view) {

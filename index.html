@@ -1332,7 +1332,10 @@ localStorage.setItem('currentUser', currentUser);
     referred_by: (pendingRef && pendingRef.length === 36) ? pendingRef : null
 }]);
 
-        localStorage.removeItem('apex_pending_ref');
+    // Call processPendingReferral BEFORE removing storage (processPendingReferral removes it on line 1171)
+if (typeof processPendingReferral === 'function') {
+    await processPendingReferral(data.user.id);
+}
         alert("Account created successfully!");
 
         document.getElementById('authSection')?.classList.add('hidden');

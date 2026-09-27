@@ -2448,9 +2448,7 @@ async function renderReferralHub() {
         `;
     }
 }
-
     
-
 async function promptInvestPackage(pkgName, price, duration) {
     const activeUserId = (await supabaseClient.auth.getUser()).data.user?.id;
     if (!activeUserId) return alert("Please log in first.");
@@ -2495,7 +2493,7 @@ async function promptInvestPackage(pkgName, price, duration) {
         }
     }
 
-    // Call Supabase RPC transaction
+    // Call Supabase RPC transaction (SQL automatically handles baseline update inside this call)
     const { data, error } = await supabaseClient.rpc('process_tier_deposit', {
         p_user_id: activeUserId,
         p_package_name: pkgName,
@@ -2503,18 +2501,6 @@ async function promptInvestPackage(pkgName, price, duration) {
     });
 
     if (error) return alert("Transaction failed: " + error.message);
-
-    // Lock update: Set initial baseline on first purchase, or increment by +3 on re-purchase
-    if (restrictedTiers.includes(pkgName)) {
-        const newBaseline = (timesBought === 0 || currentBaseline === null || currentBaseline === undefined)
-            ? totalActiveRefs
-            : currentBaseline + 3;
-
-        await supabaseClient
-            .from('profiles')
-            .update({ [baselineCol]: newBaseline })
-            .eq('id', activeUserId);
-    }
 
     alert(`Successfully locked ${pkgName}!`);
     if (typeof renderPackageButtons === 'function') await renderPackageButtons();

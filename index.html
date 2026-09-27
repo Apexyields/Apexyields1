@@ -2506,9 +2506,21 @@ async function promptInvestPackage(pkgName, price, duration) {
     if (error) return alert("Transaction failed: " + error.message);
 
     alert(`Successfully locked ${pkgName}!`);
-    if (typeof renderPackageButtons === 'function') await renderPackageButtons();
+
+try {
+    // 1. Update wallet balance
     if (typeof loadUserProfile === 'function') await loadUserProfile();
-    if (typeof initDashboard === 'function') await initDashboard();
+    
+    // 2. Pop the new package into the active list immediately
+    if (typeof renderUserActiveSubscriptions === 'function') await renderUserActiveSubscriptions();
+    
+    // 3. Re-lock buttons and reset baseline progress (0/3)
+    if (typeof renderPackageButtons === 'function') await renderPackageButtons();
+    
+    // 4. Update global stats
+    if (typeof updateUniversalPackageCounts === 'function') updateUniversalPackageCounts();
+} catch (refreshErr) {
+    console.warn("UI live refresh skipped:", refreshErr);
 }
 
     function closeInvestmentModal() {

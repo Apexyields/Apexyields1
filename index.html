@@ -1661,11 +1661,16 @@ if (typeof renderPackageButtons === 'function') {
         }
     }
 
- async function countQualifiedReferrals(userId) {
+async function countQualifiedReferrals(userId) {
     let activeUuid = userId;
 
-    // Fetch live session UUID to ensure we send the UUID rather than a username string
-    if (typeof supabaseClient !== 'undefined' && supabaseClient.auth) {
+    // 1. Fallback to app session state if userId is omitted
+    if (!activeUuid && typeof currentUser !== 'undefined' && usersData?.[currentUser]?.id) {
+        activeUuid = usersData[currentUser].id;
+    }
+
+    // 2. Fallback to Supabase Auth session if present
+    if (!activeUuid && typeof supabaseClient !== 'undefined' && supabaseClient?.auth) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session?.user?.id) {
             activeUuid = session.user.id;

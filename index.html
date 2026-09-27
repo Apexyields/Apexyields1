@@ -2244,7 +2244,6 @@ async function renderPackageButtons() {
     const activeUserId = (await supabaseClient.auth.getUser()).data.user?.id;
     if (!activeUserId) return;
 
-    // Fetch total active referrals count
     let totalActiveRefs = 0;
     if (typeof countQualifiedReferrals === 'function') {
         totalActiveRefs = await countQualifiedReferrals(activeUserId);
@@ -2254,12 +2253,23 @@ async function renderPackageButtons() {
         updateAffiliateCapUI(totalActiveRefs);
     }
 
-    // Fetch baseline values from user profile
+    // 1. Fetch baseline values from profile
     const { data: profile } = await supabaseClient
         .from('profiles')
         .select('micro_ref_baseline, standard_ref_baseline')
         .eq('id', activeUserId)
         .single();
+
+    // 2. Fetch active/past user packages to check actual purchase history
+    const { data: userPkgs } = await supabaseClient
+        .from('user_packages')
+        .select('package_name')
+        .eq('user_id', activeUserId);
+
+    const boughtCounts = {
+        'Micro Vault': userPkgs?.filter(p => p.package_name && p.package_name.toLowerCase().includes('micro')).length || 0,
+        'Standard Vault': userPkgs?.filter(p => p.package_name && p.package_name.toLowerCase().includes('standard')).length || 0
+    };
 
     const baselines = {
         'Micro Vault': profile?.micro_ref_baseline,
@@ -2269,11 +2279,14 @@ async function renderPackageButtons() {
     const limitedPackages = ['Micro Vault', 'Standard Vault'];
 
     limitedPackages.forEach(pkgName => {
-        const btn = document.getElementById(`btn-${pkgName}`);
-        const badge = document.getElementById(`badge-${pkgName}`);
+        const btn = document.getElementById('btn-' + pkgName);
+        const badge = document.getElementById('badge-' + pkgName);
 
         const baseline = baselines[pkgName];
-        const hasNeverBought = (baseline === null || baseline === undefined);
+        const timesBought = boughtCounts[pkgName];
+
+        // First buy is AVAILABLE if bought 0 times or baseline is unset
+        const hasNeverBought = (timesBought === 0) || (baseline === null || baseline === undefined);
 
         const price = pkgName === 'Micro Vault' ? 25 : 50;
         const profit = pkgName === 'Micro Vault' ? 5 : 10;
@@ -2281,31 +2294,32 @@ async function renderPackageButtons() {
         if (hasNeverBought) {
             // State 1: Never bought before -> FIRST SLOT AVAILABLE
             if (badge) {
-                badge.innerText = "⚡ First Slot Available";
-                badge.className = "mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-2 py-1 rounded-md inline-block";
+                badge.innerText = '⚡ First Slot Available';
+                badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded w-fit';
             }
             if (btn) {
                 btn.disabled = false;
                 btn.innerText = `Lock $${price} Package`;
-                btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-colors cursor-pointer";
-                btn.onclick = () => openPackageModal(pkgName, price, 20, '24 Hours', profit);
+                btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition-colors cursor-pointer';
+                btn.onclick = () => openPackageModal(pkgName, price, '24 Hours', profit);
             }
         } else {
-            // State 2: Purchased before -> Progress calculated against baseline
-            const progress = Math.max(0, totalActiveRefs - baseline);
+            // State 2: Purchased before -> Calculate progress against baseline
+            const validBaseline = Number(baseline) || 0;
+            const progress = Math.max(0, totalActiveRefs - validBaseline);
             const bankedSlots = Math.floor(progress / 3);
             const progressToNext = progress % 3;
 
             if (badge) {
-                if (bankedSlots >= 1) {
-                    badge.innerText = `🔥 ${bankedSlots} Re-purchases Banked! (${progressToNext}/3 to next)`;
-                    badge.className = "mt-3 text-[11px] font-mono text-emerald-300 bg-emerald-950/50 border border-emerald-500/50 px-2 py-1 rounded-md inline-block";
+                if (bankedSlots > 1) {
+                    badge.innerText = `🔥 (${bankedSlots}) Re-purchases Banked! (${progressToNext}/3 to next)`;
+                    badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded w-fit';
                 } else if (progress >= 3) {
                     badge.innerText = `⚡ Re-purchase Unlocked! (${progressToNext}/3 to next slot)`;
-                    badge.className = "mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 px-2 py-1 rounded-md inline-block";
+                    badge.className = 'mt-3 text-[11px] font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded w-fit';
                 } else {
                     badge.innerText = `⚡ Progress: ${progress}/3 Active Refs`;
-                    badge.className = "mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-800/50 px-2 py-1 rounded-md inline-block";
+                    badge.className = 'mt-3 text-[11px] font-mono text-amber-400 bg-amber-950/30 border border-amber-500/20 px-2 py-1 rounded w-fit';
                 }
             }
 
@@ -2313,12 +2327,12 @@ async function renderPackageButtons() {
                 if (progress >= 3) {
                     btn.disabled = false;
                     btn.innerText = bankedSlots > 1 ? `Re-Activate Package (${bankedSlots} Banked)` : `Re-Activate Package`;
-                    btn.className = "mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-colors cursor-pointer";
-                    btn.onclick = () => openPackageModal(pkgName, price, 20, '24 Hours', profit);
+                    btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition-colors cursor-pointer';
+                    btn.onclick = () => openPackageModal(pkgName, price, '24 Hours', profit);
                 } else {
                     btn.disabled = true;
                     btn.innerText = `Locked (${progress}/3 Refs Needed)`;
-                    btn.className = "mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded-xl cursor-not-allowed";
+                    btn.className = 'mt-4 w-full bg-slate-800 text-slate-500 text-xs font-bold py-2 rounded cursor-not-allowed';
                     btn.onclick = null;
                 }
             }
@@ -2446,25 +2460,37 @@ async function promptInvestPackage(pkgName, price, duration) {
 
     let totalActiveRefs = 0;
     let currentBaseline = null;
+    let timesBought = 0;
 
     if (restrictedTiers.includes(pkgName)) {
         if (typeof countQualifiedReferrals === 'function') {
             totalActiveRefs = await countQualifiedReferrals(activeUserId);
         }
 
+        // Fetch baseline from profiles
         const { data: profile } = await supabaseClient
             .from('profiles')
             .select('micro_ref_baseline, standard_ref_baseline')
             .eq('id', activeUserId)
             .single();
 
-        currentBaseline = profile?.[baselineCol];
+        currentBaseline = profile ? profile[baselineCol] : null;
 
-        // Guard Check: Block if purchased before AND has fewer than 3 progress referrals
-        if (currentBaseline !== null && currentBaseline !== undefined) {
+        // Fetch user package history to check exact purchase count
+        const { data: userPkgs } = await supabaseClient
+            .from('user_packages')
+            .select('package_name')
+            .eq('user_id', activeUserId);
+
+        timesBought = userPkgs?.filter(p => 
+            p.package_name && p.package_name.toLowerCase().includes(pkgName.toLowerCase().split(' ')[0])
+        ).length || 0;
+
+        // Guard Check: ONLY block if purchased before AND progress < 3
+        if (timesBought > 0 && currentBaseline !== null && currentBaseline !== undefined) {
             const progress = totalActiveRefs - currentBaseline;
             if (progress < 3) {
-                return alert(`Unlock required: You need 3 active referrals to re-purchase ${pkgName} (${progress}/3 completed).`);
+                return alert(`Unlock required: You need 3 active referrals to re-purchase ${pkgName}`);
             }
         }
     }
@@ -2478,10 +2504,10 @@ async function promptInvestPackage(pkgName, price, duration) {
 
     if (error) return alert("Transaction failed: " + error.message);
 
-    // Lock update: Set initial baseline or increment by +3
+    // Lock update: Set initial baseline on first purchase, or increment by +3 on re-purchase
     if (restrictedTiers.includes(pkgName)) {
-        const newBaseline = (currentBaseline === null || currentBaseline === undefined) 
-            ? totalActiveRefs 
+        const newBaseline = (timesBought === 0 || currentBaseline === null || currentBaseline === undefined)
+            ? totalActiveRefs
             : currentBaseline + 3;
 
         await supabaseClient
@@ -2491,9 +2517,9 @@ async function promptInvestPackage(pkgName, price, duration) {
     }
 
     alert(`Successfully locked ${pkgName}!`);
-if (typeof renderPackageButtons === 'function') await renderPackageButtons();
-if (typeof loadUserProfile === 'function') await loadUserProfile();
-if (typeof initDashboard === 'function') await initDashboard();
+    if (typeof renderPackageButtons === 'function') await renderPackageButtons();
+    if (typeof loadUserProfile === 'function') await loadUserProfile();
+    if (typeof initDashboard === 'function') await initDashboard();
 }
 
     function closeInvestmentModal() {

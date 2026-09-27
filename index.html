@@ -2851,53 +2851,31 @@ async function requestPayout() {
     }
 
 async function handlePackageLock(packageName, amount, dailyRate) {
-    if (typeof supabaseClient === 'undefined') return;
+  if (typeof supabaseClient === 'undefined') return;
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session || !session.user) return alert('Please log in to activate a package.');
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session || !session.user) return alert('Please log in to activate a package.');
 
-    // 1. Check user balance
-    const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('balance')
-        .eq('id', session.user.id)
-        .single();
+  // 1. Calculate duration and expected payout
+  const durationDays = packageName.toLowerCase().includes('starter') ? 8 : 15;
+  const expectedPayout = amount + (amount * (dailyRate / 100) * durationDays);
 
-    if (!profile || profile.balance < amount) {
-        return alert('Insufficient balance to lock this package.');
-    }
+  // 2. Call Supabase RPC to atomically check balance, deduct, and insert package
+  const { data, error } = await supabaseClient.rpc('lock_package', {
+    p_user_id: session.user.id,
+    p_package_name: packageName,
+    p_amount: amount,
+    p_daily_rate: dailyRate,
+    p_duration_days: durationDays,
+    p_payout: expectedPayout
+  });
 
-    // 2. Determine duration dynamically (15 days for Starter, 30 days for others)
-    const durationDays = packageName.toLowerCase().includes('starter') ? 15 : 30;
-    const now = new Date();
-    const maturesAtDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+  if (error) {
+    return alert('Package activation failed: ' + error.message);
+  }
 
-    // 3. Deduct balance and insert package
-    const newBalance = profile.balance - amount;
-
-    const { error: profileErr } = await supabaseClient
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', session.user.id);
-
-    if (profileErr) return alert('Failed to update balance: ' + profileErr.message);
-
-    const { error: pkgErr } = await supabaseClient
-        .from('user_packages')
-        .insert([{
-            user_id: session.user.id,
-            package_name: packageName,
-            amount_locked: amount,
-            daily_rate: dailyRate,
-            status: 'active',
-            start_date: now.toISOString(),
-            matures_at: maturesAtDate
-        }]);
-
-    if (pkgErr) return alert('Package activation failed: ' + pkgErr.message);
-
-    alert(`Successfully locked ${packageName}!`);
-    window.location.reload();
+  alert(`Successfully locked ${packageName}!`);
+  window.location.reload();
 }
 
 async function requestPayoutWithdrawal(packageId) {

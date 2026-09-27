@@ -2292,7 +2292,7 @@ async function renderPackageButtons() {
                 btn.disabled = false;
                 btn.innerText = `Lock $${price} Package`;
                 btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition-colors cursor-pointer';
-                btn.onclick = () => openPackageModal(pkgName, price, '24 Hours', profit);
+                btn.onclick = () => openPackageModal(pkgName, price, '3 Days', profit);
             }
         } else {
             // State 2: Purchased before -> Calculate progress against baseline
@@ -2319,7 +2319,7 @@ async function renderPackageButtons() {
                     btn.disabled = false;
                     btn.innerText = bankedSlots > 1 ? `Re-Activate Package (${bankedSlots} Banked)` : `Re-Activate Package`;
                     btn.className = 'mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded transition-colors cursor-pointer';
-                    btn.onclick = () => openPackageModal(pkgName, price, '24 Hours', profit);
+                    btn.onclick = () => openPackageModal(pkgName, price, '3 Days', profit);
                 } else {
                     btn.disabled = true;
                     btn.innerText = `Locked (${progress}/3 Refs Needed)`;

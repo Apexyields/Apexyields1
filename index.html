@@ -1139,23 +1139,17 @@
                     if (!fetchError && profile && !profile.referred_by) {
                         let referrerUuid = null;
 
-                        // Clean up code by removing optional "APEX-" prefix
-const cleanCode = pendingRef.replace('APEX-', '').trim().toLowerCase();
+if (pendingRef) {
+    if (pendingRef.length === 36) {
+        referrerUuid = pendingRef;
+    } else {
+        // Call RPC function to safely resolve short codes like "APEX-38A3C2"
+        const { data: resolvedId, error: rpcErr } = await supabaseClient
+            .rpc('resolve_referrer_uuid', { p_code: pendingRef });
 
-if (cleanCode.length === 36) {
-    // Direct match if full UUID
-    referrerUuid = cleanCode;
-} else if (cleanCode.length >= 6) {
-    // Prefix match if 6-character short code (with or without "APEX-")
-    const prefix = cleanCode.substring(0, 6);
-    const { data: referrers } = await supabaseClient
-        .from('profiles')
-        .select('id')
-        .ilike('id', `${prefix}%`)
-        .limit(1);
-
-    if (referrers && referrers.length > 0) {
-        referrerUuid = referrers[0].id;
+        if (!rpcErr && resolvedId) {
+            referrerUuid = resolvedId;
+        }
     }
 }
 
@@ -1326,7 +1320,6 @@ localStorage.setItem('currentUser', currentUser);
     email: emailInput,
     balance: 0,
     role: 'user',
-    referred_by_code: pendingRef,
     // Pass null if short code so Postgres doesn't reject non-UUID strings;
     // processPendingReferral will resolve and update the full UUID right after.
     referred_by: (pendingRef && pendingRef.length === 36) ? pendingRef : null

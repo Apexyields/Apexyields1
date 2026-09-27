@@ -3287,17 +3287,22 @@ async function settleVaultPayout(vault) {
             const targetUserId = vault.user_id || user?.id;
 
             if (targetUserId) {
-                // 1. Fetch current balance and referral count
+                // 1. Fetch current balance
                 const { data: profile } = await supabaseClient
                     .from('profiles')
-                    .select('balance, referrals_count')
+                    .select('balance')
                     .eq('id', targetUserId)
                     .single();
 
-                const deposit = Number(vault.amount_locked || vault.depositAmount || vault.amount || 0);
-                const refCount = Number(profile?.referrals_count || 0);
+                // 2. Fetch live VERIFIED referral count instead of unverified profiles count
+                let refCount = 0;
+                if (typeof countQualifiedReferrals === 'function') {
+                    refCount = await countQualifiedReferrals(targetUserId);
+                }
 
-                // 2. Compute dynamic payout using calculateAffiliateYield
+                const deposit = Number(vault.amount_locked || vault.depositAmount || vault.amount || 0);
+
+                // 3. Compute dynamic payout using calculateAffiliateYield
                 let payoutAmount = 0;
                 if (typeof calculateAffiliateYield === 'function') {
                     const yieldData = calculateAffiliateYield(deposit, refCount);
@@ -3308,7 +3313,7 @@ async function settleVaultPayout(vault) {
                     payoutAmount = deposit * (1 + rate);
                 }
 
-                // 3. Credit payout to user balance
+                // 4. Credit payout to user balance
                 const currentBalance = Number(profile?.balance || 0);
                 const newBalance = currentBalance + payoutAmount;
 
@@ -3318,18 +3323,18 @@ async function settleVaultPayout(vault) {
                     .eq('id', targetUserId);
             }
 
-            // 4. Update package status in database
+            // 5. Update package status in database
             const { error } = await supabaseClient
                 .from('user_packages')
                 .update({ status: 'completed' })
                 .eq('id', vault.id);
 
             if (error) throw error;
-        }
 
-        // 5. Refresh profile UI
-        if (typeof loadUserProfile === 'function') {
-            await loadUserProfile();
+            // 6. Refresh profile UI
+            if (typeof loadUserProfile === 'function') {
+                await loadUserProfile();
+            }
         }
     } catch (err) {
         console.error('Vault settlement error:', err);

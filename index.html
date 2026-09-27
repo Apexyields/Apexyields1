@@ -2491,8 +2491,9 @@ async function promptInvestPackage(pkgName, price, duration) {
     }
 
     alert(`Successfully locked ${pkgName}!`);
-    await renderPackageButtons();
-    if (typeof initDashboard === 'function') initDashboard();
+if (typeof renderPackageButtons === 'function') await renderPackageButtons();
+if (typeof loadUserProfile === 'function') await loadUserProfile();
+if (typeof initDashboard === 'function') await initDashboard();
 }
 
     function closeInvestmentModal() {

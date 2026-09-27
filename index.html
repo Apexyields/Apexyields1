@@ -1753,6 +1753,9 @@ async function countQualifiedReferrals(userId) {
         updateUniversalPackageCounts();
     }
 function switchTab(tabName) {
+    // Save the active tab to browser memory
+    localStorage.setItem('activeDashboardTab', tabName);
+    
     const tabs = ['market', 'packages', 'wallet', 'referral', 'settings'];
     
     tabs.forEach(t => {
@@ -2193,8 +2196,10 @@ if (refBadge) refBadge.innerText = `${qualifiedRefs} Active Refs (${tierInfo.cap
     renderPayoutHistory();
     updateUniversalPackageCounts();
 
-    // Auto-switch to Market view on dashboard load
-    switchTab('market');
+    // Auto-switch to Market view or last saved tab on dashboard load
+const savedTab = localStorage.getItem('activeDashboardTab') || 'market';
+switchTab(savedTab);
+
 }
 
     function renderDynamicPackageCards(referralCount) {

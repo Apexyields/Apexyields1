@@ -1139,23 +1139,25 @@
                     if (!fetchError && profile && !profile.referred_by) {
                         let referrerUuid = null;
 
-                        // Case 1: Short code (e.g., APEX-B3D2F2) -> Resolve to full UUID
-                        if (pendingRef.startsWith('APEX-')) {
-                            const shortCode = pendingRef.replace('APEX-', '').toLowerCase();
-                            const { data: referrers } = await supabaseClient
-                                .from('profiles')
-                                .select('id')
-                                .ilike('id', `${shortCode}%`)
-                                .limit(1);
+                        // Clean up code by removing optional "APEX-" prefix
+const cleanCode = pendingRef.replace('APEX-', '').trim().toLowerCase();
 
-                            if (referrers && referrers.length > 0) {
-                                referrerUuid = referrers[0].id;
-                            }
-                        } 
-                        // Case 2: Already a valid 36-character UUID
-                        else if (pendingRef.length === 36) {
-                            referrerUuid = pendingRef;
-                        }
+if (cleanCode.length === 36) {
+    // Direct match if full UUID
+    referrerUuid = cleanCode;
+} else if (cleanCode.length >= 6) {
+    // Prefix match if 6-character short code (with or without "APEX-")
+    const prefix = cleanCode.substring(0, 6);
+    const { data: referrers } = await supabaseClient
+        .from('profiles')
+        .select('id')
+        .ilike('id', `${prefix}%`)
+        .limit(1);
+
+    if (referrers && referrers.length > 0) {
+        referrerUuid = referrers[0].id;
+    }
+}
 
                         // Update database with resolved full UUID
                         if (referrerUuid && referrerUuid !== userId) {

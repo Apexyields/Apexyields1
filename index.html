@@ -1115,8 +1115,19 @@
             });
 
             window.supabase = supabaseClient;
-
-            // Helper function to process any pending referral once logged in
+            // --- INSTANT UI PRE-HYDRATION (Prevents Login Screen Flash) ---
+const rawSession = localStorage.getItem('sb-pnwtyvkptnfjxznywop-auth-token');
+if (rawSession) {
+    const authEl = document.getElementById('authSection');
+    const dashEl = document.getElementById('dashboardSection');
+    if (authEl) authEl.classList.add('hidden');
+    if (dashEl) dashEl.classList.remove('hidden');
+    
+    // Restore tab instantly from memory
+    const savedTab = localStorage.getItem('activeDashboardTab') || 'market';
+    if (typeof switchTab === 'function') switchTab(savedTab);
+}
+           // Helper function to process any pending referral once logged in
             async function processPendingReferral(userId) {
                 const pendingRef = localStorage.getItem('apex_pending_ref');
                 if (!pendingRef) return;

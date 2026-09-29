@@ -4524,95 +4524,107 @@ window.triggerPasswordReset = function() {
 };
 
 window.handleForgotPassword = handleForgotPassword;
-        // --- MULTI-LANGUAGE (i18n) ENGINE ---
-const translations = {
-    en: {
-        nav_market: "Market",
-        nav_packages: "Packages",
-        nav_wallet: "Wallet",
-        nav_referral: "Referral",
-        nav_settings: "Settings",
-        active_balance: "ACTIVE BALANCE",
-        deposit_funds: "+ Deposit Funds",
-        your_packages: "YOUR ACTIVE & PENDING PACKAGES",
-        withdraw: "Withdraw",
-        deposit: "Deposit",
-        lock_success: "Package locked successfully!"
-    },
-    es: {
-        nav_market: "Mercado",
-        nav_packages: "Paquetes",
-        nav_wallet: "Billetera",
-        nav_referral: "Referidos",
-        nav_settings: "Ajustes",
-        active_balance: "BALANCE ACTIVO",
-        deposit_funds: "+ Depositar Fondos",
-        your_packages: "TUS PAQUETES ACTIVOS Y PENDIENTES",
-        withdraw: "Retirar",
-        deposit: "Depositar",
-        lock_success: "¡Paquete bloqueado con éxito!"
-    },
-    fr: {
-        nav_market: "Marché",
-        nav_packages: "Forfaits",
-        nav_wallet: "Portefeuille",
-        nav_referral: "Parrainage",
-        nav_settings: "Paramètres",
-        active_balance: "SOLDE ACTIF",
-        deposit_funds: "+ Déposer des fondos",
-        your_packages: "VOS FORFAITS ACTIFS ET EN ATTENTE",
-        withdraw: "Retirer",
-        deposit: "Déposer",
-        lock_success: "Forfait verrouillé avec succès!"
-    },
-    zh: {
-        nav_market: "市场",
-        nav_packages: "礼包",
-        nav_wallet: "钱包",
-        nav_referral: "推荐",
-        nav_settings: "设置",
-        active_balance: "有效余额",
-        deposit_funds: "+ 存入资金",
-        your_packages: "您的有效与待处理礼包",
-        withdraw: "提现",
-        deposit: "充值",
-        lock_success: "礼包锁定成功！"
-    }
-};
-
-// Helper function to fetch single translated strings in JS logic
-function t(key) {
-    const lang = localStorage.getItem('preferredLang') || 'en';
-    return translations[lang]?.[key] || translations['en'][key] || key;
-}
-
-// Function to translate the whole UI
-function setLanguage(lang) {
-    // 1. Save language preference
-    localStorage.setItem('preferredLang', lang);
-
-    // 2. Sync selector UI state if called programmatically
-    const langSelect = document.getElementById('languageSelect');
-    if (langSelect) langSelect.value = lang;
-
-    // 3. Update all static text marked with data-i18n
-    document.querySelectorAll('[data-i18n]').forEach(elem => {
-        const key = elem.getAttribute('data-i18n');
-        if (translations[lang] && translations[lang][key]) {
-            elem.innerText = translations[lang][key];
-        } else if (translations['en'][key]) {
-            elem.innerText = translations['en'][key]; // Fallback to English
+    // --- MULTI-LANGUAGE (i18n) ENGINE ---
+    window.translations = {
+        en: {
+            // Nav
+            nav_market: "Market", nav_packages: "Packages", nav_wallet: "Wallet", nav_referral: "Referral", nav_settings: "Settings", logout: "Log Out",
+            // Header & Balances
+            active_balance: "ACTIVE BALANCE", deposit_funds: "+ Deposit Funds", paper_balance: "PAPER BALANCE",
+            // Market Tab
+            market_title: "Crypto Market", demo_mode: "DEMO MODE", simulate_trades: "Simulate crypto trades with zero financial risk", buy: "Buy", sell: "Sell", price: "Price", change_24h: "24h Change", trade: "Trade",
+            // Packages Tab
+            your_packages: "YOUR ACTIVE & PENDING PACKAGES", starter_vault: "Starter Vault", pro_vault: "Pro Vault", remaining_time: "Remaining Time", locked: "Locked", payout: "Payout", lock_success: "Package locked successfully!",
+            // Wallet Tab
+            withdraw: "Withdraw", deposit: "Deposit", transaction_history: "Transaction History", amount: "Amount", status: "Status",
+            // Referral Tab
+            ref_title: "Referral Program", ref_subtitle: "Invite friends and earn commissions from their vault activity.", your_ref_link: "Your Referral Link", copy_link: "Copy Link", copied: "Copied!", total_referrals: "Total Referrals", total_bonus: "Total Bonus Earned",
+            // Settings Tab
+            lang_title: "Language / 语言", lang_desc: "Select your preferred system language.", support_title: "Support Ticket", support_desc: "Describe your issue below.", submit_ticket: "Submit Ticket", support_placeholder: "Describe your issue here...", terms: "Terms of Service", privacy: "Privacy Policy"
+        },
+        es: {
+            // Nav
+            nav_market: "Mercado", nav_packages: "Paquetes", nav_wallet: "Billetera", nav_referral: "Referidos", nav_settings: "Ajustes", logout: "Cerrar Sesión",
+            // Header & Balances
+            active_balance: "BALANCE ACTIVO", deposit_funds: "+ Depositar Fondos", paper_balance: "BALANCE DEMO",
+            // Market Tab
+            market_title: "Mercado Cripto", demo_mode: "MODO DEMO", simulate_trades: "Simula operaciones sin riesgo financiero", buy: "Comprar", sell: "Vender", price: "Precio", change_24h: "Cambio 24h", trade: "Operar",
+            // Packages Tab
+            your_packages: "TUS PAQUETES ACTIVOS Y PENDIENTES", starter_vault: "Bóveda Inicial", pro_vault: "Bóveda Pro", remaining_time: "Tiempo Restante", locked: "Bloqueado", payout: "Pago", lock_success: "¡Paquete bloqueado con éxito!",
+            // Wallet Tab
+            withdraw: "Retirar", deposit: "Depositar", transaction_history: "Historial de Transacciones", amount: "Monto", status: "Estado",
+            // Referral Tab
+            ref_title: "Programa de Referidos", ref_subtitle: "Invita amigos y gana comisiones.", your_ref_link: "Tu Enlace de Referido", copy_link: "Copiar Enlace", copied: "¡Copiado!", total_referrals: "Total Referidos", total_bonus: "Total Bonos",
+            // Settings Tab
+            lang_title: "Idioma / 语言", lang_desc: "Seleccione su idioma de preferencia.", support_title: "Ticket de Soporte", support_desc: "Describa su problema a continuación.", submit_ticket: "Enviar Ticket", support_placeholder: "Describa su problema aquí...", terms: "Términos de Servicio", privacy: "Política de Privacidad"
+        },
+        fr: {
+            // Nav
+            nav_market: "Marché", nav_packages: "Forfaits", nav_wallet: "Portefeuille", nav_referral: "Parrainage", nav_settings: "Paramètres", logout: "Déconnexion",
+            // Header & Balances
+            active_balance: "SOLDE ACTIF", deposit_funds: "+ Déposer des fondos", paper_balance: "SOLDE DEMO",
+            // Market Tab
+            market_title: "Marché Crypto", demo_mode: "MODE DÉMO", simulate_trades: "Simulez des transactions sans risque", buy: "Acheter", sell: "Vendre", price: "Prix", change_24h: "Variation 24h", trade: "Échanger",
+            // Packages Tab
+            your_packages: "VOS FORFAITS ACTIFS ET EN ATTENTE", starter_vault: "Coffre Démarrage", pro_vault: "Coffre Pro", remaining_time: "Temps Restant", locked: "Verrouillé", payout: "Paiement", lock_success: "Forfait verrouillé avec succès!",
+            // Wallet Tab
+            withdraw: "Retirer", deposit: "Déposer", transaction_history: "Historique des Transactions", amount: "Montant", status: "Statut",
+            // Referral Tab
+            ref_title: "Programme de Parrainage", ref_subtitle: "Invitez des amis et gagnez des commissions.", your_ref_link: "Votre Lien de Parrainage", copy_link: "Copier le Lien", copied: "Copié!", total_referrals: "Total Parrainages", total_bonus: "Bonus Total",
+            // Settings Tab
+            lang_title: "Langue / 语言", lang_desc: "Choisissez votre langue préférée.", support_title: "Ticket de Support", support_desc: "Décrivez votre problème ci-dessous.", submit_ticket: "Soumettre", support_placeholder: "Décrivez votre problème ici...", terms: "Conditions d'utilisation", privacy: "Politique de confidentialité"
+        },
+        zh: {
+            // Nav
+            nav_market: "市场", nav_packages: "礼包", nav_wallet: "钱包", nav_referral: "推荐", nav_settings: "设置", logout: "退出登录",
+            // Header & Balances
+            active_balance: "有效余额", deposit_funds: "+ 存入资金", paper_balance: "模拟账户余额",
+            // Market Tab
+            market_title: "加密货币市场", demo_mode: "演示模式", simulate_trades: "零风险模拟加密货币交易", buy: "买入", sell: "卖出", price: "价格", change_24h: "24小时涨跌", trade: "交易",
+            // Packages Tab
+            your_packages: "您的有效与待处理礼包", starter_vault: "新手金库", pro_vault: "专业金库", remaining_time: "剩余时间", locked: "锁定期", payout: "预计收益", lock_success: "礼包锁定成功！",
+            // Wallet Tab
+            withdraw: "提现", deposit: "充值", transaction_history: "交易历史记录", amount: "金额", status: "状态",
+            // Referral Tab
+            ref_title: "推荐奖励计划", ref_subtitle: "邀请好友并赚取佣金。", your_ref_link: "您的专属推荐链接", copy_link: "复制链接", copied: "已复制！", total_referrals: "推荐总人数", total_bonus: "已赚取总奖金",
+            // Settings Tab
+            lang_title: "语言 / Language", lang_desc: "选择您的首选系统语言。", support_title: "技术支持", support_desc: "请在下方描述您的问题。", submit_ticket: "提交工单", support_placeholder: "在此输入具体问题...", terms: "服务条款", privacy: "隐私政策"
         }
-    });
+    };
 
-    // 4. Update placeholder texts marked with data-i18n-placeholder
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
-        const key = elem.getAttribute('data-i18n-placeholder');
-        if (translations[lang] && translations[lang][key]) {
-            elem.placeholder = translations[lang][key];
-        }
-    });
-}
+    // Global helper function for JS code
+    window.t = function(key) {
+        const lang = localStorage.getItem('preferredLang') || 'en';
+        return window.translations[lang]?.[key] || window.translations['en']?.[key] || key;
+    };
+
+    // Global UI Translator
+    window.setLanguage = function(lang) {
+        localStorage.setItem('preferredLang', lang);
+
+        const langSelect = document.getElementById('languageSelect');
+        if (langSelect) langSelect.value = lang;
+
+        const dict = window.translations[lang] || window.translations['en'];
+
+        // 1. Translate static text elements
+        document.querySelectorAll('[data-i18n]').forEach(elem => {
+            const key = elem.getAttribute('data-i18n');
+            if (dict[key]) {
+                elem.innerText = dict[key];
+            } else if (window.translations['en'][key]) {
+                elem.innerText = window.translations['en'][key];
+            }
+        });
+
+        // 2. Translate placeholders
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
+            const key = elem.getAttribute('data-i18n-placeholder');
+            if (dict[key]) {
+                elem.placeholder = dict[key];
+            }
+        });
+    };
 </script>
 </body>
 </html>

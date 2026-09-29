@@ -875,31 +875,31 @@
     <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-slate-950/95 backdrop-blur border-t border-slate-800 flex justify-around py-2 z-50">
     <button onclick="switchTab('market')" id="tab-market" class="tab-btn flex-1 flex flex-col items-center text-amber-400 font-semibold relative py-1">
         <span class="text-base">📊</span>
-        <span class="text-[10px] font-medium">Market</span>
+        <span class="text-[10px]" data-i18n="nav_market">Market</span>
         <div class="tab-indicator absolute bottom-0 w-8 h-0.5 bg-amber-500 rounded-full"></div>
     </button>
 
     <button onclick="switchTab('packages')" id="tab-packages" class="tab-btn flex-1 flex flex-col items-center text-slate-400 relative py-1">
         <span class="text-base">📦</span>
-        <span class="text-[10px] font-medium">Packages</span>
+        <span class="text-[10px]" data-i18n="nav_packages">Packages</span>
         <div class="tab-indicator absolute bottom-0 w-8 h-0.5 bg-transparent rounded-full"></div>
     </button>
 
     <button onclick="switchTab('wallet')" id="tab-wallet" class="tab-btn flex-1 flex flex-col items-center text-slate-400 relative py-1">
         <span class="text-base">💳</span>
-        <span class="text-[10px] font-medium">Wallet</span>
+        <span class="text-[10px]" data-i18n="nav_wallet">Wallet</span>
         <div class="tab-indicator absolute bottom-0 w-8 h-0.5 bg-transparent rounded-full"></div>
     </button>
 
     <button onclick="switchTab('referral')" id="tab-referral" class="tab-btn flex-1 flex flex-col items-center text-slate-400 relative py-1">
         <span class="text-base">🎁</span>
-        <span class="text-[10px] font-medium">Referral</span>
+        <span class="text-[10px]" data-i18n="nav_referral">Referral</span>
         <div class="tab-indicator absolute bottom-0 w-8 h-0.5 bg-transparent rounded-full"></div>
     </button>
 
     <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn flex-1 flex flex-col items-center text-slate-400 relative py-1">
         <span class="text-base">⚙️</span>
-        <span class="text-[10px] font-medium">Settings</span>
+        <span class="text-[10px]" data-i18n="nav_settings">Settings</span>
         <div class="tab-indicator absolute bottom-0 w-8 h-0.5 bg-transparent rounded-full"></div>
     </button>
 </nav>
@@ -1139,7 +1139,10 @@ if (rawSession) {
     // Restore tab instantly from memory
     const savedTab = localStorage.getItem('activeDashboardTab') || 'market';
     if (typeof switchTab === 'function') switchTab(savedTab);
-}
+    // Restore saved language preference on startup
+        const savedLang = localStorage.getItem('preferredLang') || 'en';
+        if (typeof setLanguage === 'function') setLanguage(savedLang);
+    });
            // Helper function to process any pending referral once logged in
             async function processPendingReferral(userId) {
                 const pendingRef = localStorage.getItem('apex_pending_ref');

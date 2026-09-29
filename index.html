@@ -1095,6 +1095,59 @@
     // Initialize Supabase Client
     let supabaseClient = null;
 
+    // --- MULTI-LANGUAGE TRANSLATION ENGINE ---
+    window.translations = {
+        en: {
+            nav_market: "Market", nav_packages: "Packages", nav_wallet: "Wallet", nav_referral: "Referral", nav_settings: "Settings",
+            support_title: "Support Ticket", support_desc: "Describe your issue below. Include an email address in your message if you would like a response from our team.",
+            submit_ticket: "Submit Ticket", lang_title: "Language / 语言", lang_desc: "Select your preferred system language.",
+            terms: "Terms of Service", privacy: "Privacy Policy", logout: "Log Out"
+        },
+        es: {
+            nav_market: "Mercado", nav_packages: "Paquetes", nav_wallet: "Billetera", nav_referral: "Referidos", nav_settings: "Ajustes",
+            support_title: "Ticket de Soporte", support_desc: "Describa su problema a continuación. Incluya un correo electrónico si desea una respuesta.",
+            submit_ticket: "Enviar Ticket", lang_title: "Idioma / 语言", lang_desc: "Seleccione su idioma de preferencia.",
+            terms: "Términos de Servicio", privacy: "Política de Privacidad", logout: "Cerrar Sesión"
+        },
+        fr: {
+            nav_market: "Marché", nav_packages: "Forfaits", nav_wallet: "Portefeuille", nav_referral: "Parrainage", nav_settings: "Paramètres",
+            support_title: "Ticket de Support", support_desc: "Décrivez votre problème ci-dessous.",
+            submit_ticket: "Soumettre", lang_title: "Langue / 语言", lang_desc: "Choisissez votre langue.",
+            terms: "Conditions d'utilisation", privacy: "Politique de confidentialité", logout: "Déconnexion"
+        },
+        zh: {
+            nav_market: "市场", nav_packages: "礼包", nav_wallet: "钱包", nav_referral: "推荐", nav_settings: "设置",
+            support_title: "技术支持", support_desc: "请在下方描述您的问题。",
+            submit_ticket: "提交工单", lang_title: "语言 / Language", lang_desc: "选择您的首选系统语言。",
+            terms: "服务条款", privacy: "隐私政策", logout: "退出登录"
+        }
+    };
+
+    window.setLanguage = function(lang) {
+        localStorage.setItem('preferredLang', lang);
+
+        const langSelect = document.getElementById('languageSelect');
+        if (langSelect) langSelect.value = lang;
+
+        // Translate all elements with data-i18n
+        document.querySelectorAll('[data-i18n]').forEach(elem => {
+            const key = elem.getAttribute('data-i18n');
+            if (window.translations[lang] && window.translations[lang][key]) {
+                elem.innerText = window.translations[lang][key];
+            } else if (window.translations['en'] && window.translations['en'][key]) {
+                elem.innerText = window.translations['en'][key];
+            }
+        });
+
+        // Translate placeholders
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
+            const key = elem.getAttribute('data-i18n-placeholder');
+            if (window.translations[lang] && window.translations[lang][key]) {
+                elem.placeholder = window.translations[lang][key];
+            }
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', async () => {
         // Auto-capture referral code from URL query parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -1114,7 +1167,7 @@
         }
 
         if (window.supabase) {
-            const SUPABASE_URL = 'https://pnwtyvkptnfjxjznywop.supabase.co';
+            const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';
 
             // 1. Force explicit localStorage persistence options
@@ -1128,22 +1181,25 @@
             });
 
             window.supabase = supabaseClient;
+
             // --- INSTANT UI PRE-HYDRATION (Prevents Login Screen Flash) ---
-const rawSession = localStorage.getItem('sb-pnwtyvkptnfjxznywop-auth-token');
-if (rawSession) {
-    const authEl = document.getElementById('authSection');
-    const dashEl = document.getElementById('dashboardSection');
-    if (authEl) authEl.classList.add('hidden');
-    if (dashEl) dashEl.classList.remove('hidden');
-    
-    // Restore tab instantly from memory
-    const savedTab = localStorage.getItem('activeDashboardTab') || 'market';
-    if (typeof switchTab === 'function') switchTab(savedTab);
-    // Restore saved language preference on startup
-        const savedLang = localStorage.getItem('preferredLang') || 'en';
-        if (typeof setLanguage === 'function') setLanguage(savedLang);
-}
-           // Helper function to process any pending referral once logged in
+            const rawSession = localStorage.getItem('sb-pnwtyvkptnfjxznywop-auth-token');
+            if (rawSession) {
+                const authEl = document.getElementById('authSection');
+                const dashEl = document.getElementById('dashboardSection');
+                if (authEl) authEl.classList.add('hidden');
+                if (dashEl) dashEl.classList.remove('hidden');
+                
+                // Restore tab instantly from memory
+                const savedTab = localStorage.getItem('activeDashboardTab') || 'market';
+                if (typeof switchTab === 'function') switchTab(savedTab);
+            }
+
+            // Restore saved language preference on startup (runs for both logged-in and logged-out users)
+            const savedLang = localStorage.getItem('preferredLang') || 'en';
+            if (typeof window.setLanguage === 'function') window.setLanguage(savedLang);
+
+            // Helper function to process any pending referral once logged in
             async function processPendingReferral(userId) {
                 const pendingRef = localStorage.getItem('apex_pending_ref');
                 if (!pendingRef) return;
@@ -1159,19 +1215,17 @@ if (rawSession) {
                     if (!fetchError && profile && !profile.referred_by) {
                         let referrerUuid = null;
 
-if (pendingRef) {
-    if (pendingRef.length === 36) {
-        referrerUuid = pendingRef;
-    } else {
-        // Call RPC function to safely resolve short codes like "APEX-38A3C2"
-        const { data: resolvedId, error: rpcErr } = await supabaseClient
-            .rpc('resolve_referrer_uuid', { p_code: pendingRef });
+                        if (pendingRef.length === 36) {
+                            referrerUuid = pendingRef;
+                        } else {
+                            // Call RPC function to safely resolve short codes like "APEX-38A3C2"
+                            const { data: resolvedId, error: rpcErr } = await supabaseClient
+                                .rpc('resolve_referrer_uuid', { p_code: pendingRef });
 
-        if (!rpcErr && resolvedId) {
-            referrerUuid = resolvedId;
-        }
-    }
-}
+                            if (!rpcErr && resolvedId) {
+                                referrerUuid = resolvedId;
+                            }
+                        }
 
                         // Update database with resolved full UUID
                         if (referrerUuid && referrerUuid !== userId) {

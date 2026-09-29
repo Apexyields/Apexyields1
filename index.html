@@ -1142,7 +1142,7 @@ if (rawSession) {
     // Restore saved language preference on startup
         const savedLang = localStorage.getItem('preferredLang') || 'en';
         if (typeof setLanguage === 'function') setLanguage(savedLang);
-    });
+}
            // Helper function to process any pending referral once logged in
             async function processPendingReferral(userId) {
                 const pendingRef = localStorage.getItem('apex_pending_ref');

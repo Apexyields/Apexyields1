@@ -837,6 +837,19 @@
         Submit Ticket
     </button>
 </div>
+    <!-- LANGUAGE SETTINGS CARD -->
+<div class="mt-6 border-t border-slate-800 pt-4">
+    <h3 class="text-sm font-bold text-white mb-2">Language / 语言</h3>
+    <p class="text-[11px] text-slate-400 mb-3">Select your preferred system language.</p>
+    
+    <select id="languageSelect" onchange="setLanguage(this.value)" 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+        <option value="en">English (Default)</option>
+        <option value="es">Español (Spanish)</option>
+        <option value="fr">Français (French)</option>
+        <option value="zh">中文 (Chinese)</option>
+    </select>
+</div>
 
 <!-- Legal Document Links -->
 <div class="mt-6 flex gap-6 text-[11px] text-slate-400 justify-center border-t border-slate-800 pt-4">
@@ -4451,6 +4464,95 @@ window.triggerPasswordReset = function() {
 };
 
 window.handleForgotPassword = handleForgotPassword;
+        // --- MULTI-LANGUAGE (i18n) ENGINE ---
+const translations = {
+    en: {
+        nav_market: "Market",
+        nav_packages: "Packages",
+        nav_wallet: "Wallet",
+        nav_referral: "Referral",
+        nav_settings: "Settings",
+        active_balance: "ACTIVE BALANCE",
+        deposit_funds: "+ Deposit Funds",
+        your_packages: "YOUR ACTIVE & PENDING PACKAGES",
+        withdraw: "Withdraw",
+        deposit: "Deposit",
+        lock_success: "Package locked successfully!"
+    },
+    es: {
+        nav_market: "Mercado",
+        nav_packages: "Paquetes",
+        nav_wallet: "Billetera",
+        nav_referral: "Referidos",
+        nav_settings: "Ajustes",
+        active_balance: "BALANCE ACTIVO",
+        deposit_funds: "+ Depositar Fondos",
+        your_packages: "TUS PAQUETES ACTIVOS Y PENDIENTES",
+        withdraw: "Retirar",
+        deposit: "Depositar",
+        lock_success: "¡Paquete bloqueado con éxito!"
+    },
+    fr: {
+        nav_market: "Marché",
+        nav_packages: "Forfaits",
+        nav_wallet: "Portefeuille",
+        nav_referral: "Parrainage",
+        nav_settings: "Paramètres",
+        active_balance: "SOLDE ACTIF",
+        deposit_funds: "+ Déposer des fondos",
+        your_packages: "VOS FORFAITS ACTIFS ET EN ATTENTE",
+        withdraw: "Retirer",
+        deposit: "Déposer",
+        lock_success: "Forfait verrouillé avec succès!"
+    },
+    zh: {
+        nav_market: "市场",
+        nav_packages: "礼包",
+        nav_wallet: "钱包",
+        nav_referral: "推荐",
+        nav_settings: "设置",
+        active_balance: "有效余额",
+        deposit_funds: "+ 存入资金",
+        your_packages: "您的有效与待处理礼包",
+        withdraw: "提现",
+        deposit: "充值",
+        lock_success: "礼包锁定成功！"
+    }
+};
+
+// Helper function to fetch single translated strings in JS logic
+function t(key) {
+    const lang = localStorage.getItem('preferredLang') || 'en';
+    return translations[lang]?.[key] || translations['en'][key] || key;
+}
+
+// Function to translate the whole UI
+function setLanguage(lang) {
+    // 1. Save language preference
+    localStorage.setItem('preferredLang', lang);
+
+    // 2. Sync selector UI state if called programmatically
+    const langSelect = document.getElementById('languageSelect');
+    if (langSelect) langSelect.value = lang;
+
+    // 3. Update all static text marked with data-i18n
+    document.querySelectorAll('[data-i18n]').forEach(elem => {
+        const key = elem.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+            elem.innerText = translations[lang][key];
+        } else if (translations['en'][key]) {
+            elem.innerText = translations['en'][key]; // Fallback to English
+        }
+    });
+
+    // 4. Update placeholder texts marked with data-i18n-placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(elem => {
+        const key = elem.getAttribute('data-i18n-placeholder');
+        if (translations[lang] && translations[lang][key]) {
+            elem.placeholder = translations[lang][key];
+        }
+    });
+}
 </script>
 </body>
 </html>

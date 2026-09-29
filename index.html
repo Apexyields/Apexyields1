@@ -1092,7 +1092,7 @@
 </div>
 
     <script>
-            // Initialize Supabase Client
+    // Initialize Supabase Client
     let supabaseClient = null;
 
     // --- MULTI-LANGUAGE TRANSLATION ENGINE ---
@@ -1129,7 +1129,7 @@
         const langSelect = document.getElementById('languageSelect');
         if (langSelect) langSelect.value = lang;
 
-        // Translate only text elements with data-i18n
+        // Translate text elements safely
         document.querySelectorAll('[data-i18n]').forEach(elem => {
             const key = elem.getAttribute('data-i18n');
             if (window.translations[lang] && window.translations[lang][key]) {
@@ -1167,9 +1167,9 @@
         }
 
         if (window.supabase) {
-            // Corrected Supabase endpoint and key
+            // FIXED: Removed extra 'j' from SUPABASE_URL (pnwtyvkptnfjxznywop)
             const SUPABASE_URL = 'https://pnwtyvkptnfjxznywop.supabase.co';
-            const SUPABASE_ANON_KEY = 'sb_publishable_71tt6v0kkaTddPHZ7B4R2w_21q5LMcp';
+            const SUPABASE_ANON_KEY = 'sb_publishable_71ttGvOkKaTddPHZ7B4R2w_2lq5LMcp';
 
             // 1. Force explicit localStorage persistence options
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -1206,6 +1206,7 @@
                 if (!pendingRef) return;
 
                 try {
+                    // Check if this user already has a referrer set in Supabase
                     const { data: profile, error: fetchError } = await supabaseClient
                         .from('profiles')
                         .select('referred_by')
@@ -1215,17 +1216,21 @@
                     if (!fetchError && profile && !profile.referred_by) {
                         let referrerUuid = null;
 
-                        if (pendingRef.length === 36) {
-                            referrerUuid = pendingRef;
-                        } else {
-                            const { data: resolvedId, error: rpcErr } = await supabaseClient
-                                .rpc('resolve_referrer_uuid', { p_code: pendingRef });
+                        if (pendingRef) {
+                            if (pendingRef.length === 36) {
+                                referrerUuid = pendingRef;
+                            } else {
+                                // Call RPC function to safely resolve short codes like "APEX-38A3C2"
+                                const { data: resolvedId, error: rpcErr } = await supabaseClient
+                                    .rpc('resolve_referrer_uuid', { p_code: pendingRef });
 
-                            if (!rpcErr && resolvedId) {
-                                referrerUuid = resolvedId;
+                                if (!rpcErr && resolvedId) {
+                                    referrerUuid = resolvedId;
+                                }
                             }
                         }
 
+                        // Update database with resolved full UUID
                         if (referrerUuid && referrerUuid !== userId) {
                             const { error: updateError } = await supabaseClient
                                 .from('profiles')
@@ -1239,9 +1244,11 @@
                                 console.error('Error saving referral to Supabase:', updateError.message);
                             }
                         } else {
+                            // Invalid code or self-referral attempt
                             localStorage.removeItem('apex_pending_ref');
                         }
                     } else {
+                        // User already has a referrer
                         localStorage.removeItem('apex_pending_ref');
                     }
                 } catch (err) {
@@ -1253,8 +1260,8 @@
             supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 if (session) {
                     await processPendingReferral(session.user.id);
-                    if (typeof loadUserDataFromSupabase === 'function') await loadUserDataFromSupabase();
-                    if (typeof loadUserProfile === 'function') loadUserProfile();
+                    await loadUserDataFromSupabase();
+                    loadUserProfile();
                 }
             });
 
@@ -1262,8 +1269,8 @@
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 await processPendingReferral(session.user.id);
-                if (typeof loadUserDataFromSupabase === 'function') await loadUserDataFromSupabase();
-                if (typeof loadUserProfile === 'function') loadUserProfile();
+                await loadUserDataFromSupabase();
+                loadUserProfile();
             }
         }
     });

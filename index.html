@@ -152,10 +152,10 @@
             <div id="view-packages" class="tab-view hidden transition-all duration-200 ease-out space-y-4">
                 <div class="bg-gradient-to-r from-blue-900/40 to-slate-900 border border-blue-500/20 rounded-2xl p-4 flex justify-between items-center">
                     <div>
-                        <span class="text-xs text-blue-300 font-semibold uppercase tracking-wider">Active Balance</span>
+                        <span class="text-xs text-blue-300 font-semibold uppercase..." data-i18n="active_balance">Active Balance</span>
                         <div id="userActiveBalance" class="text-2xl font-extrabold text-white">$0.00 USDT</div>
                     </div>
-                    <button onclick="openDepositModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow-md">
+                    <button onclick="openDepositModal()" class="bg-blue-600 hover:bg-blue-500..." data-i18n="deposit_funds">+ Deposit Funds</button>
                         + Deposit Funds
                     </button>
                 </div>
@@ -408,10 +408,10 @@
                 <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
     <span>📊</span> VectraLedger
 </h3>
-                <p class="text-[11px] text-slate-400">Simulate crypto trades with zero financial risk.</p>
+                <p class="text-[11px] text-slate-400" data-i18n="simulate_trades">Simulate crypto trades with zero financial risk</p>
             </div>
-            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                DEMO MODE
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full..." data-i18n="demo_mode">DEMO MODE</span>
+            DEMO MODE
             </span>
         </div>
 
@@ -555,10 +555,10 @@
 
   <!-- Segmented Sub-Tab Toggle -->
   <div class="flex border-b border-slate-800 mb-4">
-    <button id="tabWithdrawBtn" type="button" onclick="switchWalletSubTab('withdraw')" class="flex-1 py-2.5 text-center font-bold text-slate-400 border-b-2 border-transparent hover:text-white transition text-sm">
+    <button id="tabWithdrawBtn" type="button" onclick="switchWalletSubTab('withdraw')" data-i18n="withdraw">Withdraw</button>
       Withdraw
     </button>
-    <button id="tabDepositBtn" type="button" onclick="switchWalletSubTab('deposit')" class="flex-1 py-2.5 text-center font-bold text-emerald-400 border-b-2 border-emerald-400 transition text-sm">
+    <button id="tabDepositBtn" type="button" onclick="switchWalletSubTab('deposit')" data-i18n="deposit">Deposit</button>
       Deposit
     </button>
   </div>
@@ -577,7 +577,7 @@
             <option value="BEP20">BNB Smart Chain (BEP-20) - $0.50 Fee</option>
           </select>
         </div>
-        <input type="number" id="payoutAmount" placeholder="Amount in USDT (Min $10)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
+        <input type="number" id="payoutAmount" placeholder="Amount in USDT" data-i18n-placeholder="amount"...>
         <input type="text" id="payoutAddress" placeholder="Destination Wallet Address" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
         <div class="flex justify-between items-center text-xs text-slate-400 px-1">
           <span>Network Fee: <strong id="payoutFeeDisplay" class="text-slate-200">$1.00 USDT</strong></span>
@@ -824,26 +824,21 @@
 
                 <!-- Settings Ticket UI -->
 <div class="mt-6 border-t border-slate-800 pt-4">
-    <h3 class="text-sm font-bold text-white mb-2">Support Ticket</h3>
-    <p class="text-[11px] text-slate-400 mb-3">Describe your issue below. Include an email address in your message if you would like a response from our team.
+    <h3 class="text-sm font-bold text-white mb-2" data-i18n="support_title">Support Ticket</h3>
+    <p class="text-[11px] text-slate-400 mb-3" data-i18n="support_desc">Describe your issue below...</p>
     </p>
     
-    <textarea id="ticketMessage" rows="3" 
-        class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-none" 
-        placeholder="How can we help?"></textarea>
+    <textarea id="ticketMessage" rows="3" ... data-i18n-placeholder="support_placeholder" placeholder="How can we help?"></textarea>
         
-    <button id="ticketSubmitBtn" onclick="submitSupportTicket()" 
-        class="mt-2 w-full bg-slate-800 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">
-        Submit Ticket
-    </button>
+     <button id="ticketSubmitBtn" ... data-i18n="submit_ticket">Submit Ticket</button>
 </div>
     <!-- LANGUAGE SETTINGS CARD -->
 <div class="mt-6 border-t border-slate-800 pt-4">
     <h3 class="text-sm font-bold text-white mb-2">Language / 语言</h3>
-    <p class="text-[11px] text-slate-400 mb-3">Select your preferred system language.</p>
+    <p class="text-[11px] text-slate-400 mb-3" data-i18n="lang_desc">Select your preferred system language.</p>
     
     <select id="languageSelect" onchange="setLanguage(this.value)" 
-            class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+            <h3 class="text-sm font-bold text-white mb-2" data-i18n="lang_title">Language / 语言</h3>
         <option value="en">English (Default)</option>
         <option value="es">Español (Spanish)</option>
         <option value="fr">Français (French)</option>

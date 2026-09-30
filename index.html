@@ -1097,31 +1097,95 @@
 
     // --- MULTI-LANGUAGE TRANSLATION ENGINE ---
     window.translations = {
-        en: {
-            nav_market: "Market", nav_packages: "Packages", nav_wallet: "Wallet", nav_referral: "Referral", nav_settings: "Settings",
-            support_title: "Support Ticket", support_desc: "Describe your issue below. Include an email address in your message if you would like a response from our team.",
-            submit_ticket: "Submit Ticket", lang_title: "Language / 语言", lang_desc: "Select your preferred system language.",
-            terms: "Terms of Service", privacy: "Privacy Policy", logout: "Log Out"
-        },
-        es: {
-            nav_market: "Mercado", nav_packages: "Paquetes", nav_wallet: "Billetera", nav_referral: "Referidos", nav_settings: "Ajustes",
-            support_title: "Ticket de Soporte", support_desc: "Describa su problema a continuación. Incluya un correo electrónico si desea una respuesta.",
-            submit_ticket: "Enviar Ticket", lang_title: "Idioma / 语言", lang_desc: "Seleccione su idioma de preferencia.",
-            terms: "Términos de Servicio", privacy: "Política de Privacidad", logout: "Cerrar Sesión"
-        },
-        fr: {
-            nav_market: "Marché", nav_packages: "Forfaits", nav_wallet: "Portefeuille", nav_referral: "Parrainage", nav_settings: "Paramètres",
-            support_title: "Ticket de Support", support_desc: "Décrivez votre problème ci-dessous.",
-            submit_ticket: "Soumettre", lang_title: "Langue / 语言", lang_desc: "Choisissez votre langue.",
-            terms: "Conditions d'utilisation", privacy: "Politique de confidentialité", logout: "Déconnexion"
-        },
-        zh: {
-            nav_market: "市场", nav_packages: "礼包", nav_wallet: "钱包", nav_referral: "推荐", nav_settings: "设置",
-            support_title: "技术支持", support_desc: "请在下方描述您的问题。",
-            submit_ticket: "提交工单", lang_title: "语言 / Language", lang_desc: "选择您的首选系统语言。",
-            terms: "服务条款", privacy: "隐私政策", logout: "退出登录"
-        }
-    };
+    en: {
+        nav_market: "Market", nav_packages: "Packages", nav_wallet: "Wallet", nav_referral: "Referral",
+        support_title: "Support Ticket", support_desc: "Describe your issue below.",
+        submit_ticket: "Submit Ticket", lang_title: "Language / 语言", lang_desc: "Select your preferred system language.",
+        terms: "Terms of Service", privacy: "Privacy Policy", logout: "Log Out",
+        active_balance: "Active Balance", deposit_funds: "Deposit Funds",
+        simulate_trades: "Simulate crypto trades with zero financial risk", demo_mode: "DEMO MODE",
+        withdraw: "Withdraw", deposit: "Deposit", amount: "Amount in USDT (Min $10)",
+        avail_withdraw_bal: "Available Withdrawable Balance", active_locked_pkgs: "Active Locked Packages",
+        deposit_funds_title: "DEPOSIT FUNDS", deposit_amount_label: "Deposit Amount ($ USD)",
+        pkg_quick_select: "Package Quick Select", network_protocol: "Network Protocol",
+        affiliate_yield_tier: "ACTIVE AFFILIATE YIELD TIER", unlocked_cap_title: "Current Unlocked Return Cap",
+        cap_scale_desc: "Cap scales automatically based on your verified referral milestones.",
+        sync_tier_btn: "Sync & Apply Tier Cap", scaling_rules: "AFFILIATE SCALING RULES",
+        ref_milestone_title: "Referral Unlock Milestone", qualified_refs: "Qualified Referrals (Verified Deposits)",
+        portfolio_val: "LIVE TOTAL PORTFOLIO VALUE", cash_out_btn: "Cash Out",
+        paper_usd_bal: "Paper USD Balance", btc_holdings: "BTC Holdings",
+        market_price: "MARKET PRICE", trade_amount: "Trade Amount ($)",
+        buy_long: "BUY / LONG", sell_short: "SELL / SHORT",
+        your_packages: "YOUR ACTIVE & PENDING PACKAGES", remaining_time: "Remaining Time",
+        support_placeholder: "How can we help?"
+    },
+    es: {
+        nav_market: "Mercado", nav_packages: "Paquetes", nav_wallet: "Billetera", nav_referral: "Referidos",
+        support_title: "Ticket de Soporte", support_desc: "Describa su problema a continuación.",
+        submit_ticket: "Enviar Ticket", lang_title: "Idioma / 语言", lang_desc: "Seleccione su idioma preferido.",
+        terms: "Términos de Servicio", privacy: "Política de Privacidad", logout: "Cerrar Sesión",
+        active_balance: "Saldo Activo", deposit_funds: "Depositar Fondos",
+        simulate_trades: "Simule operaciones sin riesgo financiero", demo_mode: "MODO DEMO",
+        withdraw: "Retirar", deposit: "Depositar", amount: "Monto en USDT",
+        avail_withdraw_bal: "Saldo Disponible para Retiro", active_locked_pkgs: "Paquetes Bloqueados Activos",
+        deposit_funds_title: "DEPOSITAR FONDOS", deposit_amount_label: "Monto de Depósito ($ USD)",
+        pkg_quick_select: "Selección Rápida", network_protocol: "Protocolo de Red",
+        affiliate_yield_tier: "NIVEL DE RENDIMIENTO DE AFILIADO ACTIVO", unlocked_cap_title: "Límite Desbloqueado Actual",
+        cap_scale_desc: "El límite se ajusta automáticamente según sus hitos.",
+        sync_tier_btn: "Sincronizar y Aplicar Límite", scaling_rules: "REGLAS DE ESCALADO",
+        ref_milestone_title: "Hito de Desbloqueo de Referidos", qualified_refs: "Referidos Calificados",
+        portfolio_val: "VALOR TOTAL DE LA CARTERA", cash_out_btn: "Retirar Ganancias",
+        paper_usd_bal: "Saldo USD Simulado", btc_holdings: "Tenencias BTC",
+        market_price: "PRECIO DE MERCADO", trade_amount: "Monto a Operar ($)",
+        buy_long: "COMPRAR / LARGO", sell_short: "VENDER / CORTO",
+        your_packages: "SUS PAQUETES ACTIVOS Y PENDIENTES", remaining_time: "Tiempo Restante",
+        support_placeholder: "¿Cómo podemos ayudarte?"
+    },
+    fr: {
+        nav_market: "Marché", nav_packages: "Forfaits", nav_wallet: "Portefeuille", nav_referral: "Parrainage",
+        support_title: "Ticket de Support", support_desc: "Décrivez votre problème ci-dessous.",
+        submit_ticket: "Soumettre", lang_title: "Langue / 语言", lang_desc: "Choisissez votre langue.",
+        terms: "Conditions d'utilisation", privacy: "Politique de confidentialité", logout: "Déconnexion",
+        active_balance: "Solde Actif", deposit_funds: "Déposer des Fonds",
+        simulate_trades: "Simulez des transactions sans risque", demo_mode: "MODE DÉMO",
+        withdraw: "Retirer", deposit: "Déposer", amount: "Montant en USDT",
+        avail_withdraw_bal: "Solde Retirable Disponible", active_locked_pkgs: "Forfaits Verrouillés Actifs",
+        deposit_funds_title: "DÉPOSER DES FONDS", deposit_amount_label: "Montant du Dépôt ($ USD)",
+        pkg_quick_select: "Sélection Rapide", network_protocol: "Protocole Réseau",
+        affiliate_yield_tier: "NIVEAU DE RENDEMENT D'AFFILIATION ACTIF", unlocked_cap_title: "Plafond Débloqué Actuel",
+        cap_scale_desc: "Le plafond s'ajuste automatiquement selon vos jalons.",
+        sync_tier_btn: "Synchroniser et Appliquer", scaling_rules: "RÈGLES D'ÉCHELLE D'AFFILIATION",
+        ref_milestone_title: "Jalon de Déblocage de Parrainage", qualified_refs: "Fieuls Qualifiés",
+        portfolio_val: "VALEUR TOTALE DU PORTEFEUILLE", cash_out_btn: "Encaisser",
+        paper_usd_bal: "Solde USD Simulé", btc_holdings: "Avoirs BTC",
+        market_price: "PRIX DU MARCHÉ", trade_amount: "Montant ($)",
+        buy_long: "ACHETER / LONG", sell_short: "VENDRE / SHORT",
+        your_packages: "VOS FORFAITS ACTIFS ET EN ATTENTE", remaining_time: "Temps Restant",
+        support_placeholder: "Comment pouvons-nous vous aider?"
+    },
+    zh: {
+        nav_market: "市场", nav_packages: "礼包", nav_wallet: "钱包", nav_referral: "推荐",
+        support_title: "技术支持", support_desc: "请在下方描述您的问题。",
+        submit_ticket: "提交工单", lang_title: "语言 / Language", lang_desc: "选择您的首选系统语言。",
+        terms: "服务条款", privacy: "隐私政策", logout: "退出登录",
+        active_balance: "可用余额", deposit_funds: "资金充值",
+        simulate_trades: "无风险模拟加密货币交易", demo_mode: "模拟模式",
+        withdraw: "提现", deposit: "充值", amount: "充值/提现金额 (USDT)",
+        avail_withdraw_bal: "可提现余额", active_locked_pkgs: "运行中锁定礼包",
+        deposit_funds_title: "资金充值", deposit_amount_label: "充值金额 ($ USD)",
+        pkg_quick_select: "礼包快捷选择", network_protocol: "网络协议",
+        affiliate_yield_tier: "有效推广收益层级", unlocked_cap_title: "当前已解锁收益上限",
+        cap_scale_desc: "收益上限将根据您已验证的推荐里程碑自动扩展。",
+        sync_tier_btn: "同步并应用层级上限", scaling_rules: "推广扩展规则",
+        ref_milestone_title: "推荐解锁里程碑", qualified_refs: "合格推荐 (已验证充值)",
+        portfolio_val: "实时总资产估值", cash_out_btn: "结算提现",
+        paper_usd_bal: "模拟 USD 余额", btc_holdings: "BTC 持仓",
+        market_price: "市场价格", trade_amount: "交易金额 ($)",
+        buy_long: "买入 / 看涨", sell_short: "卖出 / 看跌",
+        your_packages: "您的运行中及等待中礼包", remaining_time: "剩余时间",
+        support_placeholder: "请问有什么可以帮您？"
+    }
+};
 
     window.setLanguage = function(lang) {
         localStorage.setItem('preferredLang', lang);

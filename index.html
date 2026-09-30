@@ -553,12 +553,12 @@
     </div>
   </div>
 
-  <!-- Segmented Sub-Tab Toggle -->
+    <!-- Segmented Sub-Tab Toggle -->
   <div class="flex border-b border-slate-800 mb-4">
-    <button id="tabWithdrawBtn" type="button" onclick="switchWalletSubTab('withdraw')" data-i18n="withdraw">Withdraw</button>
+    <button id="tabWithdrawBtn" type="button" onclick="switchWalletSubTab('withdraw')" class="flex-1 py-2.5 text-center font-bold text-slate-400 border-b-2 border-transparent hover:text-white transition text-sm" data-i18n="withdraw">
       Withdraw
     </button>
-    <button id="tabDepositBtn" type="button" onclick="switchWalletSubTab('deposit')" data-i18n="deposit">Deposit</button>
+    <button id="tabDepositBtn" type="button" onclick="switchWalletSubTab('deposit')" class="flex-1 py-2.5 text-center font-bold text-emerald-400 border-b-2 border-emerald-400 transition text-sm" data-i18n="deposit">
       Deposit
     </button>
   </div>
@@ -577,7 +577,7 @@
             <option value="BEP20">BNB Smart Chain (BEP-20) - $0.50 Fee</option>
           </select>
         </div>
-        <input type="number" id="payoutAmount" placeholder="Amount in USDT" data-i18n-placeholder="amount"...>
+                <input type="number" id="payoutAmount" placeholder="Amount in USDT (Min $10)" data-i18n-placeholder="amount" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
         <input type="text" id="payoutAddress" placeholder="Destination Wallet Address" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200">
         <div class="flex justify-between items-center text-xs text-slate-400 px-1">
           <span>Network Fee: <strong id="payoutFeeDisplay" class="text-slate-200">$1.00 USDT</strong></span>
@@ -822,29 +822,34 @@
         </div> <!-- CLOSES update password section -->
     </div> <!-- CLOSES Account Details card -->
 
-                <!-- Settings Ticket UI -->
-<div class="mt-6 border-t border-slate-800 pt-4">
-    <h3 class="text-sm font-bold text-white mb-2" data-i18n="support_title">Support Ticket</h3>
-    <p class="text-[11px] text-slate-400 mb-3" data-i18n="support_desc">Describe your issue below...</p>
-    </p>
-    
-    <textarea id="ticketMessage" rows="3" ... data-i18n-placeholder="support_placeholder" placeholder="How can we help?"></textarea>
-        
-     <button id="ticketSubmitBtn" ... data-i18n="submit_ticket">Submit Ticket</button>
-</div>
+    <!-- Settings Ticket UI -->
+    <div class="mt-6 border-t border-slate-800 pt-4">
+        <h3 class="text-sm font-bold text-white mb-2" data-i18n="support_title">Support Ticket</h3>
+        <p class="text-[11px] text-slate-400 mb-3" data-i18n="support_desc">Describe your issue below.</p>
+
+        <textarea id="ticketMessage" rows="3" 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-none" 
+            data-i18n-placeholder="support_placeholder" placeholder="How can we help?"></textarea>
+
+        <button id="ticketSubmitBtn" onclick="submitSupportTicket()" 
+            class="mt-2 w-full bg-slate-800 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors" data-i18n="submit_ticket">
+            Submit Ticket
+        </button>
+    </div>
+
     <!-- LANGUAGE SETTINGS CARD -->
-<div class="mt-6 border-t border-slate-800 pt-4">
-    <h3 class="text-sm font-bold text-white mb-2">Language / 语言</h3>
-    <p class="text-[11px] text-slate-400 mb-3" data-i18n="lang_desc">Select your preferred system language.</p>
-    
-    <select id="languageSelect" onchange="setLanguage(this.value)" 
-            <h3 class="text-sm font-bold text-white mb-2" data-i18n="lang_title">Language / 语言</h3>
-        <option value="en">English (Default)</option>
-        <option value="es">Español (Spanish)</option>
-        <option value="fr">Français (French)</option>
-        <option value="zh">中文 (Chinese)</option>
-    </select>
-</div>
+    <div class="mt-6 border-t border-slate-800 pt-4">
+        <h3 class="text-sm font-bold text-white mb-2" data-i18n="lang_title">Language / 语言</h3>
+        <p class="text-[11px] text-slate-400 mb-3" data-i18n="lang_desc">Select your preferred system language.</p>
+
+        <select id="languageSelect" onchange="setLanguage(this.value)" 
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+            <option value="en">English (Default)</option>
+            <option value="es">Español (Spanish)</option>
+            <option value="fr">Français (French)</option>
+            <option value="zh">中文 (Chinese)</option>
+        </select>
+    </div>
 
 <!-- Legal Document Links -->
 <div class="mt-6 flex gap-6 text-[11px] text-slate-400 justify-center border-t border-slate-800 pt-4">

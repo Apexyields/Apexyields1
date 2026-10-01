@@ -1557,44 +1557,49 @@ async function updateWalletLockedBalance(userPackages) {
 async function loadUserProfile() {
     if (!supabaseClient) return;
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
-
-    console.log("Active logged-in User ID:", user.id);
-
-    // 1. Fetch user profile details safely using '*'
-    const { data, error } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-    if (error) {
-        console.error("Error loading profile:", error.message);
-    } else if (data) {
-        const balanceElem = document.getElementById('userActiveBalance');
-        const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${Number(data.balance || 0).toFixed(2)} USDT`;
-        if (nameElem) nameElem.innerText = data.username || 'User';
+    // 1. Resolve user ID from Supabase Auth or local session fallback
+    const authUser = (await supabaseClient.auth.getUser())?.data?.user;
+    let userId = authUser?.id || (typeof currentUser === 'string' ? currentUser : currentUser?.id);
+    
+    if (!userId) {
+        userId = localStorage.getItem('currentUser');
     }
 
-    // 2. Display referral code matching user's short UUID
-    const userRefCode = `APEX-${user.id.substring(0, 6).toUpperCase()}`;
-    const refCodeElem = document.getElementById('refCodeDisplay');
-    if (refCodeElem) {
-        refCodeElem.innerText = userRefCode;
-    }
-
-    // 3. Fetch direct referrals safely using '*'
-    const { data: referrals, error: refError } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('referred_by', user.id);
-
-         if (refError) {
-        console.error("Error loading referrals:", refError.message);
+    if (!userId) {
+        console.warn("No active user session found.");
         return;
     }
+
+    console.log("Active logged-in User ID:", userId);
+
+    // 2. Fetch profile balance & username
+    const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (profileError) {
+        console.error('Error loading profile:', profileError.message);
+    } else if (profile) {
+        const balanceElem = document.getElementById('userActiveBalance');
+        const nameElem = document.getElementById('username-display');
+        if (balanceElem) balanceElem.innerText = `$${(Number(profile.balance) || 0).toFixed(2)} USDT`;
+        if (nameElem) nameElem.innerText = profile.username || 'User';
+    }
+
+    // 3. Fetch active locked packages from Supabase
+    const { data: userPackages, error: pkgError } = await supabaseClient
+        .from('user_packages')
+        .select('*')
+        .eq('user_id', userId);
+
+    if (pkgError) {
+        console.error('Error fetching user_packages:', pkgError);
+    } else if (userPackages) {
+        await updateWalletLockedBalance(userPackages);
+    }
+}
 
     // 3.5 Fetch active user packages for live countdown timers & locked balance display
 const { data: userPackages } = await supabaseClient

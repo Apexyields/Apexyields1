@@ -2338,17 +2338,14 @@ async function initDashboard() {
     const qualifiedRefs = await countQualifiedReferrals(userId, user.refCode || currentUser);
     const tierInfo = calculateAffiliateYield(1000, qualifiedRefs);
 
-    const activeBal = document.getElementById('userActiveBalance');
-if (activeBal) activeBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
+            const activeBal = document.getElementById('userActiveBalance');
+        if (activeBal) activeBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
 
-const withdrawBal = document.getElementById('walletWithdrawable');
-if (withdrawBal) withdrawBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
+        const withdrawBal = document.getElementById('walletWithdrawal');
+        if (withdrawBal) withdrawBal.innerText = '$' + (user.balance || 0).toFixed(2) + ' USDT';
 
-const lockedBal = document.getElementById('walletLocked');
-if (lockedBal) lockedBal.innerText = '$' + (user.lockedPackages || 0).toFixed(2) + ' USDT';
-
-const settingsId = document.getElementById('settingsUserId');
-if (settingsId) settingsId.innerText = currentUser;
+        const settingsId = document.getElementById('settingsUserId');
+        if (settingsId) settingsId.innerText = currentUser;
 
 const settingsWallet = document.getElementById('settingsUserWallet');
 if (settingsWallet) settingsWallet.innerText = '-------';

@@ -1588,7 +1588,22 @@ async function loadUserProfile() {
         if (nameElem) nameElem.innerText = profile.username || 'User';
     }
 
-    // 3. Fetch active locked packages from Supabase
+    // 2.5 Display referral code matching user's short UUID
+    const userRefCode = `APEX-${userId.substring(0, 6).toUpperCase()}`;
+    const refCodeElem = document.getElementById('refCodeDisplay');
+    if (refCodeElem) refCodeElem.innerText = userRefCode;
+
+    // 3. Fetch direct referrals safely
+    const { data: referrals, error: refError } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('referred_by', userId);
+
+    if (refError) {
+        console.error('Error loading referrals:', refError.message);
+    }
+
+    // 3.5 Fetch active user packages for live countdown timers & locked balance display
     const { data: userPackages, error: pkgError } = await supabaseClient
         .from('user_packages')
         .select('*')
@@ -1598,53 +1613,35 @@ async function loadUserProfile() {
         console.error('Error fetching user_packages:', pkgError);
     } else if (userPackages) {
         await updateWalletLockedBalance(userPackages);
+        if (userPackages.length > 0 && typeof initVaultCountDownLoop === 'function') {
+            initVaultCountDownLoop(userPackages);
+        }
     }
-}
 
-    // 3.5 Fetch active user packages for live countdown timers & locked balance display
-const { data: userPackages } = await supabaseClient
-    .from('user_packages')
-    .select('*')
-    .eq('user_id', user.id);
-
-if (userPackages) {
-    await updateWalletLockedBalance(userPackages);
-
-    if (userPackages.length > 0 && typeof initVaultCountDownLoop === 'function') {
-        initVaultCountDownLoop(userPackages);
-    }
-}
-
-    // 4. Render 3-column rows into container with fallbacks
+    // 4. Render referral table rows into container
     const refContainer = document.getElementById('refNetworkTable') 
-                      || document.getElementById('directReferralsList') 
-                      || document.getElementById('referralsTableBody');
+        || document.getElementById('directReferralsList') 
+        || document.getElementById('referralsTableBody');
 
-    if (!refContainer) {
-        console.error("Table container element not found in HTML!");
-        return;
-    }
-
-    if (!referrals || referrals.length === 0) {
-        refContainer.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet.</td></tr>`;
-    } else {
-        refContainer.innerHTML = referrals.map(ref => {
-            const isQualified = (Number(ref.balance) || 0) > 0;
-            return `
-                <tr class="border-b border-slate-800 text-slate-300">
-                    <td class="p-3 font-mono text-slate-200">${ref.username || 'User_' + ref.id.substring(0, 6)}</td>
-                    <td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>
-                    <td class="p-3 font-medium ${isQualified ? 'text-emerald-400' : 'text-amber-400'}">
-                        ${isQualified ? 'Verified' : 'Pending Deposit'}
-                    </td>
-                </tr>
-            `;
-        }).join('');
+    if (refContainer) {
+        if (!referrals || referrals.length === 0) {
+            refContainer.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">No referrals registered yet</td></tr>';
+        } else {
+            refContainer.innerHTML = referrals.map(ref => {
+                const isQualified = (Number(ref.balance) || 0) > 0;
+                return `
+                    <tr class="border-b border-slate-800 text-slate-300">
+                        <td class="p-3 text-mono text-slate-200">${ref.username || 'User_' + ref.id.substring(0, 6)}</td>
+                        <td class="p-3"><span class="text-emerald-400 font-semibold">Active</span></td>
+                        <td class="p-3 font-medium ${isQualified ? 'text-emerald-400' : 'text-amber-400'}">
+                            ${isQualified ? 'Verified' : 'Pending Deposit'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
     }
 }
-
-
-
 
     // ==========================================
     // 3. DEPOSIT & YIELD UPDATE LOGIC

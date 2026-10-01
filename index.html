@@ -1511,29 +1511,47 @@ if (document.readyState === 'loading') {
 // ==========================================
 // 2. USER PROFILE & BALANCE DISPLAY
 // ==========================================
-        function renderUserPackages(packages) {
+function renderUserPackages(packages) {
     const container = document.getElementById('activeVaultsList') || document.getElementById('activePackagesContainer');
     if (!container) return;
 
     if (!packages || packages.length === 0) {
-        container.innerHTML = `<div class="p-4 text-center text-slate-500 text-sm">No active vaults running.</div>`;
+        container.innerHTML = '<div class="p-4 text-center text-slate-500 text-xs">No active vaults running</div>';
         return;
     }
 
     container.innerHTML = packages.map(vault => `
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl flex justify-between items-center mb-3">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl flex justify-between items-center mb-2">
             <div>
                 <p class="text-white font-semibold text-sm">${vault.package_name || 'Active Vault'}</p>
-                <p class="text-xs text-slate-400">Amount: $${Number(vault.amount || 0).toFixed(2)} USDT</p>
+                <p class="text-xs text-slate-400">Amount: $${(Number(vault.amount_locked ?? vault.amount ?? 0)).toFixed(2)} USDT</p>
             </div>
             <div class="text-right">
-                <span class="text-xs text-slate-500 block mb-1">Time Remaining</span>
-                <div id="timer-${vault.id}" class="text-sm font-mono text-amber-400 font-bold">
-                    Calculating...
-                </div>
+                <span class="text-xs text-slate-500 block mb-1">Status</span>
+                <span class="text-xs font-mono text-emerald-400 font-bold uppercase">${vault.status || 'Active'}</span>
             </div>
         </div>
     `).join('');
+}
+
+async function updateWalletLockedBalance(userPackages) {
+    const walletLockedElem = document.getElementById('walletLocked');
+    if (!walletLockedElem) return;
+
+    const activePackages = (userPackages || []).filter(
+        pkg => pkg.status && pkg.status.toLowerCase() === 'active'
+    );
+
+    const totalLocked = activePackages.reduce((sum, pkg) => {
+        return sum + (parseFloat(pkg.amount_locked ?? pkg.amount ?? 0));
+    }, 0);
+
+    walletLockedElem.textContent = `$${totalLocked.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })} USDT`;
+
+    renderUserPackages(activePackages);
 }
 
 async function loadUserProfile() {
@@ -1578,19 +1596,19 @@ async function loadUserProfile() {
         return;
     }
 
-    // 3.5 Fetch active user packages for live countdown timers
-    const { data: userPackages } = await supabaseClient
-        .from('user_packages')
-        .select('*')
-        .eq('user_id', user.id);
+    // 3.5 Fetch active user packages for live countdown timers & locked balance display
+const { data: userPackages } = await supabaseClient
+    .from('user_packages')
+    .select('*')
+    .eq('user_id', user.id);
 
-    if (userPackages && userPackages.length > 0) {
-        if (typeof initVaultCountdownLoop === 'function') {
-            initVaultCountdownLoop(userPackages);
-        } else {
-            console.warn('Vault countdown loop bypassed (function deleted).');
-        }
+if (userPackages) {
+    await updateWalletLockedBalance(userPackages);
+
+    if (userPackages.length > 0 && typeof initVaultCountDownLoop === 'function') {
+        initVaultCountDownLoop(userPackages);
     }
+}
 
     // 4. Render 3-column rows into container with fallbacks
     const refContainer = document.getElementById('refNetworkTable') 

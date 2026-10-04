@@ -1582,9 +1582,14 @@ async function loadUserProfile() {
     if (profileError) {
         console.error('Error loading profile:', profileError.message);
     } else if (profile) {
+        const formattedBalance = `$${(Number(profile.balance) || 0).toFixed(2)} USDT`;
+        
         const balanceElem = document.getElementById('userActiveBalance');
+        const withdrawElem = document.getElementById('walletWithdrawable') || document.getElementById('walletWithdrawal');
         const nameElem = document.getElementById('username-display');
-        if (balanceElem) balanceElem.innerText = `$${(Number(profile.balance) || 0).toFixed(2)} USDT`;
+
+        if (balanceElem) balanceElem.innerText = formattedBalance;
+        if (withdrawElem) withdrawElem.innerText = formattedBalance;
         if (nameElem) nameElem.innerText = profile.username || 'User';
     }
 

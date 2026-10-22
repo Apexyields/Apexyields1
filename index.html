@@ -4020,9 +4020,9 @@ if (!userId) return alert("Please log in to trade.");
                 user_id: userId,
                 symbol: currentSymbol,
                 type: type === 'BUY' ? 'OPEN LONG' : 'OPEN SHORT',
-                amount_usd: usdAmount,
-                units: unitsCount,
-                price: currentPrice
+            usd_amount: usdAmount, // <--- Fixed from amount_usd to match database column
+            units: unitsCount,
+            price: currentPrice
             })
         ]);
 

@@ -1107,6 +1107,35 @@
         </div>
     </div>
 </div>
+    <!-- Package & Referral Rules Modal -->
+<div id="packageInfoModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-white font-bold text-base flex items-center gap-2">📦 Package & Referral Rules</h3>
+            <button type="button" onclick="closePackageInfoModal()" class="text-slate-400 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
+        </div>
+        
+        <div class="space-y-3 text-xs text-slate-300 leading-relaxed mb-6">
+            <div class="p-3 bg-slate-950/50 border border-slate-800 rounded-xl">
+                <p class="text-amber-300 font-semibold mb-1">🔒 Lower Tier Lock Requirements</p>
+                <p class="text-slate-400">
+                    The <span class="text-white font-medium">$25</span> and <span class="text-white font-medium">$50</span> vaults require a minimum of <span class="text-white font-semibold">3 qualified referrals</span> to unlock.
+                </p>
+            </div>
+            
+            <div class="p-3 bg-slate-950/50 border border-slate-800 rounded-xl">
+                <p class="text-emerald-300 font-semibold mb-1">✅ What Counts as a Qualified Referral?</p>
+                <p class="text-slate-400">
+                    A referred user must complete a valid deposit or successfully activate a package for their referral credit to count toward your tier unlocks.
+                </p>
+            </div>
+        </div>
+
+        <button type="button" onclick="closePackageInfoModal()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition-all cursor-pointer">
+            Got It
+        </button>
+    </div>
+</div>
 
     <script>
     // Initialize Supabase Client
@@ -4728,6 +4757,21 @@ window.handleForgotPassword = handleForgotPassword;
             }
         });
     };
+        function openPackageInfoModal() {
+    const modal = document.getElementById('packageInfoModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+}
+
+function closePackageInfoModal() {
+    const modal = document.getElementById('packageInfoModal');
+    if (modal) {
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+}
 </script>
 </body>
 </html>

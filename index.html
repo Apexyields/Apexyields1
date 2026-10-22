@@ -4134,17 +4134,18 @@ if (!userId) return;
         }
 
         let logsHtml = '';
-        logs.forEach(log => {
-            const isBuy = log.type === 'BUY';
-            const badgeClass = isBuy ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+                logs.forEach(log => {
+            const typeStr = (log.type || '').toUpperCase();
+            const isBuyLike = typeStr.includes('BUY') || typeStr.includes('LONG') || typeStr.includes('DEPOSIT');
+            const badgeClass = isBuyLike ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20';
             const timeStr = log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
             logsHtml += `
                 <div class="flex justify-between items-center bg-slate-900/40 p-2 rounded-lg border border-slate-800/50 text-xs mb-1.5">
                     <div class="flex items-center gap-2">
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${log.type}</span>
-                        <span class="font-bold text-white">$${parseFloat(log.amount_usd || 0).toFixed(2)}</span>
-                        <span class="text-[10px] text-slate-400">${parseFloat(log.units || 0).toFixed(4)} ${log.symbol}</span>
+                        <span class="font-bold text-white">$${parseFloat(log.usd_amount || 0).toFixed(2)}</span>
+                        <span class="text-[10px] text-slate-400">${parseFloat(log.units || 0).toFixed(4)} ${log.symbol || ''}</span>
                     </div>
                     <span class="text-[10px] text-slate-500">${timeStr}</span>
                 </div>

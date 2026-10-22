@@ -3738,7 +3738,11 @@ async function fetchLiveCryptoPrices() {
         btcPriceDisplay.innerText = `$${livePrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     }
 
-    // 4. Trigger UI recalculation
+    // 4. Trigger UI recalculation and automated margin liquidation check
+    if (typeof checkPaperTradeLiquidations === 'function') {
+        await checkPaperTradeLiquidations();
+    }
+
     if (typeof updateTradingUI === 'function') {
         await updateTradingUI();
     }

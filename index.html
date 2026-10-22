@@ -4772,6 +4772,96 @@ function closePackageInfoModal() {
         setTimeout(() => modal.classList.add('hidden'), 300);
     }
 }
+        // ==========================================
+// LIQUIDATION SYSTEM
+// ==========================================
+const MAINTENANCE_MARGIN_BUFFER = 0.15; // Triggers liquidation if position value drops to 15% of entry (85% max drawdown)
+
+function calculateLiquidationPrice(entryPrice, isShort) {
+    if (entryPrice <= 0) return 0;
+    // For Long: Liquidation occurs when price drops below the maintenance threshold
+    // For Short: Liquidation occurs when price rises above the upper tolerance threshold
+    return isShort ? entryPrice * (1 + (1 - MAINTENANCE_MARGIN_BUFFER)) : entryPrice * MAINTENANCE_MARGIN_BUFFER;
+}
+
+async function checkPaperTradeLiquidations() {
+    const db = getDbClient();
+    if (!db) return;
+
+    const userId = getActiveUserId();
+    if (!userId) return;
+
+    try {
+        const { data: positions, error } = await db
+            .from('paper_positions')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (error || !positions || positions.length === 0) return;
+
+        for (const pos of positions) {
+            const holding = parseFloat(pos.amount || 0);
+            if (Math.abs(holding) <= 0.000001) continue;
+
+            const symbol = pos.symbol;
+            const livePrice = cryptoPrices[symbol] || 0;
+            if (livePrice <= 0) continue;
+
+            const isShort = holding < 0;
+            const absHolding = Math.abs(holding);
+            const absCostBasis = Math.abs(parseFloat(pos.cost_basis || 0));
+            const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
+
+            if (entryPrice <= 0) continue;
+
+            const liqPrice = calculateLiquidationPrice(entryPrice, isShort);
+
+            let isLiquidated = false;
+            if (!isShort && livePrice <= liqPrice) {
+                isLiquidated = true; // Long price fell to or below liquidation price
+            } else if (isShort && livePrice >= liqPrice) {
+                isLiquidated = true; // Short price rose to or above liquidation price
+            }
+
+            if (isLiquidated) {
+                await executeLiquidationPosition(userId, symbol, holding, absCostBasis, liqPrice, db);
+            }
+        }
+    } catch (err) {
+        console.error('Liquidation check error:', err);
+    }
+}
+
+async function executeLiquidationPosition(userId, symbol, holding, costBasis, liqPrice, db) {
+    const isShort = holding < 0;
+    const absHolding = Math.abs(holding);
+
+    try {
+        // 1. Log liquidation event in paper_trades
+        await db.from('paper_trades').insert({
+            user_id: userId,
+            symbol: symbol,
+            type: isShort ? 'LIQUIDATED SHORT' : 'LIQUIDATED LONG',
+            amount_usd: 0, // Collateral fully lost
+            units: absHolding,
+            price: liqPrice
+        });
+
+        // 2. Remove position from paper_positions
+        await db.from('paper_positions')
+            .delete()
+            .eq('user_id', userId)
+            .eq('symbol', symbol);
+
+        // 3. Alert user
+        alert(`🚨 Liquidation Alert: Your ${symbol} ${isShort ? 'SHORT' : 'LONG'} position was liquidated at $${liqPrice.toFixed(2)} due to market drawdown.`);
+
+        // 4. Refresh UI
+        await updateTradingUI();
+    } catch (err) {
+        console.error('Failed to execute liquidation position:', err);
+    }
+}
 </script>
 </body>
 </html>

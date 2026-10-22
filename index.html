@@ -859,6 +859,15 @@
         </select>
     </div>
 
+    <!-- Package Info Settings Button -->
+<button 
+    type="button" 
+    onclick="openPackageInfoModal()" 
+    class="w-full py-3 px-4 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-slate-300 hover:bg-slate-800 transition-all cursor-pointer mb-2">
+    <span class="flex items-center gap-2 text-sm font-medium">📦 Package & Referral Rules</span>
+    <span class="text-slate-500">→</span>
+</button>
+    
 <!-- Legal Document Links -->
 <div class="mt-6 flex gap-6 text-[11px] text-slate-400 justify-center border-t border-slate-800 pt-4">
     <button onclick="document.getElementById('legalModal').classList.remove('hidden'); document.getElementById('tosContent').classList.remove('hidden'); document.getElementById('privacyContent').classList.add('hidden'); document.getElementById('legalTitle').innerText='Terms of Service';" class="hover:text-white underline">Terms of Service</button>

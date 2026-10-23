@@ -4098,7 +4098,7 @@ const logs = tradesRes.data || [];
 let holdingsHtml = '';
 let hasHoldings = false;
 
-// 1. Calculate Net Floating PnL and Total Active Portfolio Market Value
+// 1. Calculate Net Floating PnL and Total Active Portfolio Market Value safely
 const currentPaperBalance = parseFloat(profileRes.data?.paper_balance || 0);
 let totalPortfolioPnl = 0;
 let totalActiveMarketValue = 0;
@@ -4107,14 +4107,16 @@ positions.forEach(p => {
     const h = parseFloat(String(p.amount || 0).replace(/,/g, ''));
     if (Math.abs(h) <= 0.000001) return;
     const sym = p.symbol;
-    const lp = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) ? parseFloat(cryptoPrices[sym]) : 0;
-    if (lp <= 0) return;
-    const isS = h < 0;
     const absH = Math.abs(h);
-    const rCost = (p.cost_basis && Number(p.cost_basis) > 0) ? p.cost_basis : (p.usd_amount || absH * lp);
+    const rCost = (p.cost_basis && Number(p.cost_basis) > 0) ? p.cost_basis : (p.usd_amount || 0);
     const absCost = Math.abs(parseFloat(String(rCost).replace(/,/g, '')));
-    const ep = absH > 0 ? absCost / absH : lp;
+    const ep = absH > 0 ? absCost / absH : 0;
+    
+    // Stable live price fallback prevents temporary missing ticks from resetting PnL to 0 (stopping the flash)
+    const rawLive = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) ? parseFloat(cryptoPrices[sym]) : 0;
+    const lp = rawLive > 0 ? rawLive : (ep > 0 ? ep : 1);
 
+    const isS = h < 0;
     const pnl = isS ? (ep - lp) * absH : (lp - ep) * absH;
     totalPortfolioPnl += pnl;
     totalActiveMarketValue += (absH * lp);
@@ -4940,6 +4942,7 @@ async function checkPaperTradeLiquidations() {
 async function executeLiquidationPosition(userId, symbol, holding, costBasis, liqPrice, db) {
     const isShort = holding < 0;
     const absHolding = Math.abs(holding);
+    const safeLiqPrice = Number(liqPrice) || 0;
 
     try {
         // 1. Log liquidation event in paper_trades
@@ -4949,7 +4952,7 @@ async function executeLiquidationPosition(userId, symbol, holding, costBasis, li
             type: isShort ? 'LIQUIDATED SHORT' : 'LIQUIDATED LONG',
             amount_usd: 0, // Collateral fully lost
             units: absHolding,
-            price: liqPrice
+            price: safeLiqPrice
         });
 
         // 2. Remove position from paper_positions
@@ -4959,10 +4962,14 @@ async function executeLiquidationPosition(userId, symbol, holding, costBasis, li
             .eq('symbol', symbol);
 
         // 3. Alert user
-        alert(`🚨 Liquidation Alert: Your ${symbol} ${isShort ? 'SHORT' : 'LONG'} position was liquidated at $${liqPrice.toFixed(2)} due to market drawdown.`);
+        alert(`🚨 Liquidation Alert: Your ${symbol} ${isShort ? 'SHORT' : 'LONG'} position was liquidated at $${safeLiqPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} due to market drawdown.`);
 
         // 4. Refresh UI
-        await updateTradingUI();
+        if (typeof updateTradingUI === 'function') {
+            await updateTradingUI();
+        } else if (typeof renderTradeHistory === 'function') {
+            renderTradeHistory();
+        }
     } catch (err) {
         console.error('Failed to execute liquidation position:', err);
     }

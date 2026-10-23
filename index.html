@@ -4795,13 +4795,13 @@ function calculateLiquidationPrice(entryPrice, isShort) {
 }
 
 async function checkPaperTradeLiquidations() {
-    const db = getDbClient();
-    if (!db) return;
-
-    const userId = getActiveUserId();
-    if (!userId) return;
-
     try {
+        const db = window.supabaseClient || window.supabase || (typeof getDbClient === 'function' ? getDbClient() : null);
+        if (!db || typeof db.from !== 'function') return;
+
+        const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : (window.currentUserId || localStorage.getItem('user_id'));
+        if (!userId) return;
+
         const { data: positions, error } = await db
             .from('paper_positions')
             .select('*')
@@ -4814,7 +4814,7 @@ async function checkPaperTradeLiquidations() {
             if (Math.abs(holding) <= 0.000001) continue;
 
             const symbol = pos.symbol;
-            const livePrice = cryptoPrices[symbol] || 0;
+            const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) ? parseFloat(cryptoPrices[symbol]) : 0;
             if (livePrice <= 0) continue;
 
             const isShort = holding < 0;
@@ -4824,16 +4824,18 @@ async function checkPaperTradeLiquidations() {
 
             if (entryPrice <= 0) continue;
 
-            const liqPrice = calculateLiquidationPrice(entryPrice, isShort);
+            const liqPrice = typeof calculateLiquidationPrice === 'function' 
+                ? calculateLiquidationPrice(entryPrice, isShort) 
+                : (isShort ? entryPrice * 1.85 : entryPrice * 0.15);
 
             let isLiquidated = false;
             if (!isShort && livePrice <= liqPrice) {
-                isLiquidated = true; // Long price fell to or below liquidation price
+                isLiquidated = true;
             } else if (isShort && livePrice >= liqPrice) {
-                isLiquidated = true; // Short price rose to or above liquidation price
+                isLiquidated = true;
             }
 
-            if (isLiquidated) {
+            if (isLiquidated && typeof executeLiquidationPosition === 'function') {
                 await executeLiquidationPosition(userId, symbol, holding, absCostBasis, liqPrice, db);
             }
         }

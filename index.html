@@ -4871,17 +4871,19 @@ async function checkPaperTradeLiquidations() {
             const absCostBasis = Math.abs(parseFloat(String(rawCostBasis).replace(/,/g, '')));
             const entryPrice = absHolding > 0 ? absCostBasis / absHolding : livePrice;
 
+            // Live PnL calculation per position
             const pnl = isShort ? (entryPrice - livePrice) * absHolding : (livePrice - entryPrice) * absHolding;
             totalUnrealizedPnl += pnl;
 
             evaluatedPositions.push({ symbol, holding, absCostBasis, isShort, entryPrice, livePrice });
         }
 
+        // Total Account Equity = Cash Balance + Live Floating Unrealized PnL
         const totalEquity = paperBalance + totalUnrealizedPnl;
 
-        // Liquidation triggers when Total Account Equity drops to $0 or below
+        // Global Margin Call: If total equity is wiped out ($0 or below), liquidate all positions
         if (totalEquity <= 0) {
-            console.warn("Cross-Margin Call Triggered! Equity <= $0");
+            console.warn("Cross-Margin Liquidation Triggered! Total Account Equity <= $0");
 
             for (const item of evaluatedPositions) {
                 if (typeof executeLiquidationPosition === 'function') {
@@ -4893,7 +4895,6 @@ async function checkPaperTradeLiquidations() {
         console.error('Cross-margin liquidation check error:', err);
     }
 }
-
 async function executeLiquidationPosition(userId, symbol, holding, costBasis, liqPrice, db) {
     const isShort = holding < 0;
     const absHolding = Math.abs(holding);

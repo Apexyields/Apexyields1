@@ -4823,18 +4823,25 @@ async function checkPaperTradeLiquidations() {
         const db = window.supabaseClient || window.supabase || (typeof getDbClient === 'function' ? getDbClient() : null);
         if (!db || typeof db.from !== 'function') return;
 
-        const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : (window.currentUserId || localStorage.getItem('user_id'));
+        const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : (window.currentUserId || localStorage.getItem('currentUserId'));
         if (!userId) return;
 
-        const { data: positions, error } = await db
-            .from('paper_positions')
-            .select('*')
-            .eq('user_id', userId);
+        // Fetch user profile balance and all active positions simultaneously
+        const [profileRes, positionsRes] = await Promise.all([
+            db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+            db.from('paper_positions').select('*').eq('user_id', userId)
+        ]);
 
-        if (error || !positions || positions.length === 0) return;
+        const paperBalance = parseFloat(profileRes.data?.paper_balance || 0);
+        const positions = positionsRes.data || [];
+        if (positions.length === 0) return;
+
+        let totalUnrealizedPnl = 0;
+        let totalInitialMargin = 0;
+        const evaluatedPositions = [];
 
         for (const pos of positions) {
-            const holding = parseFloat(pos.amount || 0);
+            const holding = parseFloat(String(pos.amount || 0).replace(/,/g, ''));
             if (Math.abs(holding) <= 0.000001) continue;
 
             const symbol = pos.symbol;
@@ -4843,28 +4850,44 @@ async function checkPaperTradeLiquidations() {
 
             const isShort = holding < 0;
             const absHolding = Math.abs(holding);
-            const absCostBasis = Math.abs(parseFloat(pos.cost_basis || 0));
-            const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
+            const rawCostBasis = pos.cost_basis || pos.usd_amount || 0;
+            const absCostBasis = Math.abs(parseFloat(String(rawCostBasis).replace(/,/g, '')));
+            const entryPrice = absHolding > 0 ? absCostBasis / absHolding : livePrice;
 
-            if (entryPrice <= 0) continue;
+            // Compute PnL for this position
+            const pnl = isShort 
+                ? (entryPrice - livePrice) * absHolding 
+                : (livePrice - entryPrice) * absHolding;
 
-            const liqPrice = typeof calculateLiquidationPrice === 'function' 
-                ? calculateLiquidationPrice(entryPrice, isShort) 
-                : (isShort ? entryPrice * 1.85 : entryPrice * 0.15);
+            totalUnrealizedPnl += pnl;
+            totalInitialMargin += absCostBasis;
 
-            let isLiquidated = false;
-            if (!isShort && livePrice <= liqPrice) {
-                isLiquidated = true;
-            } else if (isShort && livePrice >= liqPrice) {
-                isLiquidated = true;
-            }
+            evaluatedPositions.push({ pos, symbol, holding, absHolding, absCostBasis, isShort, entryPrice, livePrice });
+        }
 
-            if (isLiquidated && typeof executeLiquidationPosition === 'function') {
-                await executeLiquidationPosition(userId, symbol, holding, absCostBasis, liqPrice, db);
+        // Total Account Equity = Shared Cash Balance + Net Unrealized PnL of all open trades
+        const totalAccountEquity = paperBalance + totalUnrealizedPnl;
+        
+        // Maintenance Margin Requirement (e.g., 15% of total capital deployed across active trades)
+        const maintenanceBuffer = 0.15;
+        const totalMaintenanceRequired = totalInitialMargin * maintenanceBuffer;
+
+        // If total account equity breaches the collective safety threshold, liquidate the portfolio
+        if (totalAccountEquity <= totalMaintenanceRequired || totalAccountEquity <= 0) {
+            console.warn("Margin Call Triggered! Total account equity breached safe threshold.");
+
+            for (const item of evaluatedPositions) {
+                const liqPrice = item.isShort 
+                    ? item.entryPrice * (1 + maintenanceBuffer) 
+                    : item.entryPrice * (1 - maintenanceBuffer);
+
+                if (typeof executeLiquidationPosition === 'function') {
+                    await executeLiquidationPosition(userId, item.symbol, item.holding, item.absCostBasis, liqPrice, db);
+                }
             }
         }
     } catch (err) {
-        console.error('Liquidation check error:', err);
+        console.error('Portfolio Liquidation check error:', err);
     }
 }
 

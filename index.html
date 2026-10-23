@@ -4083,13 +4083,18 @@ if (!userId) return;
         if (Math.abs(holding) > 0.000001) {
             hasHoldings = true;
             const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) ? parseFloat(cryptoPrices[symbol]) : 0;
-            const isShort = holding < 0;
-            const absHolding = Math.abs(parseFloat(String(pos.amount || 0).replace(/,/g, '')));
+const isShort = holding < 0;
+const absHolding = Math.abs(parseFloat(String(pos.amount || 0).replace(/,/g, '')));
 const rawCostBasis = pos.cost_basis !== undefined ? pos.cost_basis : pos.usd_amount;
 const absCostBasis = Math.abs(parseFloat(String(rawCostBasis || 0).replace(/,/g, '')));
 const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
 const currentMktVal = absHolding * livePrice;
-const liqPrice = calculateLiquidationPrice(entryPrice, isShort);
+
+// Inline calculation (bypasses function caching entirely)
+const maintenanceBuffer = 0.15;
+const liqPrice = isShort 
+    ? entryPrice * (1 + maintenanceBuffer) 
+    : entryPrice * (1 - maintenanceBuffer);
         // Long PnL vs Short PnL Formula
         const indPnl = isShort 
             ? (entryPrice - livePrice) * absHolding 

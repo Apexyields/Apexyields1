@@ -4800,18 +4800,17 @@ function closePackageInfoModal() {
         setTimeout(() => modal.classList.add('hidden'), 300);
     }
 }
-        // ==========================================
-// LIQUIDATION SYSTEM
 // ==========================================
-const MAINTENANCE_MARGIN_BUFFER = 0.15; // Triggers liquidation if position value drops to 15% of entry (85% max drawdown)
+// LIQUIDATION SYSTEM
+// ----------------------------------------------------
+var MAINTENANCE_MARGIN_BUFFER = 0.15; // Triggers liquidation if position value drops/rises beyond threshold
 
 function calculateLiquidationPrice(entryPrice, isShort) {
-    if (entryPrice <= 0) return 0;
-    // For Long: Liquidation occurs when price drops below the maintenance threshold
+    if (!entryPrice || entryPrice <= 0) return 0;
+    // For long: Liquidation occurs when price drops below the maintenance threshold
     // For Short: Liquidation occurs when price rises above the upper tolerance threshold
-    return isShort ? entryPrice * (1 + (1 - MAINTENANCE_MARGIN_BUFFER)) : entryPrice * MAINTENANCE_MARGIN_BUFFER;
+    return isShort ? entryPrice * (1 + MAINTENANCE_MARGIN_BUFFER) : entryPrice * (1 - MAINTENANCE_MARGIN_BUFFER);
 }
-
 async function checkPaperTradeLiquidations() {
     try {
         const db = window.supabaseClient || window.supabase || (typeof getDbClient === 'function' ? getDbClient() : null);

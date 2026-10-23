@@ -4948,28 +4948,50 @@ async function executeLiquidationPosition(userId, symbol, holding, costBasis, li
         console.error('Failed to execute liquidation position:', err);
     }
 }
-        function updateAccountHealthUI(paperBalance, totalUnrealizedPnl, initialCapital = 100000) {
+function updateAccountHealthUI(paperBalance, totalUnrealizedPnl, initialCapital = 100000) {
     const totalEquity = paperBalance + totalUnrealizedPnl;
     const healthPercent = Math.max(0, Math.min(100, (totalEquity / initialCapital) * 100)).toFixed(1);
     
-    let healthColor = 'text-emerald-400 bg-emerald-500/20';
-    let healthText = 'Safe';
+    let badgeClass = 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
+    let healthStatus = 'Safe';
+
     if (healthPercent < 20) {
-        healthColor = 'text-rose-400 bg-rose-500/20';
-        healthText = 'Danger';
+        badgeClass = 'text-rose-400 bg-rose-500/20 border-rose-500/30';
+        healthStatus = 'Danger';
     } else if (healthPercent < 50) {
-        healthColor = 'text-amber-400 bg-amber-500/20';
-        healthText = 'Warning';
+        badgeClass = 'text-amber-400 bg-amber-500/20 border-amber-500/30';
+        healthStatus = 'Warning';
     }
 
-    const healthBadgeElem = document.getElementById('accountHealthMonitor');
-    if (healthBadgeElem) {
-        healthBadgeElem.innerHTML = `
-            <div class="flex items-center justify-between px-3 py-1.5 bg-slate-900/80 border border-slate-800 rounded-lg text-xs">
-                <span class="text-slate-400">Account Equity: <strong class="text-white">$${totalEquity.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></span>
-                <span class="px-2 py-0.5 rounded-full font-bold ${healthColor}">${healthText} (${healthPercent}%)</span>
-            </div>
-        `;
+    const badgeElem = document.getElementById('healthBadge');
+    const equityElem = document.getElementById('accountEquityDisplay');
+
+    if (badgeElem) {
+        badgeElem.className = `text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${badgeClass}`;
+        badgeElem.innerText = `${healthStatus} (${healthPercent}%)`;
+    }
+    if (equityElem) {
+        equityElem.innerText = `$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+}
+        function switchOrderDeskTab(tabName) {
+    const posContainer = document.getElementById('deskTabPositions');
+    const logContainer = document.getElementById('deskTabLog');
+    const posBtn = document.getElementById('tabBtnPositions');
+    const logBtn = document.getElementById('tabBtnLog');
+
+    if (!posContainer || !logContainer || !posBtn || !logBtn) return;
+
+    if (tabName === 'positions') {
+        posContainer.classList.remove('hidden');
+        logContainer.classList.add('hidden');
+        posBtn.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800 text-white transition flex items-center gap-1.5';
+        logBtn.className = 'text-xs font-medium px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5';
+    } else {
+        logContainer.classList.remove('hidden');
+        posContainer.classList.add('hidden');
+        logBtn.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800 text-white transition flex items-center gap-1.5';
+        posBtn.className = 'text-xs font-medium px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5';
     }
 }
 </script>

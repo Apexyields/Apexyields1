@@ -4845,7 +4845,6 @@ async function checkPaperTradeLiquidations() {
         const userId = typeof getActiveUserId === 'function' ? getActiveUserId() : (window.currentUserId || localStorage.getItem('currentUserId'));
         if (!userId) return;
 
-        // Fetch user profile balance and all active positions simultaneously
         const [profileRes, positionsRes] = await Promise.all([
             db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
             db.from('paper_positions').select('*').eq('user_id', userId)
@@ -4856,7 +4855,6 @@ async function checkPaperTradeLiquidations() {
         if (positions.length === 0) return;
 
         let totalUnrealizedPnl = 0;
-        let totalInitialMargin = 0;
         const evaluatedPositions = [];
 
         for (const pos of positions) {
@@ -4869,44 +4867,30 @@ async function checkPaperTradeLiquidations() {
 
             const isShort = holding < 0;
             const absHolding = Math.abs(holding);
-            const rawCostBasis = pos.cost_basis || pos.usd_amount || 0;
+            const rawCostBasis = (pos.cost_basis && Number(pos.cost_basis) > 0) ? pos.cost_basis : (pos.usd_amount || absHolding * livePrice);
             const absCostBasis = Math.abs(parseFloat(String(rawCostBasis).replace(/,/g, '')));
             const entryPrice = absHolding > 0 ? absCostBasis / absHolding : livePrice;
 
-            // Compute PnL for this position
-            const pnl = isShort 
-                ? (entryPrice - livePrice) * absHolding 
-                : (livePrice - entryPrice) * absHolding;
-
+            const pnl = isShort ? (entryPrice - livePrice) * absHolding : (livePrice - entryPrice) * absHolding;
             totalUnrealizedPnl += pnl;
-            totalInitialMargin += absCostBasis;
 
-            evaluatedPositions.push({ pos, symbol, holding, absHolding, absCostBasis, isShort, entryPrice, livePrice });
+            evaluatedPositions.push({ symbol, holding, absCostBasis, isShort, entryPrice, livePrice });
         }
 
-        // Total Account Equity = Shared Cash Balance + Net Unrealized PnL of all open trades
-        const totalAccountEquity = paperBalance + totalUnrealizedPnl;
-        
-        // Maintenance Margin Requirement (e.g., 15% of total capital deployed across active trades)
-        const maintenanceBuffer = 0.15;
-        const totalMaintenanceRequired = totalInitialMargin * maintenanceBuffer;
+        const totalEquity = paperBalance + totalUnrealizedPnl;
 
-        // If total account equity breaches the collective safety threshold, liquidate the portfolio
-        if (totalAccountEquity <= totalMaintenanceRequired || totalAccountEquity <= 0) {
-            console.warn("Margin Call Triggered! Total account equity breached safe threshold.");
+        // Liquidation triggers when Total Account Equity drops to $0 or below
+        if (totalEquity <= 0) {
+            console.warn("Cross-Margin Call Triggered! Equity <= $0");
 
             for (const item of evaluatedPositions) {
-                const liqPrice = item.isShort 
-                    ? item.entryPrice * (1 + maintenanceBuffer) 
-                    : item.entryPrice * (1 - maintenanceBuffer);
-
                 if (typeof executeLiquidationPosition === 'function') {
-                    await executeLiquidationPosition(userId, item.symbol, item.holding, item.absCostBasis, liqPrice, db);
+                    await executeLiquidationPosition(userId, item.symbol, item.holding, item.absCostBasis, item.livePrice, db);
                 }
             }
         }
     } catch (err) {
-        console.error('Portfolio Liquidation check error:', err);
+        console.error('Cross-margin liquidation check error:', err);
     }
 }
 

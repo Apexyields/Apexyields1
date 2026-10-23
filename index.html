@@ -4084,13 +4084,12 @@ if (!userId) return;
             hasHoldings = true;
             const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) ? parseFloat(cryptoPrices[symbol]) : 0;
             const isShort = holding < 0;
-            const absHolding = Math.abs(holding);
-            const absCostBasis = Math.abs(parseFloat(pos.cost_basis || 0));
-
-        const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
-        const currentMktVal = absHolding * livePrice;
-        const liqPrice = calculateLiquidationPrice(entryPrice, isShort); // <--- Added calculation
-
+            const absHolding = Math.abs(parseFloat(String(pos.amount || 0).replace(/,/g, '')));
+const rawCostBasis = pos.cost_basis !== undefined ? pos.cost_basis : pos.usd_amount;
+const absCostBasis = Math.abs(parseFloat(String(rawCostBasis || 0).replace(/,/g, '')));
+const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
+const currentMktVal = absHolding * livePrice;
+const liqPrice = calculateLiquidationPrice(entryPrice, isShort);
         // Long PnL vs Short PnL Formula
         const indPnl = isShort 
             ? (entryPrice - livePrice) * absHolding 
@@ -4806,10 +4805,13 @@ function closePackageInfoModal() {
 var MAINTENANCE_MARGIN_BUFFER = 0.15; // Triggers liquidation if position value drops/rises beyond threshold
 
 function calculateLiquidationPrice(entryPrice, isShort) {
-    if (!entryPrice || entryPrice <= 0) return 0;
-    // For long: Liquidation occurs when price drops below the maintenance threshold
-    // For Short: Liquidation occurs when price rises above the upper tolerance threshold
-    return isShort ? entryPrice * (1 + MAINTENANCE_MARGIN_BUFFER) : entryPrice * (1 - MAINTENANCE_MARGIN_BUFFER);
+    var price = parseFloat(String(entryPrice).replace(/,/g, ''));
+    if (isNaN(price) || price <= 0) return 0;
+    // For long: Liquidation occurs when price drops below maintenance threshold
+    // For Short: Liquidation occurs when price rises above upper tolerance threshold
+    return isShort 
+        ? price * (1 + MAINTENANCE_MARGIN_BUFFER) 
+        : price * (1 - MAINTENANCE_MARGIN_BUFFER);
 }
 async function checkPaperTradeLiquidations() {
     try {

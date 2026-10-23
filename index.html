@@ -4099,11 +4099,16 @@ let holdingsHtml = '';
 let hasHoldings = false;
 
 // 1. Calculate Net Floating PnL and Total Active Portfolio Market Value safely
-const currentPaperBalance = parseFloat(profileRes.data?.paper_balance || 0);
+const currentPaperBalance = parseFloat(profileRes.data?.paper_balance || 100000);
+
+// If user has no active positions, instantly clear PnL cache so it never holds residual numbers
+if (positions.length === 0) {
+    window._lastValidPortfolioPnl = 0;
+}
+
 let totalPortfolioPnl = 0;
 let totalActiveMarketValue = 0;
 
-// Initialize or retrieve a global cache on window to prevent flashing during tick stutters
 if (typeof window._lastValidPortfolioPnl === 'undefined') {
     window._lastValidPortfolioPnl = 0;
 }
@@ -4127,11 +4132,14 @@ positions.forEach(p => {
     totalActiveMarketValue += (absH * lp);
 });
 
-// If live prices temporarily fail across the board, fall back to last known valid PnL to stop stuttering
-if (totalPortfolioPnl === 0 && positions.length > 0 && window._lastValidPortfolioPnl !== 0) {
-    totalPortfolioPnl = window._lastValidPortfolioPnl;
+if (positions.length > 0) {
+    if (totalPortfolioPnl === 0 && window._lastValidPortfolioPnl !== 0) {
+        totalPortfolioPnl = window._lastValidPortfolioPnl;
+    } else {
+        window._lastValidPortfolioPnl = totalPortfolioPnl;
+    }
 } else {
-    window._lastValidPortfolioPnl = totalPortfolioPnl;
+    totalPortfolioPnl = 0;
 }
 
 // 2. Effective Remaining Balance works in smooth tandem with live floating PnL
@@ -4360,12 +4368,11 @@ if (!userId) return alert("User session not found.");
 async function resetPaperBalance() {
     const db = window.supabaseClient || window.supabase;
     const userId = getActiveUserId();
-if (!userId) return alert("User session not found.");
-    const currentVal = localStorage.getItem('user_balance') || '100000.00';
-    const input = prompt('Enter your desired Demo USD balance:', currentVal);
-
-    if (input !== null) {
-        const parsed = parseFloat(input);
+    if (!userId) return alert("User session not found.");
+    
+    const newVal = prompt('Enter your desired Demo USD balance:', '100000.00');
+    if (newVal !== null) {
+        const parsed = parseFloat(newVal);
         if (!isNaN(parsed) && parsed >= 0) {
             // 1. Persist directly to Supabase
             if (db && typeof db.from === 'function') {
@@ -4380,12 +4387,15 @@ if (!userId) return alert("User session not found.");
                 }
             }
 
-            // 2. Sync local fallback state
+            // 2. Clear sticky PnL cache to stop balance flashing
+            window._lastValidPortfolioPnl = 0;
+
+            // 3. Sync local fallback state
             localStorage.setItem('user_balance', parsed.toFixed(2));
 
-            // 3. Refresh UI
+            // 4. Refresh UI
             if (typeof updateTradingUI === 'function') updateTradingUI();
-            alert(`Paper balance updated to $${parsed.toLocaleString(undefined, {minimumFractionDigits: 2})}`);
+            alert(`Paper balance updated to $${parsed.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
         } else {
             alert('Please enter a valid positive number.');
         }

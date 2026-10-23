@@ -4098,9 +4098,10 @@ const logs = tradesRes.data || [];
 let holdingsHtml = '';
 let hasHoldings = false;
 
-// 1. Calculate total shared portfolio equity (Cash Balance + Net Unrealized PnL of all open trades)
+// 1. Calculate Net Floating PnL and Total Active Portfolio Market Value
 const currentPaperBalance = parseFloat(profileRes.data?.paper_balance || 0);
 let totalPortfolioPnl = 0;
+let totalActiveMarketValue = 0;
 
 positions.forEach(p => {
     const h = parseFloat(String(p.amount || 0).replace(/,/g, ''));
@@ -4113,11 +4114,20 @@ positions.forEach(p => {
     const rCost = (p.cost_basis && Number(p.cost_basis) > 0) ? p.cost_basis : (p.usd_amount || absH * lp);
     const absCost = Math.abs(parseFloat(String(rCost).replace(/,/g, '')));
     const ep = absH > 0 ? absCost / absH : lp;
-    totalPortfolioPnl += isS ? (ep - lp) * absH : (lp - ep) * absH;
+
+    const pnl = isS ? (ep - lp) * absH : (lp - ep) * absH;
+    totalPortfolioPnl += pnl;
+    totalActiveMarketValue += (absH * lp);
 });
 
-const sharedPortfolioEquity = Math.max(0, currentPaperBalance + totalPortfolioPnl);
-updateAccountHealthUI(currentPaperBalance, totalPortfolioPnl, positions);
+// Shared Cash Buffer backing all active trades
+const sharedCashBuffer = Math.max(0, currentPaperBalance + totalPortfolioPnl);
+
+// 2. Correct Account Health & Margin Level
+const totalPortfolioEquity = currentPaperBalance + totalActiveMarketValue + totalPortfolioPnl;
+const marginLevelPct = totalActiveMarketValue > 0 ? Math.min(100, (sharedCashBuffer / totalActiveMarketValue) * 100) : 100;
+
+updateAccountHealthUI(totalPortfolioEquity, marginLevelPct);
 
 for (const pos of positions) {
     const holding = parseFloat(pos.amount || 0);
@@ -4133,10 +4143,14 @@ for (const pos of positions) {
         const entryPrice = absHolding > 0 ? absCostBasis / absHolding : livePrice;
         const currentMktVal = absHolding * livePrice;
 
-        // 2. Dynamic Cross-Margin Liquidation Price readjusts based on shared portfolio equity buffer
+        // 3. Proportionally weighted cross-margin liquidation allocation
+        const weight = totalActiveMarketValue > 0 ? (currentMktVal / totalActiveMarketValue) : 0;
+        const allocatedCashBuffer = sharedCashBuffer * weight;
+        const perUnitBuffer = absHolding > 0 ? (allocatedCashBuffer / absHolding) : 0;
+
         const liqPrice = isShort
-            ? entryPrice + (sharedPortfolioEquity / absHolding)
-            : Math.max(0, entryPrice - (sharedPortfolioEquity / absHolding));
+            ? entryPrice + perUnitBuffer
+            : Math.max(0, entryPrice - perUnitBuffer);
         // Long PnL vs Short PnL Formula
         const indPnl = isShort 
             ? (entryPrice - livePrice) * absHolding 
@@ -4948,31 +4962,16 @@ async function executeLiquidationPosition(userId, symbol, holding, costBasis, li
         console.error('Failed to execute liquidation position:', err);
     }
 }
-function updateAccountHealthUI(paperBalance, totalUnrealizedPnl, positions = []) {
-    // 1. Total Portfolio Equity (Net Worth)
-    let totalPositionCost = 0;
-    positions.forEach(p => {
-        const qty = Math.abs(parseFloat(String(p.amount || 0).replace(/,/g, '')));
-        const rawCost = p.cost_basis || p.usd_amount || 0;
-        const cost = Math.abs(parseFloat(String(rawCost).replace(/,/g, '')));
-        totalPositionCost += cost;
-    });
-
-    const totalEquity = paperBalance + totalPositionCost + totalUnrealizedPnl;
-
-    // 2. Available Cash Margin Buffer relative to Total Equity
-    // When 0% cash buffer remains, liquidation occurs.
-    const freeMarginRatio = totalEquity > 0 ? (paperBalance / totalEquity) * 100 : 0;
-    const healthPercent = Math.max(0, Math.min(100, freeMarginRatio)).toFixed(1);
-
-    // 3. UI Status Badges
+function updateAccountHealthUI(totalEquity, marginLevelPct) {
+    const healthPercent = Math.max(0, marginLevelPct).toFixed(1);
+    
     let badgeClass = 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
     let healthStatus = 'Safe';
 
-    if (healthPercent < 10) {
+    if (healthPercent < 5) {
         badgeClass = 'text-rose-400 bg-rose-500/20 border-rose-500/30';
         healthStatus = 'Danger';
-    } else if (healthPercent < 25) {
+    } else if (healthPercent < 15) {
         badgeClass = 'text-amber-400 bg-amber-500/20 border-amber-500/30';
         healthStatus = 'Warning';
     }

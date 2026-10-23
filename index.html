@@ -4313,56 +4313,76 @@ function clearPaperTradeHistory() {
 }
 
 async function cashOutPaperTrading() {
-    const db = getDbClient();
+    const db = window.supabaseClient || window.supabase || getDbClient();
     const userId = getActiveUserId();
-if (!userId) return alert("User session not found.");
-    
-    let totalCashedOutUsd = 0;
+    if (!userId) return alert("User session not found.");
 
-    // Fetch active positions directly from Supabase
-    const { data: positions } = await db.from('paper_positions').select('*').eq('user_id', userId);
+    try {
+        // 1. Fetch current profile balance and active positions
+        const [profileRes, positionsRes] = await Promise.all([
+            db.from('profiles').select('paper_balance').eq('id', userId).maybeSingle(),
+            db.from('paper_positions').select('*').eq('user_id', userId)
+        ]);
 
-    if (positions && positions.length > 0) {
-        for (const pos of positions) {
-            const holding = parseFloat(pos.amount);
-            const symbol = pos.symbol;
+        const currentBalance = parseFloat(profileRes.data?.paper_balance || 100000);
+        const positions = positionsRes.data || [];
 
-            if (holding > 0) {
-                const currentPrice = cryptoPrices[symbol] || 0;
-                const usdVal = holding * currentPrice;
-                totalCashedOutUsd += usdVal;
-
-                // Line 4123: Wait for Supabase trade log insert to finish
-                await saveTradeLog('SELL', usdVal, holding, symbol);
-
-                // Zero out position in database
-                await db.from('paper_positions').upsert({
-                    user_id: userId,
-                    symbol: symbol,
-                    amount: 0,
-                    cost_basis: 0,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id,symbol' });
-            }
+        if (positions.length === 0) {
+            alert("No active positions to cash out!");
+            return;
         }
+
+        // 2. Calculate total floating PnL of all open positions right now
+        let totalFloatingPnl = 0;
+        positions.forEach(p => {
+            const h = parseFloat(String(p.amount || 0).replace(/,/g, ''));
+            if (Math.abs(h) <= 0.000001) return;
+            const sym = p.symbol;
+            const absH = Math.abs(h);
+            const rCost = (p.cost_basis && Number(p.cost_basis) > 0) ? p.cost_basis : (p.usd_amount || 0);
+            const absCost = Math.abs(parseFloat(String(rCost).replace(/,/g, '')));
+            const ep = absH > 0 ? absCost / absH : 0;
+            
+            const rawLive = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) ? parseFloat(cryptoPrices[sym]) : 0;
+            const lp = rawLive > 0 ? rawLive : (ep > 0 ? ep : 1);
+
+            const isS = h < 0;
+            const pnl = isS ? (ep - lp) * absH : (lp - ep) * absH;
+            totalFloatingPnl += pnl;
+        });
+
+        // 3. Realize PnL: Add/subtract floating PnL permanently to cash balance
+        const newLockedBalance = currentBalance + totalFloatingPnl;
+
+        // 4. Update Supabase Profile with new locked balance
+        await db.from('profiles').update({ paper_balance: newLockedBalance }).eq('id', userId);
+
+        // 5. Delete active positions (since they are now cashed out)
+        await db.from('paper_positions').delete().eq('user_id', userId);
+
+        // 6. Log the cash-out event in trade history
+        await db.from('paper_trades').insert({
+            user_id: userId,
+            symbol: 'PORTFOLIO',
+            type: 'CASH OUT',
+            amount_usd: totalFloatingPnl,
+            units: 0,
+            price: newLockedBalance
+        });
+
+        // 7. Clear the PnL cache so the UI starts fresh at the new cashed-out balance
+        window._lastValidPortfolioPnl = 0;
+
+        alert(`💰 Successfully cashed out! Realized PnL: $${totalFloatingPnl >= 0 ? '+' : ''}${totalFloatingPnl.toFixed(2)}. New Balance: $${newLockedBalance.toFixed(2)}`);
+
+        // 8. Refresh UI
+        if (typeof renderTradeHistory === 'function') await renderTradeHistory();
+        if (typeof updateTradingUI === 'function') updateTradingUI();
+
+    } catch (err) {
+        console.error('Cash out error:', err);
+        alert('Failed to process cash out.');
     }
-
-    if (totalCashedOutUsd <= 0) {
-        alert('No crypto holdings to cash out.');
-        return;
-    }
-
-    // Add cashed out funds back to paper_balance in profiles
-    const { data: profile } = await db.from('profiles').select('paper_balance').eq('id', userId).single();
-    const currentBal = parseFloat(profile?.paper_balance || 0);
-    const newBal = currentBal + totalCashedOutUsd;
-
-    await db.from('profiles').update({ paper_balance: newBal }).eq('id', userId);
-
-    alert(`Cashed out all crypto holdings for $${totalCashedOutUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-    
-    if (typeof renderTradeHistory === 'function') await renderTradeHistory();
-    if (typeof updateTradingUI === 'function') updateTradingUI();
 }
 
 async function resetPaperBalance() {

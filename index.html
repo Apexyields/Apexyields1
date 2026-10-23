@@ -4071,30 +4071,49 @@ if (!userId) return;
     ]);
 
     const positions = positionsRes.data || [];
-    const logs = tradesRes.data || [];
+const logs = tradesRes.data || [];
 
-    let holdingsHtml = '';
-    let hasHoldings = false;
+let holdingsHtml = '';
+let hasHoldings = false;
 
-    for (const pos of positions) {
-        const holding = parseFloat(pos.amount || 0);
-        const symbol = pos.symbol;
+// 1. Calculate total shared portfolio equity (Cash Balance + Net Unrealized PnL of all open trades)
+const currentPaperBalance = parseFloat(profileRes.data?.paper_balance || 0);
+let totalPortfolioPnl = 0;
 
-        if (Math.abs(holding) > 0.000001) {
-            hasHoldings = true;
-            const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) ? parseFloat(cryptoPrices[symbol]) : 0;
-const isShort = holding < 0;
-const absHolding = Math.abs(parseFloat(String(pos.amount || 0).replace(/,/g, '')));
-const rawCostBasis = pos.cost_basis !== undefined ? pos.cost_basis : pos.usd_amount;
-const absCostBasis = Math.abs(parseFloat(String(rawCostBasis || 0).replace(/,/g, '')));
-const entryPrice = absHolding > 0 ? absCostBasis / absHolding : 0;
-const currentMktVal = absHolding * livePrice;
+positions.forEach(p => {
+    const h = parseFloat(String(p.amount || 0).replace(/,/g, ''));
+    if (Math.abs(h) <= 0.000001) return;
+    const sym = p.symbol;
+    const lp = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) ? parseFloat(cryptoPrices[sym]) : 0;
+    if (lp <= 0) return;
+    const isS = h < 0;
+    const absH = Math.abs(h);
+    const rCost = (p.cost_basis && Number(p.cost_basis) > 0) ? p.cost_basis : (p.usd_amount || absH * lp);
+    const absCost = Math.abs(parseFloat(String(rCost).replace(/,/g, '')));
+    const ep = absH > 0 ? absCost / absH : lp;
+    totalPortfolioPnl += isS ? (ep - lp) * absH : (lp - ep) * absH;
+});
 
-// Inline calculation (bypasses function caching entirely)
-const maintenanceBuffer = 0.15;
-const liqPrice = isShort 
-    ? entryPrice * (1 + maintenanceBuffer) 
-    : entryPrice * (1 - maintenanceBuffer);
+const sharedPortfolioEquity = Math.max(0, currentPaperBalance + totalPortfolioPnl);
+
+for (const pos of positions) {
+    const holding = parseFloat(pos.amount || 0);
+    const symbol = pos.symbol;
+
+    if (Math.abs(holding) > 0.000001) {
+        hasHoldings = true;
+        const livePrice = (typeof cryptoPrices !== 'undefined' && cryptoPrices[symbol]) ? parseFloat(cryptoPrices[symbol]) : 0;
+        const isShort = holding < 0;
+        const absHolding = Math.abs(holding);
+        const rawCostBasis = (pos.cost_basis && Number(pos.cost_basis) > 0) ? pos.cost_basis : (pos.usd_amount || absHolding * livePrice);
+        const absCostBasis = Math.abs(parseFloat(String(rawCostBasis || 0).replace(/,/g, '')));
+        const entryPrice = absHolding > 0 ? absCostBasis / absHolding : livePrice;
+        const currentMktVal = absHolding * livePrice;
+
+        // 2. Dynamic Cross-Margin Liquidation Price readjusts based on shared portfolio equity buffer
+        const liqPrice = isShort
+            ? entryPrice + (sharedPortfolioEquity / absHolding)
+            : Math.max(0, entryPrice - (sharedPortfolioEquity / absHolding));
         // Long PnL vs Short PnL Formula
         const indPnl = isShort 
             ? (entryPrice - livePrice) * absHolding 

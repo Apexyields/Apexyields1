@@ -3922,10 +3922,28 @@ function getDbClient() {
     return null;
 }
 
+// Helper to safely retrieve active user ID (fully hoisted)
+function getActiveUserId() {
+    if (window.currentUserId) return window.currentUserId;
+    if (localStorage.getItem('user_id')) return localStorage.getItem('user_id');
+
+    const client = getDbClient();
+    if (!client || !client.auth) return null;
+
+    try {
+        const sessionUser = client.auth.session?.()?.user?.id || client.auth.getUser?.()?.data?.user?.id;
+        if (sessionUser) return sessionUser;
+    } catch (e) {
+        console.warn("Session retrieval fallback:", e);
+    }
+
+    return null;
+}
+
 async function saveTradeLog(type, usdAmount, units, symbol) {
     const db = getDbClient();
     if (!db) return;
-
+    
     const userId = getActiveUserId();
 if (!userId) return;
     const currentPrice = cryptoPrices[symbol] || 0;

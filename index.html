@@ -4120,14 +4120,19 @@ positions.forEach(p => {
     totalActiveMarketValue += (absH * lp);
 });
 
-// Shared Cash Buffer backing all active trades
-const sharedCashBuffer = Math.max(0, currentPaperBalance + totalPortfolioPnl);
+// 2. Effective Remaining Balance works in direct tandem with live floating PnL
+const effectiveRemainingBalance = currentPaperBalance + totalPortfolioPnl;
+const paperBalElem = document.getElementById('paperMarketBalance');
+if (paperBalElem) {
+    paperBalElem.innerText = `$${effectiveRemainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    paperBalElem.className = effectiveRemainingBalance >= currentPaperBalance ? 'text-sm font-bold text-emerald-400' : 'text-sm font-bold text-rose-400';
+}
 
-// 2. Correct Account Health & Margin Level
-const totalPortfolioEquity = currentPaperBalance + totalActiveMarketValue + totalPortfolioPnl;
-const marginLevelPct = totalActiveMarketValue > 0 ? Math.min(100, (sharedCashBuffer / totalActiveMarketValue) * 100) : 100;
+const sharedCashBuffer = Math.max(0, effectiveRemainingBalance);
+const totalPortfolioEquity = currentPaperBalance + totalActiveMarketValue;
 
-updateAccountHealthUI(totalPortfolioEquity, marginLevelPct);
+// 3. Update Account Health with Risk percentage counting UP to 100%
+updateAccountHealthUI(effectiveRemainingBalance, totalPortfolioPnl, totalActiveMarketValue);
 
 for (const pos of positions) {
     const holding = parseFloat(pos.amount || 0);
@@ -4143,7 +4148,7 @@ for (const pos of positions) {
         const entryPrice = absHolding > 0 ? absCostBasis / absHolding : livePrice;
         const currentMktVal = absHolding * livePrice;
 
-        // 3. Proportionally weighted cross-margin liquidation allocation
+        // 4. Proportionally weighted cross-margin liquidation allocation
         const weight = totalActiveMarketValue > 0 ? (currentMktVal / totalActiveMarketValue) : 0;
         const allocatedCashBuffer = sharedCashBuffer * weight;
         const perUnitBuffer = absHolding > 0 ? (allocatedCashBuffer / absHolding) : 0;
@@ -4962,16 +4967,26 @@ async function executeLiquidationPosition(userId, symbol, holding, costBasis, li
         console.error('Failed to execute liquidation position:', err);
     }
 }
-function updateAccountHealthUI(totalEquity, marginLevelPct) {
-    const healthPercent = Math.max(0, marginLevelPct).toFixed(1);
+function updateAccountHealthUI(effectiveBuffer, totalPortfolioPnl, totalActiveMarketValue) {
+    let riskPercent = 0;
     
+    if (totalActiveMarketValue > 0) {
+        // Calculate margin health ratio (buffer relative to a 25% maintenance threshold)
+        const marginHealth = Math.min(100, (effectiveBuffer / (totalActiveMarketValue * 0.25)) * 100);
+        // Risk percentage counts UP as margin health drops
+        riskPercent = Math.max(0, Math.min(100, 100 - marginHealth)).toFixed(1);
+    } else {
+        riskPercent = "0.0";
+    }
+
+    const numRisk = parseFloat(riskPercent);
     let badgeClass = 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
     let healthStatus = 'Safe';
 
-    if (healthPercent < 5) {
+    if (numRisk >= 75) {
         badgeClass = 'text-rose-400 bg-rose-500/20 border-rose-500/30';
         healthStatus = 'Danger';
-    } else if (healthPercent < 15) {
+    } else if (numRisk >= 40) {
         badgeClass = 'text-amber-400 bg-amber-500/20 border-amber-500/30';
         healthStatus = 'Warning';
     }
@@ -4981,10 +4996,10 @@ function updateAccountHealthUI(totalEquity, marginLevelPct) {
 
     if (badgeElem) {
         badgeElem.className = `text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${badgeClass}`;
-        badgeElem.innerText = `${healthStatus} (${healthPercent}%)`;
+        badgeElem.innerText = `${healthStatus} (${riskPercent}%)`;
     }
     if (equityElem) {
-        equityElem.innerText = `$${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        equityElem.innerText = `$${(effectiveBuffer + totalActiveMarketValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 }
         function switchOrderDeskTab(tabName) {

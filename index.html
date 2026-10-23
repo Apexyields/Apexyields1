@@ -4103,6 +4103,11 @@ const currentPaperBalance = parseFloat(profileRes.data?.paper_balance || 0);
 let totalPortfolioPnl = 0;
 let totalActiveMarketValue = 0;
 
+// Initialize or retrieve a global cache on window to prevent flashing during tick stutters
+if (typeof window._lastValidPortfolioPnl === 'undefined') {
+    window._lastValidPortfolioPnl = 0;
+}
+
 positions.forEach(p => {
     const h = parseFloat(String(p.amount || 0).replace(/,/g, ''));
     if (Math.abs(h) <= 0.000001) return;
@@ -4112,7 +4117,7 @@ positions.forEach(p => {
     const absCost = Math.abs(parseFloat(String(rCost).replace(/,/g, '')));
     const ep = absH > 0 ? absCost / absH : 0;
     
-    // Stable live price fallback prevents temporary missing ticks from resetting PnL to 0 (stopping the flash)
+    // Check live price with fallback to entry price if missing
     const rawLive = (typeof cryptoPrices !== 'undefined' && cryptoPrices[sym]) ? parseFloat(cryptoPrices[sym]) : 0;
     const lp = rawLive > 0 ? rawLive : (ep > 0 ? ep : 1);
 
@@ -4122,14 +4127,24 @@ positions.forEach(p => {
     totalActiveMarketValue += (absH * lp);
 });
 
-// 2. Effective Remaining Balance works in direct tandem with live floating PnL
+// If live prices temporarily fail across the board, fall back to last known valid PnL to stop stuttering
+if (totalPortfolioPnl === 0 && positions.length > 0 && window._lastValidPortfolioPnl !== 0) {
+    totalPortfolioPnl = window._lastValidPortfolioPnl;
+} else {
+    window._lastValidPortfolioPnl = totalPortfolioPnl;
+}
+
+// 2. Effective Remaining Balance works in smooth tandem with live floating PnL
 const effectiveRemainingBalance = currentPaperBalance + totalPortfolioPnl;
 const paperBalElem = document.getElementById('paperMarketBalance');
 if (paperBalElem) {
-    paperBalElem.innerText = `$${effectiveRemainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    paperBalElem.className = effectiveRemainingBalance >= currentPaperBalance ? 'text-sm font-bold text-emerald-400' : 'text-sm font-bold text-rose-400';
+    const formattedBal = `$${effectiveRemainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Only update DOM text if it actually changed to completely eliminate layout thrashing/flashing
+    if (paperBalElem.innerText !== formattedBal) {
+        paperBalElem.innerText = formattedBal;
+        paperBalElem.className = effectiveRemainingBalance >= currentPaperBalance ? 'text-sm font-bold text-emerald-400' : 'text-sm font-bold text-rose-400';
+    }
 }
-
 const sharedCashBuffer = Math.max(0, effectiveRemainingBalance);
 const totalPortfolioEquity = currentPaperBalance + totalActiveMarketValue;
 
